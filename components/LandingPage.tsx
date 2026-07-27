@@ -239,7 +239,7 @@ export default async function LandingPage({ locale, searchParams }: LandingPageP
                                                 {t('connectFitbit')}
                                             </p>
                                             <Link
-                                                className="inline-flex min-h-11 min-w-11 max-w-full items-center whitespace-nowrap rounded-lg px-1 text-sm font-medium text-[var(--color-primary-strong)] underline decoration-1 underline-offset-4 transition-colors hover:text-[var(--color-primary-solid)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                                                className="mt-1 inline-flex min-h-11 min-w-11 max-w-full items-center whitespace-nowrap rounded-lg px-1 text-sm font-medium text-[var(--color-primary-strong)] underline decoration-1 underline-offset-4 transition-colors hover:text-[var(--color-primary-solid)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
                                                 href="/legal/privacy"
                                                 target="_top"
                                             >

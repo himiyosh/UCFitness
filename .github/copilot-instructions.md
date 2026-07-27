@@ -1719,3 +1719,10 @@ export const runtime = "edge";
 - **根本原因**: 完了画面の見出し・フォーカスだけを状態別に検証し、全return branchのlandmark数と、catch地点から実`console.error`までのデータフローを同じ回帰契約にしていなかった。初回レビューではNextAuth内部loggerという別問題と直接catch漏洩を混同し、session更新の固定境界まで対象外へ戻した。
 - **対策**: loading・active・completedの各rootを名前付き`main`へ統一し、Setup専用reporterはoperationから固定文字列だけを選んでraw catch値やcontextを受け取れない境界にした。Playwrightで320/375/1280pxのloading・active・error・recovered・completed、skip focus、44px、overflow、status失敗とsession更新throwの最終console JSONを検証する。
 - **教訓**: 条件付きpageは通常表示だけでなく全early returnを通して`main`を1つに保つ。エラー秘匿はlogger mockやcatch引数の削除だけでなく、各catchを独立に失敗させて実ブラウザの最終sinkをparseし、識別子とraw Errorのmessage/name/stack/cause/code/nested/contextが無いことを固定する。依存内部の別挙動を理由に、手元で直接確認できるcaller漏洩の修正まで巻き戻さない。リファレンス: `app/[locale]/setup/page.tsx`, `tests/setup-recovery.spec.ts`
+
+### LL-103: 差分上限だけの近接テストは重なりと視覚優先度を証明しない
+
+- **事象**: G4-PX-006の初期Playwrightはリンクと補足文の縦差・CTAとの縦差に上限だけを置いたため、重なりや逆順でもPASSでき、プライバシーリンクがCTAと同じ塗り面・太さ・shadowへ変わる回帰も検出できなかった。辺比較へ強化すると英語3幅で約0.12pxの矩形重なりも判明した。
+- **根本原因**: 「近くに見える」を座標差の小ささで代理し、レイアウト方向ごとの順序を対向する矩形辺で定義しなかった。44px・focus・遷移だけを確認し、primary CTAとtertiary linkの視覚階層をcomputed styleと面積の契約へ含めていなかった。
+- **対策**: モバイルはCTA下端→補足文上端→リンク上端、デスクトップはCTA右端→補足領域左端と補足文下端→リンク上端を比較する。CTAは塗り背景alpha、font weight、面積、shadowがリンクより強く、リンクは透明背景・shadowなしであることを固定RGBに依存せず検証する。実装には4pxの明示間隔を追加した。
+- **教訓**: 配置回帰は中心座標や絶対差の上限だけで判定せず、期待方向に沿う対向辺の不等式で非重なりと順序を証明する。視覚階層はスクリーンショットの印象だけでなく、テーマに依存しない相対的なcomputed style・操作面積を回帰契約にする。リファレンス: `tests/public-routes.spec.ts`, `components/LandingPage.tsx`

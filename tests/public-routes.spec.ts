@@ -105,6 +105,34 @@ async function getVisibleBox(locator: Locator): Promise<NonNullable<Awaited<Retu
   return box;
 }
 
+interface VisualTreatment {
+  backgroundAlpha: number;
+  fontWeight: number;
+  hasShadow: boolean;
+}
+
+async function getVisualTreatment(locator: Locator): Promise<VisualTreatment> {
+  return locator.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const colorParts = style.backgroundColor
+      .match(/rgba?\(([^)]+)\)/)?.[1]
+      .split(/[\s,/]+/)
+      .filter(Boolean);
+    const alphaToken = colorParts?.[3];
+    const backgroundAlpha = alphaToken
+      ? Number.parseFloat(alphaToken) / (alphaToken.endsWith("%") ? 100 : 1)
+      : style.backgroundColor === "transparent"
+        ? 0
+        : 1;
+
+    return {
+      backgroundAlpha,
+      fontWeight: Number.parseInt(style.fontWeight, 10),
+      hasShadow: style.boxShadow !== "none",
+    };
+  });
+}
+
 test.describe("公開主要導線", () => {
   for (const localeCase of PUBLIC_LOCALE_CASES) {
     test(`${localeCase.locale}_LPから法務ページへ迷わず移動できる`, async ({ page }) => {
@@ -186,18 +214,31 @@ test.describe("Fitbit連携前のプライバシー導線", () => {
         });
 
         await expect(privacyLink).toHaveText(localeCase.privacyLinkLabel);
-        const [loginBox, copyBox, privacyBox] = await Promise.all([
+        const [loginBox, copyBox, privacyBox, loginTreatment, privacyTreatment] = await Promise.all([
           getVisibleBox(loginButton),
           getVisibleBox(connectionCopy),
           getVisibleBox(privacyLink),
+          getVisualTreatment(loginButton),
+          getVisualTreatment(privacyLink),
         ]);
 
         expect(privacyBox.width).toBeGreaterThanOrEqual(44);
         expect(privacyBox.height).toBeGreaterThanOrEqual(44);
-        expect(privacyBox.y - (copyBox.y + copyBox.height)).toBeLessThanOrEqual(8);
-        expect(Math.abs(privacyBox.y - loginBox.y)).toBeLessThanOrEqual(128);
+        expect(copyBox.y + copyBox.height).toBeLessThanOrEqual(privacyBox.y);
+        if (viewport.width < 640) {
+          expect(loginBox.y + loginBox.height).toBeLessThanOrEqual(copyBox.y);
+        } else {
+          const supportingContentLeft = Math.min(copyBox.x, privacyBox.x);
+          expect(loginBox.x + loginBox.width).toBeLessThanOrEqual(supportingContentLeft);
+        }
         expect(privacyBox.y).toBeGreaterThanOrEqual(0);
         expect(privacyBox.y + privacyBox.height).toBeLessThanOrEqual(viewport.height);
+        expect(loginTreatment.backgroundAlpha).toBeGreaterThan(0);
+        expect(privacyTreatment.backgroundAlpha).toBe(0);
+        expect(loginTreatment.fontWeight).toBeGreaterThan(privacyTreatment.fontWeight);
+        expect(loginBox.width * loginBox.height).toBeGreaterThan(privacyBox.width * privacyBox.height);
+        expect(loginTreatment.hasShadow).toBe(true);
+        expect(privacyTreatment.hasShadow).toBe(false);
         await expect
           .poll(async () => privacyLink.evaluate((element) => getComputedStyle(element).whiteSpace))
           .toBe("nowrap");
