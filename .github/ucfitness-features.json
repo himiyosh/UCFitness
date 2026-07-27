@@ -647,9 +647,9 @@
         "coverage_target": "lib/ カバレッジ 60%+",
         "test_quality": "テストが振る舞い駆動で脆弱でない"
       },
-      "status": "in-progress",
-      "lastAttempt": "2026-07-26T13:01:39Z",
-      "lastError": "current main 5afdb51fの通常npm testは再実測18.76秒（103 files / 1273 tests）で5秒条件未達。single-worker coverageは4指標60%をPASS。"
+      "status": "passing",
+      "lastAttempt": "2026-07-27T04:50:44Z",
+      "lastError": null
     },
     {
       "id": "F027",
