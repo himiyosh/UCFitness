@@ -1,6 +1,6 @@
 import { unstable_cache } from 'next/cache';
 
-import { AppError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { fetchDailyStepsPaginated } from '@/lib/supabase-utils';
 import { getJSTDateString, getWeekStartDate, getMonthStartDate, getYearStartDate } from '@/lib/date-utils';
@@ -52,6 +52,14 @@ type RankingDatabaseOperation =
     | 'getBatchGroupRankings'
     | 'deriveBatchGroupRankings';
 
+export type RankingFailureLogOperation =
+    | 'api:rankings'
+    | 'home:ranking'
+    | 'groups:rankings'
+    | 'groups:batch-rankings'
+    | 'groups/detail:rankings'
+    | 'profile:weekly-ranking';
+
 const RANKING_DATABASE_ERROR_CODES = {
     group: 'RANKING_GROUP_DATABASE_ERROR',
     members: 'RANKING_MEMBERS_DATABASE_ERROR',
@@ -90,6 +98,16 @@ const RANKING_DATABASE_FAILURES = {
 
 type RankingDatabaseFailureKey = keyof typeof RANKING_DATABASE_FAILURES;
 
+const RANKING_DATABASE_OPERATIONS: readonly RankingDatabaseOperation[] = [
+    'getRankings',
+    'fetchGlobalRankingMap',
+    'getAllRankings',
+    'getGroupRankings',
+    'getAllGroupRankings',
+    'getBatchGroupRankings',
+    'deriveBatchGroupRankings',
+];
+
 interface RankingDatabaseFailureContext {
     scope?: 'GLOBAL' | 'GROUP';
     period?: Period;
@@ -107,6 +125,45 @@ function throwRankingDatabaseFailure(
         stage,
         ...context,
     });
+}
+
+function isRankingDatabaseOperation(value: unknown): value is RankingDatabaseOperation {
+    return typeof value === 'string'
+        && RANKING_DATABASE_OPERATIONS.some((operation) => operation === value);
+}
+
+function isRankingDatabaseStage(value: unknown): value is RankingDatabaseStage {
+    return value === 'group' || value === 'members' || value === 'steps' || value === 'users';
+}
+
+function createRankingFailureLogError(error: unknown): AppError {
+    if (error instanceof AppError) {
+        const sourceOperation = error.context?.operation;
+        const stage = error.context?.stage;
+        if (
+            isRankingDatabaseOperation(sourceOperation)
+            && isRankingDatabaseStage(stage)
+            && error.code === RANKING_DATABASE_ERROR_CODES[stage]
+        ) {
+            return new AppError('Ranking service failure', error.code, {
+                operation: sourceOperation,
+                stage,
+            });
+        }
+    }
+
+    return new AppError(
+        'Ranking service failure',
+        'RANKING_SERVICE_UNEXPECTED_ERROR',
+        { operation: 'unknown', stage: 'unexpected' },
+    );
+}
+
+export function reportRankingServiceFailure(
+    operation: RankingFailureLogOperation,
+    error: unknown,
+): void {
+    reportError(operation, createRankingFailureLogError(error));
 }
 
 // Define type for User Stats Map

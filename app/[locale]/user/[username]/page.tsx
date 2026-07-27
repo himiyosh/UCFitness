@@ -16,7 +16,10 @@ import { notFound, redirect } from 'next/navigation';
 import { getUserBadges } from "@/lib/services/badge-service";
 import { getProfileChallengeHistory } from '@/lib/services/profile-timeline-service';
 import { getEquippedItems } from "@/lib/services/shop-service";
-import { getRankings } from "@/lib/services/ranking-service";
+import {
+    getRankings,
+    reportRankingServiceFailure,
+} from "@/lib/services/ranking-service";
 import { getTranslations } from "next-intl/server";
 import RecommendedItems from '@/components/RecommendedItems';
 import StepCalendar from '@/components/StepCalendar';
@@ -74,6 +77,17 @@ async function captureProfileDependency<T>(
         return { data: await promise, failed: false };
     } catch (error: unknown) {
         reportError(operation, error, { userId });
+        return { data: null, failed: true };
+    }
+}
+
+async function captureProfileRankingDependency<T>(
+    promise: Promise<T>,
+): Promise<CapturedProfileDependency<T>> {
+    try {
+        return { data: await promise, failed: false };
+    } catch (error: unknown) {
+        reportRankingServiceFailure('profile:weekly-ranking', error);
         return { data: null, failed: true };
     }
 }
@@ -160,11 +174,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         supabaseAdmin
             .rpc('get_user_step_stats', { p_user_id: user.id }),
         // ⭐ パフォーマンス: ランキングも並列取得
-        captureProfileDependency(
-            'profile:weekly-ranking',
-            user.id,
-            getRankings('GLOBAL', 'WEEKLY'),
-        ),
+        captureProfileRankingDependency(getRankings('GLOBAL', 'WEEKLY')),
         // コイン残高（パーソナルレコード用）
         captureProfileDependency('profile:coin-balance', user.id, getCoinBalance(user.id)),
         challengeHistoryPromise,

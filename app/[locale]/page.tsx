@@ -8,7 +8,10 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { auth } from "@/lib/auth";
 import { getPostLoginRedirect } from '@/lib/auth-flow';
 import { reportError } from '@/lib/errors';
-import { getCachedGlobalRankingMap } from '@/lib/services/ranking-service';
+import {
+  getCachedGlobalRankingMap,
+  reportRankingServiceFailure,
+} from '@/lib/services/ranking-service';
 import { supabaseAdmin } from '@/lib/supabase';
 import { Link } from '@/navigation';
 import Footer from '@/components/layout/Footer';
@@ -151,7 +154,7 @@ export default async function Home({ searchParams }: HomePageProps): Promise<Rea
     try {
       rankingMap = await getCachedGlobalRankingMap();
     } catch (error: unknown) {
-      reportError('home:ranking', error, { userId });
+      reportRankingServiceFailure('home:ranking', error);
       rankingDataError = true;
     }
   }

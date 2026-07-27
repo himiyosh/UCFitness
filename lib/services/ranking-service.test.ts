@@ -6,11 +6,20 @@ import { mockQueryResult } from '@/lib/__tests__/test-utils/supabase-query-mock'
 const mocks = vi.hoisted(() => ({
     fetchDailyStepsPaginated: vi.fn(),
     from: vi.fn(),
+    reportError: vi.fn(),
 }));
 
 vi.mock('next/cache', () => ({
     unstable_cache: (callback: unknown) => callback,
 }));
+
+vi.mock('@/lib/errors', async (importOriginal) => {
+    const original = await importOriginal<typeof import('@/lib/errors')>();
+    return {
+        ...original,
+        reportError: mocks.reportError,
+    };
+});
 
 vi.mock('@/lib/supabase', () => ({
     supabaseAdmin: {
@@ -28,6 +37,7 @@ import {
     getAllRankings,
     getGroupRankings,
     getRankings,
+    reportRankingServiceFailure,
 } from './ranking-service';
 
 interface ExpectedRankingFailure {
@@ -63,17 +73,75 @@ function expectSanitizedRankingFailure(
     });
     expect(error.cause).toBeUndefined();
 
-    const metadata = JSON.stringify({
-        message: error.message,
-        code: error.code,
-        context: error.context,
-        cause: error.cause,
+    forbiddenValues.forEach((value) => {
+        expect(error.message).not.toContain(value);
+        expect(error.code).not.toContain(value);
+        expect(error.stack ?? '').not.toContain(value);
+        expect(Object.keys(error.context ?? {})).not.toContain(value);
+        expect(Object.values(error.context ?? {}).map(String)).not.toContain(value);
+        expect(error.cause).not.toBe(value);
     });
-    forbiddenValues.forEach((value) => expect(metadata).not.toContain(value));
 }
 
 afterEach(() => {
     vi.restoreAllMocks();
+});
+
+describe('reportRankingServiceFailure', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('callerが固定ランキング例外を記録する場合、生識別子とcauseを再付与しない', () => {
+        const rawMessage = 'sentinel caller database unavailable';
+        const rawCode = 'RANKING_STEPS_DATABASE_ERROR';
+        const userId = 'sentinel-user-id';
+        const groupId = 'sentinel-group-id';
+        const rawCause = {
+            message: rawMessage,
+            code: 'SENTINEL_PGRST500',
+            userId,
+            groupId,
+        };
+        const rawError = new AppError(
+            rawMessage,
+            rawCode,
+            {
+                operation: 'getRankings',
+                stage: 'steps',
+                userId,
+                groupId,
+            },
+            rawCause,
+        );
+
+        reportRankingServiceFailure('home:ranking', rawError);
+
+        expect(mocks.reportError).toHaveBeenCalledTimes(1);
+        const call = mocks.reportError.mock.calls[0];
+        expect(call).toHaveLength(2);
+        expect(call[0]).toBe('home:ranking');
+        expect(call[1]).toBeInstanceOf(AppError);
+        expect(call[1]).not.toBe(rawError);
+        const loggedError = call[1];
+        if (!(loggedError instanceof AppError)) {
+            throw new Error('Expected AppError');
+        }
+        expect(loggedError.message).toBe('Ranking service failure');
+        expect(loggedError.code).toBe(rawCode);
+        expect(loggedError.context).toEqual({
+            operation: 'getRankings',
+            stage: 'steps',
+        });
+        expect(loggedError.cause).toBeUndefined();
+        expect(loggedError.message).not.toContain(rawMessage);
+        expect(loggedError.stack ?? '').not.toContain(userId);
+        expect(Object.keys(loggedError.context ?? {})).not.toContain('userId');
+        expect(Object.keys(loggedError.context ?? {})).not.toContain('groupId');
+        expect(Object.values(loggedError.context ?? {})).not.toContain(userId);
+        expect(Object.values(loggedError.context ?? {})).not.toContain(groupId);
+        expect(loggedError.cause).not.toBe(rawCause);
+    });
 });
 
 describe('getRankings', () => {

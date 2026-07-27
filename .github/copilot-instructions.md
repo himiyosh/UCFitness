@@ -1684,3 +1684,10 @@ export const runtime = "edge";
 - **根本原因**: 未import本番ファイルを含むcoverage分母、single-workerのmock分離、通常suiteの性能を別々の検証軸として維持せず、成長前の時間baselineをfeature完了状態へ固定した。
 - **対策**: `coverage.include`へ`lib/**/*.{ts,tsx}`を明示し、CIは`forks` + `isolate: true`のsingle-worker coverageを決定的に実行する。coverage 4指標と通常suite時間はcurrent mainで個別に再測定し、F026はcoverage達成を維持しつつ5秒条件未達の`in-progress`へ戻す。
 - **教訓**: coverage gateは全本番ファイルの分母と各指標の余裕で判断し、suite時間はテスト数・cold start・実ブラウザや子process testの増加を含む独立budgetとして追跡する。古い時間baselineだけでfeatureをpassingにしない。リファレンス: `vitest.config.ts`, `.github/ucfitness-features.json`, `README.md`
+
+### LL-098: 固定エラー境界だけを直しても上位callerが識別子を再付与し得る
+
+- **事象**: `ranking-service`内の生Supabase errorを固定`AppError`へ変換した後も、Home・Groups・Group detail・Profileのcatchが`reportError` contextへuser IDやgroup IDを再付与し、実ログへ識別子が残った。
+- **根本原因**: DB queryからservice throwまでだけをエラーデータフローとして監査し、callerでのcatch・再ログを同じ秘匿境界に含めなかった。service単体testも送出例外だけを検証し、実際のcaller log引数と`console.error`出力を確認していなかった。
+- **対策**: ranking caller専用loggerが元例外を再利用せず、許可済みoperation・stage・codeだけの新しい`AppError`へ再固定化してから記録する。一般依存のログ境界は変更せず、Ranking APIを含む6つのcaller operationと専用captureを`check:rules`で固定する。
+- **教訓**: 固定エラー変換の完了条件はthrow地点ではなく最終log sinkまでのend-to-end追跡である。raw errorを`JSON.stringify`して空に見えることを証拠にせず、`reportError`へ渡るオブジェクトのidentity・message・code・cause・contextと実構造化出力を直接検証する。リファレンス: `lib/services/ranking-service.ts`, `lib/services/ranking-service.test.ts`, `app/[locale]/groups/page.tsx`

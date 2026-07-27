@@ -5,7 +5,10 @@ import { mockQueryResult } from '@/lib/__tests__/test-utils/supabase-query-mock'
 
 import type { Period } from '@/components/dashboard/LeaderboardTabs';
 
-import { deriveBatchGroupRankings } from '../services/ranking-service';
+import {
+    deriveBatchGroupRankings,
+    reportRankingServiceFailure,
+} from '../services/ranking-service';
 
 import type { RankingAccumulatorEntry } from '../services/ranking-service';
 
@@ -35,6 +38,68 @@ vi.mock('next/cache', () => ({
 function testUser(id: string, name: string): RankingAccumulatorEntry['users'] {
     return { id, name, image: null, username: null };
 }
+
+describe('reportRankingServiceFailure', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('実際の構造化ログ出力から生識別子とDB詳細を除外する', () => {
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const rawMessage = 'sentinel caller database unavailable';
+        const userId = 'sentinel-user-id';
+        const groupId = 'sentinel-group-id';
+        const rawError = new AppError(
+            rawMessage,
+            'RANKING_MEMBERS_DATABASE_ERROR',
+            {
+                operation: 'deriveBatchGroupRankings',
+                stage: 'members',
+                userId,
+                groupId,
+            },
+            {
+                code: 'SENTINEL_PGRST500',
+                message: rawMessage,
+                userId,
+                groupId,
+            },
+        );
+
+        reportRankingServiceFailure('groups/detail:rankings', rawError);
+
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        const call = consoleError.mock.calls[0];
+        expect(call).toHaveLength(2);
+        expect(call[0]).toBe('[ERROR] groups/detail:rankings:');
+        expect(typeof call[1]).toBe('string');
+        const entry = JSON.parse(String(call[1])) as {
+            operation: string;
+            error: {
+                message: string;
+                code: string;
+                stack?: string;
+                errorContext: Record<string, unknown>;
+            };
+        };
+        expect(entry.operation).toBe('groups/detail:rankings');
+        expect(entry.error.message).toBe('Ranking service failure');
+        expect(entry.error.code).toBe('RANKING_MEMBERS_DATABASE_ERROR');
+        expect(entry.error.errorContext).toEqual({
+            operation: 'deriveBatchGroupRankings',
+            stage: 'members',
+        });
+        expect(entry.error.stack ?? '').not.toContain(userId);
+        expect(Object.keys(entry.error.errorContext)).not.toContain('userId');
+        expect(Object.keys(entry.error.errorContext)).not.toContain('groupId');
+        expect(Object.values(entry.error.errorContext)).not.toContain(userId);
+        expect(Object.values(entry.error.errorContext)).not.toContain(groupId);
+        expect(String(call[1])).not.toContain(rawMessage);
+        expect(String(call[1])).not.toContain('SENTINEL_PGRST500');
+        expect(String(call[1])).not.toContain(userId);
+        expect(String(call[1])).not.toContain(groupId);
+    });
+});
 
 describe('deriveBatchGroupRankings', () => {
     beforeEach(() => {
@@ -150,15 +215,11 @@ describe('deriveBatchGroupRankings', () => {
             groupCount: 1,
         });
         expect(failure.cause).toBeUndefined();
-        const metadata = JSON.stringify({
-            message: failure.message,
-            code: failure.code,
-            context: failure.context,
-            cause: failure.cause,
-        });
-        expect(metadata).not.toContain(rawMessage);
-        expect(metadata).not.toContain(rawCode);
-        expect(metadata).not.toContain(groupId);
+        expect(failure.message).not.toContain(rawMessage);
+        expect(failure.code).not.toContain(rawCode);
+        expect(failure.stack ?? '').not.toContain(groupId);
+        expect(Object.keys(failure.context ?? {})).not.toContain('groupId');
+        expect(Object.values(failure.context ?? {})).not.toContain(groupId);
         expect(consoleError).not.toHaveBeenCalled();
     });
 });

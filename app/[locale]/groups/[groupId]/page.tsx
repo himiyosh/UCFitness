@@ -14,7 +14,10 @@ import { notFound, redirect } from "next/navigation";
 import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader';
 import GroupHeaderActions from "@/components/group/GroupHeaderActions";
 import Breadcrumbs from '@/components/layout/Breadcrumbs';
-import { getAllGroupRankings } from "@/lib/services/ranking-service";
+import {
+    getAllGroupRankings,
+    reportRankingServiceFailure,
+} from "@/lib/services/ranking-service";
 import {
     createUnavailableViewerRankingActivities,
     enrichRankingsWithEquip,
@@ -102,6 +105,17 @@ async function captureGroupDependency<T>(
         return { data: await promise, failed: false };
     } catch (error: unknown) {
         reportError(operation, error, { userId, groupId });
+        return { data: null, failed: true };
+    }
+}
+
+async function captureGroupRankingDependency<T>(
+    promise: Promise<T>,
+): Promise<CapturedGroupDependency<T>> {
+    try {
+        return { data: await promise, failed: false };
+    } catch (error: unknown) {
+        reportRankingServiceFailure('groups/detail:rankings', error);
         return { data: null, failed: true };
     }
 }
@@ -287,7 +301,7 @@ export default async function GroupDetailPage(props: GroupDetailPageProps): Prom
         viewerRankingActivitiesState,
         membersResult,
     ] = await Promise.all([
-        captureGroupDependency('groups/detail:rankings', userId, groupId, getAllGroupRankings(groupId)),
+        captureGroupRankingDependency(getAllGroupRankings(groupId)),
         group.is_public
             ? captureGroupDependency('groups/detail:competition-daily', userId, groupId, getGroupCompetitionRankings('DAILY'))
             : Promise.resolve<CapturedGroupDependency<GroupRankingEntry[]>>({ data: [], failed: false }),

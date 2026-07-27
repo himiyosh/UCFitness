@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
     getRankings: vi.fn(),
     groupMaybeSingle: vi.fn(),
     reportError: vi.fn(),
+    reportRankingServiceFailure: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({
@@ -21,6 +22,7 @@ vi.mock('@/lib/errors', () => ({
 vi.mock('@/lib/services/ranking-service', () => ({
     getGroupRankings: mocks.getGroupRankings,
     getRankings: mocks.getRankings,
+    reportRankingServiceFailure: mocks.reportRankingServiceFailure,
 }));
 
 vi.mock('@/lib/services/ranking-utils', () => ({
@@ -126,5 +128,21 @@ describe('GET /api/rankings', () => {
             'WEEKLY',
         );
         expect(mocks.getRankings).not.toHaveBeenCalled();
+    });
+
+    it('ランキング取得が失敗した場合、専用ログ境界で500を返す', async () => {
+        const rawError = new Error('sentinel ranking caller user-id');
+        mocks.getRankings.mockRejectedValue(rawError);
+
+        const response = await GET(createRequest('scope=GLOBAL&period=WEEKLY'));
+
+        expect(response.status).toBe(500);
+        await expect(response.json()).resolves.toEqual({ error: 'Internal Server Error' });
+        expect(mocks.reportRankingServiceFailure).toHaveBeenCalledWith(
+            'api:rankings',
+            rawError,
+        );
+        expect(mocks.reportError).not.toHaveBeenCalled();
+        expect(mocks.enrichRankingsWithEquip).not.toHaveBeenCalled();
     });
 });
