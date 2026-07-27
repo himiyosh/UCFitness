@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 
 import { useTranslations } from 'next-intl';
 
@@ -47,6 +48,8 @@ interface ChallengeListProps {
 
 type TabKey = 'active' | 'completed' | 'my';
 
+const TAB_ORDER: readonly TabKey[] = ['active', 'completed', 'my'];
+
 export default function ChallengeList({ currentUserId }: ChallengeListProps) {
     const t = useTranslations('Challenge');
     const [tab, setTab] = useState<TabKey>('active');
@@ -59,6 +62,11 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
     const abortControllerRef = useRef<AbortController | null>(null);
     const tabRef = useRef<TabKey>(tab);
     const mountedRef = useRef(true);
+    const tabButtonRefs = useRef<Record<TabKey, HTMLButtonElement | null>>({
+        active: null,
+        completed: null,
+        my: null,
+    });
 
     // チャレンジ一覧を取得
     const fetchChallenges = useCallback(async (status: TabKey) => {
@@ -166,6 +174,30 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
         }
     }, [fetchChallenges]);
 
+    const handleTabKeyDown = useCallback((
+        event: KeyboardEvent<HTMLButtonElement>,
+        currentTab: TabKey,
+    ) => {
+        const currentIndex = TAB_ORDER.indexOf(currentTab);
+        let nextIndex: number | null = null;
+
+        if (event.key === 'ArrowRight') {
+            nextIndex = (currentIndex + 1) % TAB_ORDER.length;
+        } else if (event.key === 'ArrowLeft') {
+            nextIndex = (currentIndex - 1 + TAB_ORDER.length) % TAB_ORDER.length;
+        } else if (event.key === 'Home') {
+            nextIndex = 0;
+        } else if (event.key === 'End') {
+            nextIndex = TAB_ORDER.length - 1;
+        }
+
+        if (nextIndex === null) return;
+        event.preventDefault();
+        const nextTab = TAB_ORDER[nextIndex];
+        setTab(nextTab);
+        tabButtonRefs.current[nextTab]?.focus();
+    }, []);
+
     const tabs: { key: TabKey; label: string }[] = [
         { key: 'active', label: t('active') },
         { key: 'completed', label: t('completed') },
@@ -197,10 +229,17 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
                 {tabs.map(({ key, label }) => (
                     <button
                         key={key}
+                        ref={(element) => {
+                            tabButtonRefs.current[key] = element;
+                        }}
+                        id={`challenge-tab-${key}`}
                         onClick={() => setTab(key)}
+                        onKeyDown={(event) => handleTabKeyDown(event, key)}
                         role="tab"
                         aria-selected={tab === key}
-                        className={`flex min-h-[44px] min-w-0 items-center justify-center rounded-lg px-2 py-2 text-center text-xs font-semibold leading-tight transition-colors sm:px-3 sm:text-sm ${
+                        aria-controls="challenge-panel"
+                        tabIndex={tab === key ? 0 : -1}
+                        className={`flex min-h-[44px] min-w-0 items-center justify-center rounded-lg px-2 py-2 text-center text-xs font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] sm:px-3 sm:text-sm ${
                             tab === key
                                 ? 'bg-white text-[var(--theme-primary)] shadow-sm'
                                 : 'text-gray-500 hover:text-gray-700'
@@ -210,6 +249,54 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
                     </button>
                 ))}
             </div>
+
+            <div
+                id="challenge-panel"
+                role="tabpanel"
+                aria-labelledby={`challenge-tab-${tab}`}
+                aria-busy={loading}
+                tabIndex={0}
+                className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)]"
+            >
+            {tab === 'completed' && (
+                <section
+                    className="mb-4 rounded-2xl border border-[var(--color-reward)]/35 bg-[var(--color-reward-soft)] p-3 sm:p-4"
+                    aria-labelledby="challenge-history-title"
+                >
+                    <div className="flex items-start gap-3">
+                        <span
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-surface)] text-xl text-[var(--color-reward-strong)]"
+                            aria-hidden="true"
+                        >
+                            🏛️
+                        </span>
+                        <div className="min-w-0">
+                            <h2
+                                id="challenge-history-title"
+                                className="text-sm font-black text-[var(--color-text)] sm:text-base"
+                            >
+                                {t('historyTitle')}
+                            </h2>
+                            <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-muted)] sm:text-sm">
+                                {t('historyDescription')}
+                            </p>
+                        </div>
+                    </div>
+                    <ul
+                        className="mt-3 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap"
+                        role="list"
+                    >
+                        <li className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-[var(--color-surface-muted)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-muted)]">
+                            <span aria-hidden="true">🏁</span>
+                            {t('historyEndedMarker')}
+                        </li>
+                        <li className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-[var(--color-success-soft)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-success-strong)]">
+                            <span aria-hidden="true">🏆</span>
+                            {t('historyPersonalMarker')}
+                        </li>
+                    </ul>
+                </section>
+            )}
 
             {/* ローディング */}
             {loading && (
@@ -243,9 +330,15 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
             {/* 空状態 */}
             {!loading && !error && challenges.length === 0 && (
                 <div className="text-center py-16">
-                    <div className="text-5xl mb-4">🎯</div>
+                    <div className="text-5xl mb-4" aria-hidden="true">
+                        {tab === 'completed' ? '🏛️' : '🎯'}
+                    </div>
                     <p className="mb-2 text-sm text-[var(--color-text-muted)]">
-                        {tab === 'active' ? t('listEmptyActive') : t('listEmptyCompleted')}
+                        {tab === 'active'
+                            ? t('listEmptyActive')
+                            : tab === 'completed'
+                                ? t('listEmptyCompleted')
+                                : t('listEmptyMy')}
                     </p>
                     {tab === 'active' && (
                         <p className="text-xs text-[var(--color-text-muted)]">{t('listEmptyActiveHint')}</p>
@@ -301,6 +394,7 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
                     ))}
                 </div>
             )}
+            </div>
 
             {/* 編集モーダル */}
             {editingChallenge && (
