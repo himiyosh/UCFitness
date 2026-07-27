@@ -1694,7 +1694,7 @@ export const runtime = "edge";
 
 ### LL-099: follow一覧の部分データと生DBエラーを成功状態へ畳まない
 
-- **事象**: follow API群がSupabase errorやcatch値をそのまま`reportError`へ渡し、`/following`は欠落プロフィールをdrop、`/followers`は重複・切り捨て、`/follow/status`は不正なtruthy行をフォロー済みとして返し得た。
-- **根本原因**: TypeScriptのquery型を実行時shapeの保証とみなし、error・正当なno-row・不正null・重複・exact count不一致・必須プロフィール欠落をAPI境界で分類していなかった。
-- **対策**: 4 route familyをoperation・stage・codeだけの固定`AppError`へ統一し、raw errorやuser IDを再利用しない。exact count、UUID、timestamp、nullable profile、非負safe integer歩数、一意性、参照集合、必須プロフィールを検証し、`.maybeSingle()`の`null/errorなし`だけを正当なno-rowとして扱う。`check:rules`で固定loggerとruntime guardを機械検査する。
-- **教訓**: social APIの成功はqueryがrejectしなかったことではなく、依存結果が完全かつ契約どおりであることを証明してから返す。記録済み0歩と未記録は維持しつつ、部分データ・重複・不正shapeを空・0・false・dropへ変換しない。回帰テストは`JSON.stringify(Error)`に頼らず、report引数のidentity・message・code・cause・context・nested field・UUID識別子を直接検査する。リファレンス: `app/api/user/following/route.ts`, `app/api/user/followers/route.ts`, `app/api/user/follow/route.ts`, `app/api/user/follow/status/route.ts`
+- **事象**: follow API群がSupabase errorやcatch値をそのまま`reportError`へ渡し、`/following`は欠落プロフィールをdrop、`/followers`は重複・切り捨て、`/follow/status`は不正なtruthy行をフォロー済みとして返し得た。初回修正後も全route testが`reportError`をmockし、source文字列guardだけだったため、最終`console.error`構造化JSONでの非露出を証明できていなかった。
+- **根本原因**: TypeScriptのquery型を実行時shapeの保証とみなし、error・正当なno-row・不正null・重複・exact count不一致・必須プロフィール欠落をAPI境界で分類していなかった。さらにrouteからmock loggerまでの検査を最終log sinkの証拠と誤認した。
+- **対策**: 4 route familyをoperation・stage・codeだけの固定`AppError`へ統一し、raw errorやuser IDを再利用しない。exact count、UUID、timestamp、nullable profile、非負safe integer歩数、一意性、参照集合、必須プロフィールを検証し、`.maybeSingle()`の`null/errorなし`だけを正当なno-rowとして扱う。実`reportError`を通して`console.error`のJSON文字列をparseし、raw Error identity・message・code・cause・context・nested field・UUIDを直接検査する統合回帰を4 route familyへ追加し、`check:rules`でその存在を固定する。
+- **教訓**: social APIの成功はqueryがrejectしなかったことではなく、依存結果が完全かつ契約どおりであることを証明してから返す。記録済み0歩と未記録は維持しつつ、部分データ・重複・不正shapeを空・0・false・dropへ変換しない。ログ秘匿はmock引数やsource grepだけで完了とせず、実loggerの最終sinkをparseして確認する。`JSON.stringify(Error)`に頼らず、構造化JSONのkey/valueとconsole引数のraw identityを直接検査する。リファレンス: `app/api/user/follow-error-sink.test.ts`, `app/api/user/following/route.ts`, `app/api/user/followers/route.ts`, `app/api/user/follow/route.ts`, `app/api/user/follow/status/route.ts`

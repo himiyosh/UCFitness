@@ -955,6 +955,26 @@ if [ -n "$HITS" ]; then
   record "follow APIが生エラーを直接reportErrorへ渡す回帰" "$HITS"
 fi
 
+FOLLOW_ERROR_SINK_TEST='app/api/user/follow-error-sink.test.ts'
+FOLLOW_ERROR_SINK_CONTRACTS=(
+  "vi.spyOn(console, 'error')"
+  "JSON.parse(String(call[1]))"
+  "collectStructuredFields(entry)"
+  "expect(call).not.toContain(rawError)"
+  "expect(fields.keys).not.toContain('cause')"
+  "expect(fields.keys).not.toContain('userId')"
+  "expect(fields.keys).not.toContain('targetUserId')"
+)
+if [ ! -f "$FOLLOW_ERROR_SINK_TEST" ]; then
+  record "follow APIの実reportError sink回帰欠落" "$FOLLOW_ERROR_SINK_TEST"
+else
+  for pattern in "${FOLLOW_ERROR_SINK_CONTRACTS[@]}"; do
+    if ! grep -Fq "$pattern" "$FOLLOW_ERROR_SINK_TEST"; then
+      record "follow APIの実reportError sink契約欠落" "${FOLLOW_ERROR_SINK_TEST}: ${pattern}"
+    fi
+  done
+fi
+
 # ---------- 結果出力 ----------
 if [ "$VIOLATIONS" -eq 0 ]; then
   echo "OK: UCFitness rule-check passed (0 violations)"
