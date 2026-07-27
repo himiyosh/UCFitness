@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import {
     LineChart,
     Line,
@@ -11,40 +12,37 @@ import {
     Legend,
     ResponsiveContainer
 } from 'recharts';
-import type { DefaultLegendContentProps as RechartsLegendProps } from 'recharts';
 
 import { useTheme } from '@/components/ThemeProvider';
-import { useTranslations } from 'next-intl';
 
-interface ChartDataPoint {
-    label: string;
-    [username: string]: string | number;
-}
-
-interface LegendPayloadEntry {
-    value: string;
-    color: string;
-    type?: string;
-}
+import type {
+    ComparisonDataPoint,
+    ComparisonSeries,
+} from '@/lib/services/group-comparison-service';
 
 interface TooltipPayloadEntry {
     name: string;
     value: number;
     color: string;
+    dataKey: string | number;
 }
 
 interface GroupComparisonChartProps {
-    data: ChartDataPoint[];
-    users: { username: string; color: string }[];
+    data: ComparisonDataPoint[];
+    users: ComparisonSeries[];
     currentUsername?: string;
     title?: string;
     groupName?: string;
     groupImage?: string;
 }
 
+function seriesDataKey(seriesKey: string): string {
+    return `values.${seriesKey}`;
+}
+
 export default function GroupComparisonChart({ data, users, currentUsername, title, groupName, groupImage }: GroupComparisonChartProps) {
     const [isMounted, setIsMounted] = useState(false);
-    const [activeUser, setActiveUser] = useState<string | null>(null);
+    const [activeSeriesKey, setActiveSeriesKey] = useState<string | null>(null);
     const [isSharing, setIsSharing] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
     const [shareError, setShareError] = useState(false);
@@ -71,35 +69,35 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
     }), [isMidnight]);
 
     // Custom Legend Component — must be declared before conditional returns (Rules of Hooks)
-    const renderLegend = useCallback((props: RechartsLegendProps) => {
-        const payload = props.payload as LegendPayloadEntry[] | undefined;
-        if (!payload) return null;
+    const renderLegend = useCallback(() => {
         return (
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 pt-4 px-2">
-                {payload.map((entry, index) => {
-                    const isHidden = activeUser && activeUser !== entry.value;
+                {users.map((user) => {
+                    const isHidden = activeSeriesKey && activeSeriesKey !== user.seriesKey;
                     return (
                         <button
                             type="button"
-                            key={`item-${index}`}
-                            aria-label={t('toggleSeries', { name: entry.value })}
-                            aria-pressed={activeUser === entry.value}
-                            onClick={() => setActiveUser(activeUser === entry.value ? null : entry.value)}
+                            key={user.seriesKey}
+                            aria-label={t('toggleSeries', { name: user.displayLabel })}
+                            aria-pressed={activeSeriesKey === user.seriesKey}
+                            onClick={() => setActiveSeriesKey(
+                                activeSeriesKey === user.seriesKey ? null : user.seriesKey,
+                            )}
                             className={`flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-lg px-2 transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 ${isHidden ? 'opacity-30' : 'opacity-100'}`}
                         >
                             <div
-                                style={{ backgroundColor: entry.color }}
+                                style={{ backgroundColor: user.color }}
                                 className="w-2 h-2 rounded-full"
                             />
                             <span className={`text-xs font-medium truncate max-w-[80px] sm:max-w-[120px] ${isMidnight ? 'text-slate-400' : 'text-gray-600'}`}>
-                                {entry.value}
+                                {user.displayLabel}
                             </span>
                         </button>
                     );
                 })}
             </div>
         );
-    }, [activeUser, isMidnight, t]);
+    }, [activeSeriesKey, isMidnight, t, users]);
 
     useEffect(() => {
         setIsMounted(true);
@@ -108,6 +106,12 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
     useEffect(() => {
         if (shareCaptureRef.current) shareCaptureRef.current.inert = true;
     }, []);
+
+    useEffect(() => {
+        if (activeSeriesKey && !users.some((user) => user.seriesKey === activeSeriesKey)) {
+            setActiveSeriesKey(null);
+        }
+    }, [activeSeriesKey, users]);
 
     // Custom Tooltip Component — memoized via useCallback（Hooks は早期 return の前に配置必須）
     const CustomTooltip = useCallback(({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadEntry[]; label?: string }) => {
@@ -118,11 +122,12 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                 <div className={`backdrop-blur-sm p-2 rounded-lg shadow-lg text-xs z-50 ${isMidnight ? 'bg-slate-800/95 border border-slate-600/30' : 'bg-white/95 border border-gray-100'}`}>
                     <p className={`font-bold mb-1.5 ${isMidnight ? 'text-slate-200' : 'text-gray-900'}`}>{label}</p>
                     {sortedPayload.map((entry) => {
-                        const isHidden = activeUser && activeUser !== entry.name;
+                        const isHidden = activeSeriesKey
+                            && seriesDataKey(activeSeriesKey) !== String(entry.dataKey);
                         if (isHidden) return null;
 
                         return (
-                            <div key={entry.name} className="flex items-center gap-2 mb-0.5">
+                            <div key={String(entry.dataKey)} className="flex items-center gap-2 mb-0.5">
                                 <div style={{ backgroundColor: entry.color }} className="w-1.5 h-1.5 rounded-full" />
                                 <span className={`truncate max-w-[60px] ${isMidnight ? 'text-slate-400' : 'text-gray-600'}`}>{entry.name}:</span>
                                 <span className={`font-semibold ml-auto ${isMidnight ? 'text-slate-200' : 'text-gray-900'}`}>{entry.value.toLocaleString()}</span>
@@ -133,7 +138,8 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
             );
         }
         return null;
-    }, [activeUser, isMidnight]);
+    }, [activeSeriesKey, isMidnight]);
+    const hasExplicitCurrentUser = users.some((user) => user.isCurrentUser);
 
     if (!isMounted) return <div className={`h-full w-full rounded-xl animate-pulse ${isMidnight ? 'bg-slate-700/50' : 'bg-gray-50/50'}`} />;
 
@@ -288,14 +294,18 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                         <Tooltip content={<CustomTooltip />} cursor={{ stroke: chartColors.cursor, strokeWidth: 1 }} />
                         <Legend content={renderLegend} />
                         {users.map((user) => {
-                            const isCurrentUser = user.username === currentUsername;
-                            const isActive = activeUser ? activeUser === user.username : true;
+                            const isCurrentUser = user.isCurrentUser
+                                || (!hasExplicitCurrentUser && user.displayName === currentUsername);
+                            const isActive = activeSeriesKey
+                                ? activeSeriesKey === user.seriesKey
+                                : true;
 
                             return (
                                 <Line
-                                    key={user.username}
+                                    key={user.seriesKey}
                                     type="monotoneX"
-                                    dataKey={user.username}
+                                    dataKey={seriesDataKey(user.seriesKey)}
+                                    name={user.displayLabel}
                                     stroke={user.color}
                                     strokeWidth={isCurrentUser ? (isActive ? 3 : 1) : 2}
                                     dot={false}
@@ -308,29 +318,31 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                     </LineChart>
                 </ResponsiveContainer>
             </div>
-            <table className="sr-only">
-                <caption>{resolvedTitle}</caption>
-                <thead>
-                    <tr>
-                        <th scope="col">{t('periodLabel')}</th>
-                        {users.map((user) => (
-                            <th key={user.username} scope="col">{user.username}</th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {data.map((dataPoint) => (
-                        <tr key={dataPoint.label}>
-                            <th scope="row">{dataPoint.label}</th>
+            <div className="sr-only">
+                <table>
+                    <caption>{resolvedTitle}</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">{t('periodLabel')}</th>
                             {users.map((user) => (
-                                <td key={user.username}>
-                                    {Number(dataPoint[user.username] ?? 0).toLocaleString()}
-                                </td>
+                                <th key={user.seriesKey} scope="col">{user.displayLabel}</th>
                             ))}
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {data.map((dataPoint) => (
+                            <tr key={dataPoint.date}>
+                                <th scope="row">{dataPoint.label}</th>
+                                {users.map((user) => (
+                                    <td key={user.seriesKey}>
+                                        {(dataPoint.values[user.seriesKey] ?? 0).toLocaleString()}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
             {/* Hidden Share Card (1080x1920) */}
             <div ref={shareCaptureRef} aria-hidden="true" className="pointer-events-none fixed left-0 top-0 h-0 w-0 overflow-hidden">
@@ -398,9 +410,10 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                                         />
                                         {users.map((user) => (
                                             <Line
-                                                key={user.username}
+                                                key={user.seriesKey}
                                                 type="monotoneX"
-                                                dataKey={user.username}
+                                                dataKey={seriesDataKey(user.seriesKey)}
+                                                name={user.displayLabel}
                                                 stroke={user.color}
                                                 strokeWidth={6}
                                                 dot={{ r: 6, strokeWidth: 0, fill: user.color }}

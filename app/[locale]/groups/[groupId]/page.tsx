@@ -26,7 +26,10 @@ import {
 } from "@/lib/services/ranking-utils";
 import { getGroupCompetitionRankings } from "@/lib/services/group-ranking-service";
 import JoinGroupPreview from "@/components/group/JoinGroupPreview";
-import { getAllGroupComparisonData } from "@/lib/services/group-comparison-service";
+import {
+    getAllGroupComparisonData,
+    reportGroupComparisonServiceFailure,
+} from "@/lib/services/group-comparison-service";
 import { getLocale, getTranslations } from 'next-intl/server';
 import Footer from '@/components/layout/Footer';
 import GroupEventList from "@/components/group/GroupEventList";
@@ -116,6 +119,17 @@ async function captureGroupRankingDependency<T>(
         return { data: await promise, failed: false };
     } catch (error: unknown) {
         reportRankingServiceFailure('groups/detail:rankings', error);
+        return { data: null, failed: true };
+    }
+}
+
+async function captureGroupComparisonDependency<T>(
+    promise: Promise<T>,
+): Promise<CapturedGroupDependency<T>> {
+    try {
+        return { data: await promise, failed: false };
+    } catch (error: unknown) {
+        reportGroupComparisonServiceFailure('groups/detail:comparison', error);
         return { data: null, failed: true };
     }
 }
@@ -314,7 +328,7 @@ export default async function GroupDetailPage(props: GroupDetailPageProps): Prom
         group.is_public
             ? captureGroupDependency('groups/detail:competition-yearly', userId, groupId, getGroupCompetitionRankings('YEARLY'))
             : Promise.resolve<CapturedGroupDependency<GroupRankingEntry[]>>({ data: [], failed: false }),
-        captureGroupDependency('groups/detail:comparison', userId, groupId, getAllGroupComparisonData(groupId, userId)),
+        captureGroupComparisonDependency(getAllGroupComparisonData(groupId, userId)),
         captureGroupDependency(
             'groups/detail:viewer-ranking-activity',
             userId,

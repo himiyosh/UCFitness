@@ -1698,3 +1698,17 @@ export const runtime = "edge";
 - **根本原因**: TypeScriptのquery型を実行時shapeの保証とみなし、error・正当なno-row・不正null・重複・exact count不一致・必須プロフィール欠落をAPI境界で分類していなかった。さらにrouteからmock loggerまでの検査を最終log sinkの証拠と誤認した。
 - **対策**: 4 route familyをoperation・stage・codeだけの固定`AppError`へ統一し、raw errorやuser IDを再利用しない。exact count、UUID、timestamp、nullable profile、非負safe integer歩数、一意性、参照集合、必須プロフィールを検証し、`.maybeSingle()`の`null/errorなし`だけを正当なno-rowとして扱う。実`reportError`を通して`console.error`のJSON文字列をparseし、raw Error identity・message・code・cause・context・nested field・UUIDを直接検査する統合回帰を4 route familyへ追加し、`check:rules`でその存在を固定する。
 - **教訓**: social APIの成功はqueryがrejectしなかったことではなく、依存結果が完全かつ契約どおりであることを証明してから返す。記録済み0歩と未記録は維持しつつ、部分データ・重複・不正shapeを空・0・false・dropへ変換しない。ログ秘匿はmock引数やsource grepだけで完了とせず、実loggerの最終sinkをparseして確認する。`JSON.stringify(Error)`に頼らず、構造化JSONのkey/valueとconsole引数のraw identityを直接検査する。リファレンス: `app/api/user/follow-error-sink.test.ts`, `app/api/user/following/route.ts`, `app/api/user/followers/route.ts`, `app/api/user/follow/route.ts`, `app/api/user/follow/status/route.ts`
+
+### LL-100: グループ比較の複数OFFSETと成功形fallbackは完全性を証明しない
+
+- **事象**: `group-comparison-service`がSupabase障害とgroup/page識別子を直接ログへ渡し、欠落プロフィールをUnknown、不正歩数を0へ変換していた。歩数は安定順序もexact count照合もない複数OFFSET要求を結合し、更新中の集合を完全な比較データとして扱っていた。
+- **根本原因**: TypeScriptのquery型とfilterを実行時shape・参照整合性の保証とみなし、正当な空/記録済み0と依存障害・欠落・外部参照・重複・unsafe値を分類していなかった。stable orderと複数HTTP要求が同じMVCC snapshotを共有すると誤認し、汎用callerも元例外とgroup/user IDを再ログしていた。
+- **対策**: member/profile/step結果を`unknown`からexact count、UUID、参照集合、一意性、表示名、ISO日付、非負safe integerで検証し、固定`AppError`だけを投げる。callerは比較専用reporterでoperation・stage・codeだけを再固定化し、実`reportError`の構造化JSONまで非露出を検証する。複数OFFSETを単一のexact-count要求へ置換し、1,000行超・件数不一致を明示失敗にする。
+- **教訓**: stable orderはsnapshotではなく、アプリ側の複数照会でメンバー集合と歩数集合の同時点整合性は証明できない。上限超または厳密な同時点比較が必要なら、DB内のtransactional集約RPCを別タスクで設計し、それまでは部分結果を成功として返さない。リファレンス: `lib/services/group-comparison-service.ts`, `lib/__tests__/group-comparison-service.test.ts`, `app/[locale]/groups/[groupId]/page.tsx`
+
+### LL-101: ユーザー表示名をチャートdata keyへ使うと構造キーと系列が衝突する
+
+- **事象**: PR #326のmerge-gateで、username/nameが`label`または`date`の利用者を比較すると、歩数代入が期間ラベルや日付を上書きして軸・数値表を破壊することを検出した。表示名重複も同じobject keyを共有し、一方の系列値を失わせた。
+- **根本原因**: 表示ラベルと内部系列IDを同じ文字列へ兼用し、プロフィール行の一意性だけを検証して構造キー予約と同名利用者をテストしなかった。独立レビューもログ・shape・件数境界へ集中し、生成後のチャートobject contractを実値で確認していなかった。
+- **対策**: UUID由来の非ユーザー制御`seriesKey`を導入し、値を`ComparisonDataPoint.values[seriesKey]`へ隔離する。username/nameはNFC正規化・trimし、空候補をfallback対象から除外して両方空の場合だけ拒否する。選択した`displayName`は衝突しない`displayLabel`としてのみ使い、Recharts、凡例切替、tooltip、共有画像、数値表のkey/dataKeyを内部系列IDへ統一する。username/name双方の`label`/`date`、空username+有効name、両方空、重複username、重複name、fallback重複、Unicode正規化同値、生成suffix衝突の回帰と、表示名data keyを禁止する`check:rules`を追加する。
+- **教訓**: ユーザー表示文字列をobject key、React key、chart dataKey、選択stateのidentityへ使わない。構造フィールドと値mapを分離し、安定した内部ID→正規化済み一意表示ラベルの明示mappingを持たせる。fallback候補は個別の空値を即時エラーにせず全候補を正規化してから選択し、予約語・両方空・Unicode等価・同名・生成suffixと同じ実名を正常/異常契約どおり決定的に検証する。リファレンス: `lib/services/group-comparison-service.ts`, `components/group/GroupComparisonChart.tsx`, `lib/__tests__/group-comparison-service.test.ts`
