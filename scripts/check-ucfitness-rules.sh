@@ -726,11 +726,16 @@ if ! grep -q 'const \[stepGoal, setStepGoal\] = useState(RECOMMENDED_STEP_GOAL)'
    ! grep -q 'signal: controller.signal' 'app/[locale]/setup/page.tsx' || \
    ! grep -q 'const SETUP_REPORT_MESSAGES = {' 'app/[locale]/setup/page.tsx' || \
    ! grep -q "reportSetupFailure('setup:status')" 'app/[locale]/setup/page.tsx' || \
+   ! grep -q "reportSetupFailure('setup:session-update')" 'app/[locale]/setup/page.tsx' || \
    grep -q "reportError('setup:status', statusLoadError" 'app/[locale]/setup/page.tsx' || \
+   grep -q "reportError('setup:session-update'" 'app/[locale]/setup/page.tsx' || \
    grep -q 'userId: session.user.id' 'app/[locale]/setup/page.tsx' || \
+   grep -q 'userId: sessionUser.id' 'app/[locale]/setup/page.tsx' || \
    [ "$(grep -c '<main' 'app/[locale]/setup/page.tsx')" -ne 3 ] || \
    ! grep -q 'const VIEWPORTS: readonly ViewportCase\[\]' tests/setup-recovery.spec.ts || \
-   ! grep -q 'expectPrivateStatusSink' tests/setup-recovery.spec.ts || \
+   ! grep -q 'const RAW_SESSION_FAILURE = {' tests/setup-recovery.spec.ts || \
+   ! grep -q '"setup:session-update"' tests/setup-recovery.spec.ts || \
+   ! grep -q 'expectPrivateSetupSink' tests/setup-recovery.spec.ts || \
    ! grep -q 'expectSingleMain' tests/setup-recovery.spec.ts || \
    ! grep -q 'disabled={statusLoading}' 'app/[locale]/setup/page.tsx' || \
    ! grep -q "t(provider ? 'completeConnection' : 'completeConnectionPending')" 'app/[locale]/setup/page.tsx' || \

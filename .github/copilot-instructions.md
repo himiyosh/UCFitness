@@ -1715,7 +1715,7 @@ export const runtime = "edge";
 
 ### LL-102: 条件分岐ごとのページrootとcatch値の直接ログは状態別の構造・秘匿を壊す
 
-- **事象**: Setupの完了状態だけが`main`を持ち、session loading・status loading・active・retryable failure・recovered状態は`div` rootだった。状態取得失敗ではcatchしたErrorとuser IDをそのまま`reportError`へ渡し、最終consoleへUUID、message、name、stackが出ていた。
-- **根本原因**: 完了画面の見出し・フォーカスだけを状態別に検証し、全return branchのlandmark数と、catch地点から実`console.error`までのデータフローを同じ回帰契約にしていなかった。
-- **対策**: loading・active・completedの各rootを名前付き`main`へ統一し、status専用reporterはoperationから固定文字列だけを選んでraw catch値やcontextを受け取れない境界にした。Playwrightで320/375/1280pxのloading・active・error・recovered・completed、skip focus、44px、overflow、最終console JSONを検証する。
-- **教訓**: 条件付きpageは通常表示だけでなく全early returnを通して`main`を1つに保つ。エラー秘匿はlogger mockやcatch引数の削除だけでなく、実ブラウザの最終sinkをparseし、識別子とraw Errorのmessage/name/stack/cause/code/nested/contextが無いことを固定する。リファレンス: `app/[locale]/setup/page.tsx`, `tests/setup-recovery.spec.ts`
+- **事象**: Setupの完了状態だけが`main`を持ち、session loading・status loading・active・retryable failure・recovered状態は`div` rootだった。状態取得とsession更新のcatchがErrorとuser IDをそのまま`reportError`へ渡し、最終consoleへUUID、message、name、stackが出ていた。
+- **根本原因**: 完了画面の見出し・フォーカスだけを状態別に検証し、全return branchのlandmark数と、catch地点から実`console.error`までのデータフローを同じ回帰契約にしていなかった。初回レビューではNextAuth内部loggerという別問題と直接catch漏洩を混同し、session更新の固定境界まで対象外へ戻した。
+- **対策**: loading・active・completedの各rootを名前付き`main`へ統一し、Setup専用reporterはoperationから固定文字列だけを選んでraw catch値やcontextを受け取れない境界にした。Playwrightで320/375/1280pxのloading・active・error・recovered・completed、skip focus、44px、overflow、status失敗とsession更新throwの最終console JSONを検証する。
+- **教訓**: 条件付きpageは通常表示だけでなく全early returnを通して`main`を1つに保つ。エラー秘匿はlogger mockやcatch引数の削除だけでなく、各catchを独立に失敗させて実ブラウザの最終sinkをparseし、識別子とraw Errorのmessage/name/stack/cause/code/nested/contextが無いことを固定する。依存内部の別挙動を理由に、手元で直接確認できるcaller漏洩の修正まで巻き戻さない。リファレンス: `app/[locale]/setup/page.tsx`, `tests/setup-recovery.spec.ts`

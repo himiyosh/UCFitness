@@ -36,6 +36,7 @@ import Spinner from '@/components/ui/Spinner';
 
 const SETUP_REPORT_MESSAGES = {
     'setup:status': 'Setup status unavailable',
+    'setup:session-update': 'Setup session refresh unavailable',
 } as const;
 
 type SetupReportOperation = keyof typeof SETUP_REPORT_MESSAGES;
@@ -289,10 +290,8 @@ export default function SetupPage() {
                         name: trimmedName,
                     },
                 });
-            } catch (sessionUpdateError) {
-                reportError('setup:session-update', sessionUpdateError, {
-                    userId: sessionUser.id,
-                });
+            } catch {
+                reportSetupFailure('setup:session-update');
             }
             setCompleted(true);
 

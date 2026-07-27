@@ -21,6 +21,7 @@ interface SetupTestState {
   pageErrors: string[];
   sessionGate: Deferred;
   sessionRequests: number;
+  sessionUpdateRequests: number;
   setupPosts: unknown[];
   statusGate: Deferred;
   statusMode: StatusMode;
@@ -61,6 +62,14 @@ const RAW_STATUS_FAILURE = {
   nested: { secret: "raw-nested-value" },
   context: { userId: FIXTURE_USER_ID },
 };
+const RAW_SESSION_FAILURE = {
+  message: "raw-session-message",
+  name: "RawSessionError",
+  stack: "raw-session-stack",
+  code: "RAW_SESSION_CODE",
+  nested: "raw-session-nested",
+  context: "raw-session-context",
+};
 
 function createDeferred(): Deferred {
   let release = (): void => {};
@@ -77,6 +86,7 @@ function createState(statusMode: StatusMode): SetupTestState {
     pageErrors: [],
     sessionGate: createDeferred(),
     sessionRequests: 0,
+    sessionUpdateRequests: 0,
     setupPosts: [],
     statusGate: createDeferred(),
     statusMode,
@@ -106,6 +116,9 @@ async function installRoutes(
   });
   await context.route("**/api/auth/session**", async (route) => {
     state.sessionRequests += 1;
+    if (route.request().method() === "POST") {
+      state.sessionUpdateRequests += 1;
+    }
     if (delayInitialSession && state.sessionRequests === 1) {
       await state.sessionGate.promise;
     }
@@ -202,8 +215,13 @@ async function expectResponsiveControls(page: Page): Promise<void> {
   expect(metrics.undersizedControls).toEqual([]);
 }
 
-function expectPrivateStatusSink(consoleErrors: readonly string[]): void {
-  const prefix = "[ERROR] setup:status: ";
+function expectPrivateSetupSink(
+  consoleErrors: readonly string[],
+  operation: "setup:status" | "setup:session-update",
+  fixedMessage: string,
+  forbiddenValues: readonly string[],
+): void {
+  const prefix = `[ERROR] ${operation}: `;
   const setupReports = consoleErrors.filter((message) => message.startsWith(prefix));
   expect(setupReports.length).toBeGreaterThan(0);
   expect(setupReports).toHaveLength(consoleErrors.length);
@@ -213,8 +231,8 @@ function expectPrivateStatusSink(consoleErrors: readonly string[]): void {
     const entry: unknown = JSON.parse(serializedEntry);
     expect(entry).toEqual({
       timestamp: expect.any(String),
-      operation: "setup:status",
-      error: { message: "Setup status unavailable" },
+      operation,
+      error: { message: fixedMessage },
     });
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
       throw new Error("Setup report must be a JSON object");
@@ -224,12 +242,7 @@ function expectPrivateStatusSink(consoleErrors: readonly string[]): void {
     for (const forbiddenValue of [
       FIXTURE_USER_ID,
       "fixture-provider",
-      "raw-status-message",
-      "RawStatusError",
-      "raw-status-stack",
-      "RAW_STATUS_CODE",
-      "raw-nested-value",
-      "Failed to load setup status",
+      ...forbiddenValues,
       '"name"',
       '"stack"',
       '"cause"',
@@ -322,7 +335,19 @@ test.describe("Setup recovery", () => {
       );
       await expectSingleMain(page, "retryable error state");
       await expectResponsiveControls(page);
-      expectPrivateStatusSink(state.consoleErrors);
+      expectPrivateSetupSink(
+        state.consoleErrors,
+        "setup:status",
+        "Setup status unavailable",
+        [
+          "raw-status-message",
+          "RawStatusError",
+          "raw-status-stack",
+          "RAW_STATUS_CODE",
+          "raw-nested-value",
+          "Failed to load setup status",
+        ],
+      );
 
       state.statusMode = "success";
       await retryButton.click();
@@ -337,4 +362,80 @@ test.describe("Setup recovery", () => {
       expect(state.unexpectedApiRequests).toEqual([]);
     });
   }
+
+  test("375px_session更新失敗でも完了状態を維持して最終ログを秘匿する", async ({
+    context,
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    const state = createState("success");
+    await installRoutes(context, state, false);
+    captureBrowserErrors(page, state);
+
+    await page.goto("/setup", { waitUntil: "domcontentloaded" });
+    await expect(page.getByLabel(/User ID|ユーザー\s*ID/)).toBeEditable();
+    await page.evaluate(({ userId, failure }) => {
+      const originalPostMessage = BroadcastChannel.prototype.postMessage;
+      BroadcastChannel.prototype.postMessage = function (message: unknown): void {
+        if (
+          message
+          && typeof message === "object"
+          && "event" in message
+          && message.event === "session"
+        ) {
+          BroadcastChannel.prototype.postMessage = originalPostMessage;
+          const error = new Error(failure.message);
+          error.name = failure.name;
+          error.stack = failure.stack;
+          Object.assign(error, {
+            cause: { accountId: userId },
+            code: failure.code,
+            nested: failure.nested,
+            context: failure.context,
+          });
+          throw error;
+        }
+        originalPostMessage.call(this, message);
+      };
+    }, { userId: FIXTURE_USER_ID, failure: RAW_SESSION_FAILURE });
+    await completeSetup(page);
+
+    await expect(page.getByRole("heading", {
+      level: 1,
+      name: /You're ready to start walking|歩き始める準備ができました/,
+    })).toBeFocused();
+    await expectSingleMain(page, "session update failure completion state");
+    await expect(page.getByRole("button", {
+      name: /Start the first 500 steps from Home|ホームで最初の500歩を始める/,
+    })).toBeEnabled();
+    await expectResponsiveControls(page);
+    expect(await page.evaluate(() => {
+      const channel = new BroadcastChannel("setup-session-update-regression");
+      try {
+        channel.postMessage({ event: "session", data: { trigger: "post-assertion" } });
+        return true;
+      } finally {
+        channel.close();
+      }
+    })).toBe(true);
+    expectPrivateSetupSink(
+      state.consoleErrors,
+      "setup:session-update",
+      "Setup session refresh unavailable",
+      [
+        RAW_SESSION_FAILURE.message,
+        RAW_SESSION_FAILURE.name,
+        RAW_SESSION_FAILURE.stack,
+        RAW_SESSION_FAILURE.code,
+        RAW_SESSION_FAILURE.nested,
+        RAW_SESSION_FAILURE.context,
+      ],
+    );
+
+    expect(state.setupPosts).toHaveLength(1);
+    expect(state.sessionUpdateRequests).toBe(1);
+    expect(state.pageErrors).toEqual([]);
+    expect(state.externalRequests).toEqual([]);
+    expect(state.unexpectedApiRequests).toEqual([]);
+  });
 });
