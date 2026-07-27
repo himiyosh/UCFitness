@@ -9,7 +9,7 @@
   "Legal": {
     "common": {
       "home": "Back to home",
-      "updated": "Last updated: July 18, 2026"
+      "updated": "Last updated: July 28, 2026"
     },
     "privacy": {
       "title": "Privacy Policy",
@@ -17,11 +17,11 @@
       "sections": {
         "collection": {
           "heading": "1. Information we collect",
-          "body": "UCFitness collects account identifiers, display names, usernames, profile images, and settings such as language and theme. When you connect a supported service, we receive step counts, synchronization timestamps, connection status, and other health or activity data needed to provide the service from Fitbit or Google Health. We may also record access times, action categories, and general device or browser information for secure operation, abuse prevention, and incident investigation. We do not expose passwords or external-service authentication tokens in public logs or user-facing screens."
+          "body": "UCFitness collects account identifiers, display names, usernames, profile images, and settings such as language and theme. When you connect a supported service, we receive step counts, synchronization timestamps, connection status, and other health or activity data needed to provide the service from Fitbit or Google Health. We may also record access times, action categories, and general device or browser information for secure operation, abuse prevention, and incident investigation. On the public landing page, we aggregate only quantized LCP, INP, CLS, and TTFB values, a mobile or desktop viewport class, and a rating to improve speed. This measurement excludes account identifiers, health or step data, URLs and referrers, device identifiers, cookies, and browser-storage values. We do not expose passwords or external-service authentication tokens in public logs or user-facing screens."
         },
         "purpose": {
           "heading": "2. How we use information",
-          "body": "We use information to provide step synchronization, goals, rankings, groups, challenges, badges, UC balances, and notifications. We also use it for identity verification, account protection, duplicate-processing prevention, abuse detection, customer support, incident recovery, and service-quality improvements. When we perform analytics, we limit the data fields to what is necessary for the stated purpose and avoid collecting direct identifiers when aggregated information is sufficient."
+          "body": "We use information to provide step synchronization, goals, rankings, groups, challenges, badges, UC balances, and notifications. We also use it for identity verification, account protection, duplicate-processing prevention, abuse detection, customer support, incident recovery, and service-quality improvements. Aggregate public-landing performance values are used only to improve speed and are not linked to accounts or health data. When we perform analytics, we limit the data fields to what is necessary for the stated purpose and avoid collecting direct identifiers when aggregated information is sufficient."
         },
         "sharing": {
           "heading": "3. Sharing and visibility",
