@@ -34,6 +34,16 @@ import {
 import ProfileImageEditor from '@/components/profile/ProfileImageEditor';
 import Spinner from '@/components/ui/Spinner';
 
+const SETUP_REPORT_MESSAGES = {
+    'setup:status': 'Setup status unavailable',
+} as const;
+
+type SetupReportOperation = keyof typeof SETUP_REPORT_MESSAGES;
+
+function reportSetupFailure(operation: SetupReportOperation): void {
+    reportError(operation, SETUP_REPORT_MESSAGES[operation]);
+}
+
 export default function SetupPage() {
     const { data: session, status, update } = useSession();
     const router = useRouter();
@@ -125,9 +135,7 @@ export default function SetupPage() {
                     if (statusLoadError instanceof Error && statusLoadError.name === 'AbortError') {
                         return;
                     }
-                    reportError('setup:status', statusLoadError, {
-                        userId: session.user.id,
-                    });
+                    reportSetupFailure('setup:status');
                     setProvider(null);
                     setStatusError('retryable');
                 } finally {
@@ -333,16 +341,25 @@ export default function SetupPage() {
 
     if (status !== 'authenticated' || !session) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-[var(--theme-page-bg)]" role="status">
-                <Spinner size="lg" />
-                <span className="sr-only">{t('loadingSession')}</span>
-            </div>
+            <main
+                aria-busy="true"
+                aria-label={t('loadingSession')}
+                className="flex min-h-screen items-center justify-center bg-[var(--theme-page-bg)]"
+            >
+                <div className="flex items-center gap-2" role="status">
+                    <Spinner size="lg" />
+                    <span className="sr-only">{t('loadingSession')}</span>
+                </div>
+            </main>
         );
     }
 
     if (completed) {
         return (
-            <main className="flex min-h-screen items-center justify-center bg-[var(--theme-page-bg)] px-4 py-8 sm:px-6">
+            <main
+                aria-labelledby="setup-complete-title"
+                className="flex min-h-screen items-center justify-center bg-[var(--theme-page-bg)] px-4 py-8 sm:px-6"
+            >
                 <section className="w-full max-w-md rounded-2xl border border-[var(--color-success)]/25 bg-[var(--color-surface)] p-4 shadow-sm sm:p-6" aria-labelledby="setup-complete-title">
                     <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--color-success-soft)] text-2xl text-[var(--color-success-strong)]" aria-hidden="true">✓</span>
                     <h1
@@ -420,7 +437,10 @@ export default function SetupPage() {
     }
 
     return (
-        <div className="flex-1 min-h-screen bg-[var(--theme-page-bg)] flex flex-col justify-center py-8 px-4 sm:px-6 lg:px-8">
+        <main
+            aria-labelledby="setup-title"
+            className="flex min-h-screen flex-1 flex-col justify-center bg-[var(--theme-page-bg)] px-4 py-8 sm:px-6 lg:px-8"
+        >
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
                 {/* ロゴ */}
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-primary-soft)] shadow-sm ring-1 ring-[var(--color-primary)]/20">
@@ -431,7 +451,7 @@ export default function SetupPage() {
                     </svg>
                 </div>
 
-                <h1 className="text-center text-2xl font-bold tracking-tight text-[var(--color-primary-strong)] sm:text-3xl">
+                <h1 id="setup-title" className="text-center text-2xl font-bold tracking-tight text-[var(--color-primary-strong)] sm:text-3xl">
                     {t('welcome')}
                 </h1>
                 <p className="mt-2 text-center text-sm text-[var(--color-text-muted)]">
@@ -817,6 +837,6 @@ export default function SetupPage() {
                     </form>
                 </div>
             </div>
-        </div>
+        </main>
     );
 }

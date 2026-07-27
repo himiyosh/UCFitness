@@ -1712,3 +1712,10 @@ export const runtime = "edge";
 - **根本原因**: 表示ラベルと内部系列IDを同じ文字列へ兼用し、プロフィール行の一意性だけを検証して構造キー予約と同名利用者をテストしなかった。独立レビューもログ・shape・件数境界へ集中し、生成後のチャートobject contractを実値で確認していなかった。
 - **対策**: UUID由来の非ユーザー制御`seriesKey`を導入し、値を`ComparisonDataPoint.values[seriesKey]`へ隔離する。username/nameはNFC正規化・trimし、空候補をfallback対象から除外して両方空の場合だけ拒否する。選択した`displayName`は衝突しない`displayLabel`としてのみ使い、Recharts、凡例切替、tooltip、共有画像、数値表のkey/dataKeyを内部系列IDへ統一する。username/name双方の`label`/`date`、空username+有効name、両方空、重複username、重複name、fallback重複、Unicode正規化同値、生成suffix衝突の回帰と、表示名data keyを禁止する`check:rules`を追加する。
 - **教訓**: ユーザー表示文字列をobject key、React key、chart dataKey、選択stateのidentityへ使わない。構造フィールドと値mapを分離し、安定した内部ID→正規化済み一意表示ラベルの明示mappingを持たせる。fallback候補は個別の空値を即時エラーにせず全候補を正規化してから選択し、予約語・両方空・Unicode等価・同名・生成suffixと同じ実名を正常/異常契約どおり決定的に検証する。リファレンス: `lib/services/group-comparison-service.ts`, `components/group/GroupComparisonChart.tsx`, `lib/__tests__/group-comparison-service.test.ts`
+
+### LL-102: 条件分岐ごとのページrootとcatch値の直接ログは状態別の構造・秘匿を壊す
+
+- **事象**: Setupの完了状態だけが`main`を持ち、session loading・status loading・active・retryable failure・recovered状態は`div` rootだった。状態取得失敗ではcatchしたErrorとuser IDをそのまま`reportError`へ渡し、最終consoleへUUID、message、name、stackが出ていた。
+- **根本原因**: 完了画面の見出し・フォーカスだけを状態別に検証し、全return branchのlandmark数と、catch地点から実`console.error`までのデータフローを同じ回帰契約にしていなかった。
+- **対策**: loading・active・completedの各rootを名前付き`main`へ統一し、status専用reporterはoperationから固定文字列だけを選んでraw catch値やcontextを受け取れない境界にした。Playwrightで320/375/1280pxのloading・active・error・recovered・completed、skip focus、44px、overflow、最終console JSONを検証する。
+- **教訓**: 条件付きpageは通常表示だけでなく全early returnを通して`main`を1つに保つ。エラー秘匿はlogger mockやcatch引数の削除だけでなく、実ブラウザの最終sinkをparseし、識別子とraw Errorのmessage/name/stack/cause/code/nested/contextが無いことを固定する。リファレンス: `app/[locale]/setup/page.tsx`, `tests/setup-recovery.spec.ts`

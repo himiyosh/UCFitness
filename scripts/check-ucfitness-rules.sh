@@ -724,6 +724,14 @@ if ! grep -q 'const \[stepGoal, setStepGoal\] = useState(RECOMMENDED_STEP_GOAL)'
    ! grep -q 'skipCommunity' 'app/[locale]/setup/page.tsx' || \
    ! grep -q 'const controller = new AbortController()' 'app/[locale]/setup/page.tsx' || \
    ! grep -q 'signal: controller.signal' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'const SETUP_REPORT_MESSAGES = {' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q "reportSetupFailure('setup:status')" 'app/[locale]/setup/page.tsx' || \
+   grep -q "reportError('setup:status', statusLoadError" 'app/[locale]/setup/page.tsx' || \
+   grep -q 'userId: session.user.id' 'app/[locale]/setup/page.tsx' || \
+   [ "$(grep -c '<main' 'app/[locale]/setup/page.tsx')" -ne 3 ] || \
+   ! grep -q 'const VIEWPORTS: readonly ViewportCase\[\]' tests/setup-recovery.spec.ts || \
+   ! grep -q 'expectPrivateStatusSink' tests/setup-recovery.spec.ts || \
+   ! grep -q 'expectSingleMain' tests/setup-recovery.spec.ts || \
    ! grep -q 'disabled={statusLoading}' 'app/[locale]/setup/page.tsx' || \
    ! grep -q "t(provider ? 'completeConnection' : 'completeConnectionPending')" 'app/[locale]/setup/page.tsx' || \
    ! grep -Fq 'pattern="[A-Za-z0-9_.\-]+"' 'app/[locale]/setup/page.tsx' || \
@@ -733,7 +741,7 @@ if ! grep -q 'const \[stepGoal, setStepGoal\] = useState(RECOMMENDED_STEP_GOAL)'
    grep -q 'theme-primary' 'app/[locale]/setup/page.tsx' || \
    grep -q 'transition-shadow' 'app/[locale]/setup/page.tsx' || \
    grep -q 'bg-gradient-to-br' 'app/[locale]/setup/page.tsx'; then
-  record "Setupの3画面/スキップ/接続/目標/最初の500歩/非gradient brand契約欠落" "Setup page / setup flow / setup API / status API"
+  record "Setupの3画面/mainランドマーク/固定ログ/スキップ/接続/目標/最初の500歩契約欠落" "Setup page / setup browser regression / setup flow / setup API / status API"
 fi
 if ! grep -q '<form onSubmit={handleSubmit} noValidate' components/StepGoalForm.tsx || \
    [ "$(grep -o 'min-w-\[52px\]' components/StepGoalForm.tsx | wc -l | tr -d ' ')" -lt 2 ] || \
