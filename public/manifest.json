@@ -2,10 +2,17 @@
     "name": "UCFitness Step Tracker",
     "short_name": "UCFitness",
     "description": "Track your steps and compete with friends!",
+    "id": "/",
     "start_url": "/",
+    "scope": "/",
     "display": "standalone",
     "background_color": "#1e1b4b",
     "theme_color": "#6366f1",
+    "categories": [
+        "fitness",
+        "health",
+        "lifestyle"
+    ],
     "icons": [
         {
             "src": "/icon-192.png",
