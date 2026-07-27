@@ -25,7 +25,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 | **ホームダッシュボード** | 今日の進捗、次ライバル差、固定5行ランキング、個別目標ベースのFriend Pulse、今週トレンド、UC残高、チャレンジ、ミッション、次の行動を意味色と動的barで可視化 |
 | **グループ対抗** | 未所属からの参加導線、正歩数だけのメンバー/グループ順位、部分障害でも継続するイベント・チャット・ギア・週間レポート |
 | **リーダーボード** | 個人・グループ順位に加え、参加人数・次ライバル名・必要歩数・トップ差をCompetition Missionで可視化 |
-| **チャレンジ** | 参加中の残り歩数を優先し、次の最大500歩・期限・UC報酬を示す期間限定チャレンジ |
+| **チャレンジ** | 参加中の残り歩数を優先し、次の最大500歩・期限・UC報酬を示す期間限定チャレンジ。終了イベントは殿堂入り・開催履歴へ残し、個人の達成記録と区別 |
 | **バッジ & 称号** | 連続達成や累計歩数・順位に応じたバッジ獲得・称号付与システム |
 | **コイン経済** | 歩数でコインを獲得し、7/30/100/365日のストリーク節目で一回限りの追加UCを受け取り、ショップでギアを購入 |
 | **ギア & リアクション** | プロフィールギア装着、メンバーへのリアクション |
@@ -91,7 +91,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **認証ページUI契約**: 標準ページは`AuthenticatedPageHeader` + `PageIntro`で多色ブランド、context label、操作群、パンくず、唯一の`h1`、意味色アクセントを統一する。プロフィール導線はcanonical `/user/{username}`へ直接つなぎ、route固有スケルトンとServer確定日付で白画面・水和差を防ぐ
 - **狭幅レスポンシブ契約**: 320pxから法務Footerと44px操作領域を維持し、1024pxはSidebar差引後の本文幅で設計する。複雑な多列化・詳細展開は1280pxへ送り、Shop/Settingsを含む通常ページは自然スクロールへ統一する
 - **Home Quest契約**: 認証ホームは進捗・競争・歩いた価値・次の一歩を1つのQuest面で連結する。Mission→Weekly→Reward→Challengeの後はQuickActionsを独立補助Dockとし、Friend Pulseと週間Rankingをxlで直接同一行にする。Friend Pulseは個別目標と正歩数の活動人数/合計/達成人数、Rankingは次ライバル名/必要歩数を表示する。詳細Rankingは固定5行を維持し、Competition Missionへ現在順位・参加者数・次ライバル・トップ差を集約、外側多列化は2xlへ遅らせる
-- **Challenge継続契約**: Challengesは参加中・active・開始済み・未終了・未達成・進捗取得済みを優先し、残り歩数→期限→報酬で並べる。主表示は最大500歩、期限/報酬は補足、作成は一覧後へ置く。期限は一覧・カード・参加APIでJST統一し、進捗不明を0へ変換しない
+- **Challenge継続契約**: Challengesは参加中・active・開始済み・未終了・未達成・進捗取得済みを優先し、残り歩数→期限→報酬で並べる。主表示は最大500歩、期限/報酬は補足、作成は一覧後へ置く。期限は一覧・カード・参加APIでJST統一し、進捗不明を0へ変換しない。殿堂入り・開催履歴は閲覧可能な終了イベント全体をAPI順で表示し、参加済みカードで記録歩数が目標へ達した場合だけ個人達成として示す
 - **GROUP Challenge認可契約**: public閲覧と参加を分離し、join/progress/leaveは現group member、PUTはcreatorかつ現OWNER/ADMINだけを許可する。GROUP作成はservice-role専用`create_group_challenge`、進捗は同専用`get_group_challenge_progress` RPCでDB再認可する。進捗RPCは参加者と現memberをDB内でintersectionし、inclusive期間の正歩数を`bigint`集計するためPostgRESTの1000行上限へ依存しない。両migrationは本番未適用で、未適用時は明示的な5xxとする
 - **F006 migration運用**: productionはPhase 2A→3A→3B1→3C Outbox (`20260722`)→3C claim lease (`20260723`)→精算Cron/報酬Push Cron scheduleの順に適用する。途中の歩数減少・欠測による先払いを避けるため終了翌日以降に精算し、settlement transaction→durable outbox→最大20ユーザーのclaim lease→`users.language`によるja/en集約Push（同一ユーザー1通、Topic/tag=`group-challenge-reward`）→成功時complete/失敗時releaseで配信を再試行可能にする。rollbackは両scheduleを停止してから報酬Push→claim→outbox→3B1→3A→2Aの逆順（各RPCのREVOKE/DROP、`credit_balance`・取引type・settlement列/constraintの復元を含む）で行う。Phase 2A/3A/3B1/3C migrationsと両Cron scheduleはproduction未適用で、適用・schedule設定がF006完了blocker
 - **競争差の導線継続**: Homeで示す「あと何歩」を、歩数が記録されたユーザーのグローバルランキング・選択グループ・グループ詳細の自分順位サマリーでも表示する。0歩・不在時は順位・メダル・成功形の対象にせず、空行でランキング5行・72px固定仕様を維持する。取得失敗は未所属表示へ変換せず、Global/Group双方でエラーと再試行を明示する。計算は`getRankGapInsight()`へ集約する

@@ -47,7 +47,7 @@
         "i18n_completeness": "ja.json + en.json 両方に翻訳キーが追加されている",
         "edge_runtime_compat": "新規 page.tsx / route.ts に export const runtime = 'edge' がある"
       },
-      "status": "not-started",
+      "status": "in-progress",
       "lastAttempt": null,
       "lastError": null
     },
