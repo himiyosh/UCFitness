@@ -1,9 +1,11 @@
 export const runtime = 'edge';
 
-import { auth } from "@/lib/auth";
-import { reportError } from "@/lib/errors";
-import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
+
+import { auth } from "@/lib/auth";
+import { AppError, reportError } from "@/lib/errors";
+import { supabaseAdmin } from "@/lib/supabase";
+import { isRecord } from "@/lib/validation";
 
 // ============================================
 // フォロー / アンフォロー API
@@ -13,7 +15,29 @@ import { NextResponse } from "next/server";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function POST(request: Request) {
+type FailureStage = "target-query" | "target-data" | "insert-query" | "delete-query" | "post-unexpected" | "delete-unexpected";
+
+interface TargetUserRow {
+    id: string;
+}
+
+function isTargetUserRow(value: unknown, targetUserId: string): value is TargetUserRow {
+    return isRecord(value)
+        && typeof value.id === "string"
+        && UUID_REGEX.test(value.id)
+        && value.id === targetUserId;
+}
+
+function followFailure(stage: FailureStage, responseError: string): NextResponse {
+    reportError("user/follow", new AppError(
+        "Follow request failed",
+        "FOLLOW_REQUEST_FAILED",
+        { stage },
+    ));
+    return NextResponse.json({ error: responseError }, { status: 500 });
+}
+
+export async function POST(request: Request): Promise<NextResponse> {
     try {
         const session = await auth();
         if (!session?.user || !session.user.id) {
@@ -21,10 +45,10 @@ export async function POST(request: Request) {
         }
         const userId = session.user.id;
 
-        const body = await request.json();
-        const { targetUserId } = body;
+        const body: unknown = await request.json();
+        const targetUserId = isRecord(body) ? body.targetUserId : null;
 
-        if (!targetUserId || typeof targetUserId !== "string" || !UUID_REGEX.test(targetUserId)) {
+        if (typeof targetUserId !== "string" || !UUID_REGEX.test(targetUserId)) {
             return NextResponse.json({ error: "Invalid targetUserId" }, { status: 400 });
         }
 
@@ -38,28 +62,17 @@ export async function POST(request: Request) {
             .from("users")
             .select("id")
             .eq("id", targetUserId)
-            .single();
-
-        if (targetLookupError?.code === "PGRST116") {
-            return NextResponse.json({ error: "User not found" }, { status: 404 });
-        }
+            .maybeSingle();
 
         if (targetLookupError) {
-            reportError(
-                "user/follow:target_lookup",
-                new Error("Target user lookup failed"),
-                { userId, targetUserId },
-            );
-            return NextResponse.json({ error: "Failed to load target user" }, { status: 500 });
+            return followFailure("target-query", "Failed to load target user");
         }
 
-        if (!targetUser) {
-            reportError(
-                "user/follow:target_lookup",
-                new Error("Target user lookup returned no data without an error"),
-                { userId, targetUserId },
-            );
-            return NextResponse.json({ error: "Failed to load target user" }, { status: 500 });
+        if (targetUser === null) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+        if (!isTargetUserRow(targetUser, targetUserId)) {
+            return followFailure("target-data", "Failed to load target user");
         }
 
         // フォロー登録（重複は UNIQUE 制約でエラーになる）
@@ -75,18 +88,16 @@ export async function POST(request: Request) {
             if (error.code === "23505") {
                 return NextResponse.json({ error: "Already following" }, { status: 409 });
             }
-            reportError("POST /api/user/follow", error);
-            return NextResponse.json({ error: "Failed to follow" }, { status: 500 });
+            return followFailure("insert-query", "Failed to follow");
         }
 
         return NextResponse.json({ success: true });
-    } catch (err) {
-        reportError("POST /api/user/follow", err);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    } catch {
+        return followFailure("post-unexpected", "Internal server error");
     }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: Request): Promise<NextResponse> {
     try {
         const session = await auth();
         if (!session?.user || !session.user.id) {
@@ -94,10 +105,10 @@ export async function DELETE(request: Request) {
         }
         const userId = session.user.id;
 
-        const body = await request.json();
-        const { targetUserId } = body;
+        const body: unknown = await request.json();
+        const targetUserId = isRecord(body) ? body.targetUserId : null;
 
-        if (!targetUserId || typeof targetUserId !== "string" || !UUID_REGEX.test(targetUserId)) {
+        if (typeof targetUserId !== "string" || !UUID_REGEX.test(targetUserId)) {
             return NextResponse.json({ error: "Invalid targetUserId" }, { status: 400 });
         }
 
@@ -108,13 +119,11 @@ export async function DELETE(request: Request) {
             .eq("following_id", targetUserId);
 
         if (error) {
-            reportError("DELETE /api/user/follow", error);
-            return NextResponse.json({ error: "Failed to unfollow" }, { status: 500 });
+            return followFailure("delete-query", "Failed to unfollow");
         }
 
         return NextResponse.json({ success: true });
-    } catch (err) {
-        reportError("DELETE /api/user/follow", err);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    } catch {
+        return followFailure("delete-unexpected", "Internal server error");
     }
 }

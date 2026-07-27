@@ -910,6 +910,71 @@ if [ -n "$HITS" ]; then
   record "ranking callerが汎用reportErrorへ回帰" "$HITS"
 fi
 
+# ---------- 37. follow APIの固定ログ・データ完全性境界 ----------
+FOLLOW_ROUTE_REPORT_CONTRACTS=(
+  'app/api/user/following/route.ts|reportError("user/following", new AppError('
+  'app/api/user/followers/route.ts|reportError("user/followers", new AppError('
+  'app/api/user/follow/route.ts|reportError("user/follow", new AppError('
+  'app/api/user/follow/status/route.ts|reportError("user/follow-status", new AppError('
+)
+for contract in "${FOLLOW_ROUTE_REPORT_CONTRACTS[@]}"; do
+  file=${contract%%|*}
+  pattern=${contract#*|}
+  if [ "$(grep -Fc 'reportError(' "$file")" -ne 1 ] || ! grep -Fq "$pattern" "$file"; then
+    record "follow APIの固定AppError境界欠落" "${file}: ${pattern}"
+  fi
+done
+
+FOLLOW_ROUTE_DATA_CONTRACTS=(
+  'app/api/user/following/route.ts|parseFollowRows(followsData, followingCount, databaseLimit)'
+  'app/api/user/following/route.ts|isFollowingProfileRow'
+  'app/api/user/following/route.ts|isFollowingStepRow'
+  'app/api/user/following/route.ts|isValidISODate(date)'
+  'app/api/user/followers/route.ts|parseUniqueRows('
+  'app/api/user/followers/route.ts|isPublicUserSummary'
+  'app/api/user/followers/route.ts|isValidISODate(date)'
+  'app/api/user/follow/route.ts|.maybeSingle();'
+  'app/api/user/follow/route.ts|isTargetUserRow(targetUser, targetUserId)'
+  'app/api/user/follow/status/route.ts|isRecord(value) && isValidUUID(value.id)'
+  'app/api/user/follow/status/route.ts|data !== null && !isFollowStatusRow(data)'
+)
+for contract in "${FOLLOW_ROUTE_DATA_CONTRACTS[@]}"; do
+  file=${contract%%|*}
+  pattern=${contract#*|}
+  if ! grep -Fq "$pattern" "$file"; then
+    record "follow APIのruntime data検証欠落" "${file}: ${pattern}"
+  fi
+done
+
+HITS=$(grep -En 'reportError\("(GET|POST|DELETE) /api/user/follow|reportError\("user/follow[^"]*", (err|error|[a-zA-Z]+Err)' \
+  app/api/user/following/route.ts \
+  app/api/user/followers/route.ts \
+  app/api/user/follow/route.ts \
+  app/api/user/follow/status/route.ts 2>/dev/null || true)
+if [ -n "$HITS" ]; then
+  record "follow APIが生エラーを直接reportErrorへ渡す回帰" "$HITS"
+fi
+
+FOLLOW_ERROR_SINK_TEST='app/api/user/follow-error-sink.test.ts'
+FOLLOW_ERROR_SINK_CONTRACTS=(
+  "vi.spyOn(console, 'error')"
+  "JSON.parse(String(call[1]))"
+  "collectStructuredFields(entry)"
+  "expect(call).not.toContain(rawError)"
+  "expect(fields.keys).not.toContain('cause')"
+  "expect(fields.keys).not.toContain('userId')"
+  "expect(fields.keys).not.toContain('targetUserId')"
+)
+if [ ! -f "$FOLLOW_ERROR_SINK_TEST" ]; then
+  record "follow APIの実reportError sink回帰欠落" "$FOLLOW_ERROR_SINK_TEST"
+else
+  for pattern in "${FOLLOW_ERROR_SINK_CONTRACTS[@]}"; do
+    if ! grep -Fq "$pattern" "$FOLLOW_ERROR_SINK_TEST"; then
+      record "follow APIの実reportError sink契約欠落" "${FOLLOW_ERROR_SINK_TEST}: ${pattern}"
+    fi
+  done
+fi
+
 # ---------- 結果出力 ----------
 if [ "$VIOLATIONS" -eq 0 ]; then
   echo "OK: UCFitness rule-check passed (0 violations)"

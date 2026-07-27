@@ -13,7 +13,8 @@ vi.mock('@/lib/auth', () => ({
     auth: mocks.auth,
 }));
 
-vi.mock('@/lib/errors', () => ({
+vi.mock('@/lib/errors', async (importOriginal) => ({
+    ...await importOriginal<typeof import('@/lib/errors')>(),
     reportError: mocks.reportError,
 }));
 
@@ -30,6 +31,7 @@ import {
     GET as getStepCalendar,
 } from '@/app/api/user/step-calendar/route';
 import { getJSTDateString, resolveStepCalendarYear } from '@/lib/date-utils';
+import { AppError } from '@/lib/errors';
 
 interface QueryResult {
     data: unknown;
@@ -77,6 +79,53 @@ function createQueryChain(result: QueryResult): QueryChain {
 
 const VIEWER_ID = '11111111-1111-1111-1111-111111111111';
 const TARGET_ID = '22222222-2222-2222-2222-222222222222';
+const FOLLOW_ID = '33333333-3333-4333-8333-333333333333';
+const RAW_FOLLOW_MESSAGE = `follow status unavailable for ${VIEWER_ID}`;
+
+function createRawFollowFailure(): Error {
+    return Object.assign(new Error(RAW_FOLLOW_MESSAGE), {
+        code: 'XX000',
+        cause: { targetUserId: TARGET_ID },
+        context: { userId: VIEWER_ID },
+        nested: { detail: FOLLOW_ID },
+    });
+}
+
+function expectFixedFollowStatusReport(stage: string, rawFailure?: Error): void {
+    expect(mocks.reportError).toHaveBeenCalledTimes(1);
+    const call = mocks.reportError.mock.calls[0];
+    expect(call).toHaveLength(2);
+    expect(call[0]).toBe('user/follow-status');
+    expect(call[1]).toBeInstanceOf(AppError);
+    expect(call[1]).not.toBe(rawFailure);
+
+    const error = call[1] as AppError;
+    expect(error.name).toBe('AppError');
+    expect(error.message).toBe('Follow status request failed');
+    expect(error.code).toBe('FOLLOW_STATUS_UNAVAILABLE');
+    expect(error.context).toEqual({ stage });
+    expect(Object.keys(error.context ?? {})).toEqual(['stage']);
+    expect(error.cause).toBeUndefined();
+    if (rawFailure) {
+        const rawDetails = rawFailure as Error & {
+            code?: unknown;
+            context?: unknown;
+            nested?: unknown;
+        };
+        expect(error.message).not.toBe(rawFailure.message);
+        expect(error.code).not.toBe(rawDetails.code);
+        expect(error.context).not.toBe(rawDetails.context);
+        expect(error.cause).not.toBe(rawFailure.cause);
+        expect(Object.prototype.hasOwnProperty.call(error, 'nested')).toBe(false);
+    }
+    for (const sensitiveValue of [RAW_FOLLOW_MESSAGE, VIEWER_ID, TARGET_ID, FOLLOW_ID]) {
+        expect(call[0]).not.toContain(sensitiveValue);
+        expect(error.message).not.toContain(sensitiveValue);
+        expect(error.code).not.toContain(sensitiveValue);
+        expect(Object.keys(error.context ?? {})).not.toContain(sensitiveValue);
+        expect(Object.values(error.context ?? {})).not.toContain(sensitiveValue);
+    }
+}
 
 function stepCalendarRequest(year?: string): Request {
     const query = year === undefined ? '' : `&year=${encodeURIComponent(year)}`;
@@ -226,7 +275,7 @@ describe('公開target userId API', () => {
 
     it('follow/status_正当なtargetUserIdの場合_閲覧者から対象への関係を照会する', async () => {
         mocks.from.mockReturnValue(createQueryChain({
-            data: { id: 'follow-id' },
+            data: { id: FOLLOW_ID },
             error: null,
         }));
 
@@ -241,5 +290,64 @@ describe('公開target userId API', () => {
             ['follower_id', VIEWER_ID],
             ['following_id', TARGET_ID],
         ]);
+    });
+
+    it('follow/status_関係行がない場合_未フォローの200を返す', async () => {
+        mocks.from.mockReturnValue(createQueryChain({ data: null, error: null }));
+
+        const response = await getFollowStatus(new Request(
+            `http://localhost/api/user/follow/status?targetUserId=${TARGET_ID}`,
+        ));
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ isFollowing: false });
+        expect(mocks.reportError).not.toHaveBeenCalled();
+    });
+
+    it('follow/status_DB照会が失敗した場合_生エラーと識別子を捨てた固定500を返す', async () => {
+        const rawFailure = createRawFollowFailure();
+        mocks.from.mockReturnValue(createQueryChain({ data: null, error: rawFailure }));
+
+        const response = await getFollowStatus(new Request(
+            `http://localhost/api/user/follow/status?targetUserId=${TARGET_ID}`,
+        ));
+
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({ error: 'Failed to check status' });
+        expectFixedFollowStatusReport('query', rawFailure);
+    });
+
+    it.each([
+        ['配列', [{ id: FOLLOW_ID }]],
+        ['ID欠落', {}],
+        ['空ID', { id: '' }],
+        ['ID型不正', { id: 123 }],
+        ['非UUID', { id: 'invalid' }],
+    ])('follow/status_関係行が%sの場合_フォロー済みに偽装せず固定500を返す', async (
+        _label,
+        data,
+    ) => {
+        mocks.from.mockReturnValue(createQueryChain({ data, error: null }));
+
+        const response = await getFollowStatus(new Request(
+            `http://localhost/api/user/follow/status?targetUserId=${TARGET_ID}`,
+        ));
+
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({ error: 'Failed to check status' });
+        expectFixedFollowStatusReport('data');
+    });
+
+    it('follow/status_認証処理がrejectした場合_生Errorをログへ渡さない', async () => {
+        const rawFailure = createRawFollowFailure();
+        mocks.auth.mockRejectedValueOnce(rawFailure);
+
+        const response = await getFollowStatus(new Request(
+            `http://localhost/api/user/follow/status?targetUserId=${TARGET_ID}`,
+        ));
+
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({ error: 'Internal server error' });
+        expectFixedFollowStatusReport('unexpected', rawFailure);
     });
 });
