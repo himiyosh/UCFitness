@@ -18,7 +18,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 |---|---|
 | **歩数トラッキング** | Fitbit API と Google Health の段階移行型自動歩数同期 |
 | **ログイン・登録** | Fitbit OAuth後に未設定ユーザーを3ステップsetupへ送り、失敗時は生のAuth.js情報を露出せずja/enの理由と安全な再試行を表示 |
-| **初回セットアップ** | プロフィール/歩数ソース→日次目標→グループ/チャレンジの3ステップで、各段階を後回しにでき、保存後の「最初の500歩」からホームの価値ループへ接続 |
+| **初回セットアップ** | プロフィール/歩数ソース→日次目標→グループ/チャレンジの3ステップで、各段階を後回しにでき、全状態で単一mainを維持。状態取得・session更新失敗は識別子やraw Errorを含まない固定ログだけを残し、保存後の「最初の500歩」からホームの価値ループへ接続 |
 | **設定** | 歩数ソースと日次目標をプロフィール・装飾より先に配置し、500〜100,000歩の共通Client/API契約で更新 |
 | **プロフィール** | 記録済み0歩・未記録・取得失敗を分離し、歩数・比較・バッジ・装備・コインを部分障害でも継続表示。所有者には参加日時の新しい100件を対象とした終了チャレンジと、獲得日時が確かなバッジの成長タイムラインを10件ずつ開示 |
 | **ウォレット** | 今日の獲得・支出・純増減を分離し、次の歩数UC、取引後残高、日次純増減チャートを部分障害でも表示 |
@@ -710,7 +710,7 @@ npm run dev
 | `npm run pages:build` | Cloudflare Pages ビルド + Worker 2.8 MiB budget検証 |
 | `npm run lint` | ESLint 実行 |
 | `npm run audit:responsive` | Playwright レスポンシブ/a11y監査 (320 / 375 / 768 / 1024 / 1920px、ja/en) |
-| `npm run test:e2e` | Playwright 公開主要導線E2E (localhost:3000、320 / 1280px、ja/en) |
+| `npm run test:e2e` | Playwright 公開主要導線 + Setup復旧E2E (localhost:3000、320 / 375 / 1280px) |
 | `npm run test:e2e:dashboard` | 認証fixtureを使うDashboard主要操作のPlaywright回帰テスト |
 | `npm run test:postgres:notification-outbox` | loopback PostgreSQLで通知outbox migration・lease・競合・rollbackを実行検証 |
 | `npm run test:postgres:push-cas` | loopback PostgreSQLでPush購読CAS migration・ACL・競合・rollbackを実行検証 |
@@ -953,7 +953,7 @@ npm run audit:responsive
 # Dashboardのミッション報酬復旧・愛用ギアfocus・Amazon popup通信隔離
 DASHBOARD_E2E_LOCAL_SECRET=local-fixture-secret DASHBOARD_E2E_SUPABASE_FIXTURE_URL=http://127.0.0.1:54321 npm run test:e2e:dashboard
 
-# 未認証の公開主要導線E2E
+# 未認証の公開主要導線 + 認証fixtureによるSetup復旧E2E
 npm run test:e2e
 
 # 同じbranch・commitのlocalhost:3000を意図的に再利用する場合のみ
@@ -970,8 +970,8 @@ POSTGRES_TEST_PASSWORD=postgres
 UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POSTGRES_TEST_USER}:${POSTGRES_TEST_PASSWORD}@127.0.0.1:5432/postgres" npm run test:postgres:push-protocol
 ```
 
-- テストフレームワーク: **Vitest**、公開主要導線E2Eは既存の `playwright/test`
-- `npm run test:e2e` はlocalhost:3000の未認証公開面だけを対象とし、320px日本語と1280px英語でLP、実際の言語切替と切替後のfocus復帰、スキップリンク、ログインCTA、利用規約、プライバシーポリシー、ランドマーク、唯一の`h1`、横overflowをユーザー導線として検証する
+- テストフレームワーク: **Vitest**、公開主要導線とSetup復旧のE2Eは既存の `playwright/test`
+- `npm run test:e2e` はlocalhost:3000で、320px日本語と1280px英語の未認証LP・言語切替・focus復帰・法務導線に加え、認証fixtureを使う320/375/1280pxのSetup loading・active・retryable error・recovered・completed、単一`main`、skip focus、44px、横overflow、status/session更新の最終ログ秘匿を検証する。fixtureはブラウザrouteで完結し、OAuth・DB write・本番操作を行わない
 - E2Eのweb serverはデフォルトで専用のlocalhost:3000を起動し、別worktreeや古いcommitの既存サーバーを再利用しない。ポート競合時も既存プロセスをkillせず失敗する。同じbranch・commitのサーバーを意図的に管理している場合だけ、`PLAYWRIGHT_REUSE_SERVER=1`で明示的に再利用できる。ローカル専用プレースホルダー環境変数を使い、OAuth・DB write・本番操作は実行しない
 - CIではPlaywrightの再試行後に成功したflaky testも失敗扱いにし、回帰を成功として隠さない
 - CI はテストスイートをカバレッジ付きで1回だけ実行し、`lib/**/*.{ts,tsx}` の全本番モジュール（テスト、test-utils、型定義を除く）について Statements / Branches / Functions / Lines の global threshold 60% を検証
