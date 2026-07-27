@@ -1,6 +1,6 @@
 import { unstable_cache } from 'next/cache';
 
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { fetchDailyStepsPaginated } from '@/lib/supabase-utils';
 import { getJSTDateString, getWeekStartDate, getMonthStartDate, getYearStartDate } from '@/lib/date-utils';
@@ -43,6 +43,128 @@ export type RankingAccumulatorEntry = {
 /** UserStats の前期間集計フィールド (PREV_DAILY/PREV_WEEKLY/PREV_MONTHLY) */
 type PrevPeriodKey = 'PREV_DAILY' | 'PREV_WEEKLY' | 'PREV_MONTHLY';
 
+type RankingDatabaseOperation =
+    | 'getRankings'
+    | 'fetchGlobalRankingMap'
+    | 'getAllRankings'
+    | 'getGroupRankings'
+    | 'getAllGroupRankings'
+    | 'getBatchGroupRankings'
+    | 'deriveBatchGroupRankings';
+
+export type RankingFailureLogOperation =
+    | 'api:rankings'
+    | 'home:ranking'
+    | 'groups:rankings'
+    | 'groups:batch-rankings'
+    | 'groups/detail:rankings'
+    | 'profile:weekly-ranking';
+
+const RANKING_DATABASE_ERROR_CODES = {
+    group: 'RANKING_GROUP_DATABASE_ERROR',
+    members: 'RANKING_MEMBERS_DATABASE_ERROR',
+    steps: 'RANKING_STEPS_DATABASE_ERROR',
+    users: 'RANKING_USERS_DATABASE_ERROR',
+} as const;
+
+type RankingDatabaseStage = keyof typeof RANKING_DATABASE_ERROR_CODES;
+
+const RANKING_DATABASE_FAILURES = {
+    getRankingsGroup: ['Failed to load ranking group', 'getRankings', 'group'],
+    getRankingsMembers: ['Failed to load ranking members', 'getRankings', 'members'],
+    getRankingsGlobalSteps: ['Failed to load global ranking steps', 'getRankings', 'steps'],
+    getRankingsGroupSteps: ['Failed to load group ranking steps', 'getRankings', 'steps'],
+    getRankingsUsers: ['Failed to load ranking users', 'getRankings', 'users'],
+    fetchGlobalRankingMapSteps: ['GLOBAL_RANKING_DATABASE_ERROR', 'fetchGlobalRankingMap', 'steps'],
+    fetchGlobalRankingMapUsers: ['GLOBAL_RANKING_USERS_DATABASE_ERROR', 'fetchGlobalRankingMap', 'users'],
+    getAllRankingsGroup: ['Failed to load ranking group', 'getAllRankings', 'group'],
+    getAllRankingsMembers: ['Failed to load ranking members', 'getAllRankings', 'members'],
+    getAllRankingsSteps: ['Failed to load group ranking steps', 'getAllRankings', 'steps'],
+    getAllRankingsUsers: ['Failed to load ranking users', 'getAllRankings', 'users'],
+    getGroupRankingsMembers: ['Failed to load group ranking members', 'getGroupRankings', 'members'],
+    getGroupRankingsSteps: ['Failed to load group ranking steps', 'getGroupRankings', 'steps'],
+    getAllGroupRankingsMembers: ['Failed to load group ranking members', 'getAllGroupRankings', 'members'],
+    getAllGroupRankingsSteps: ['Failed to load group ranking steps', 'getAllGroupRankings', 'steps'],
+    getAllGroupRankingsUsers: ['Failed to load group ranking users', 'getAllGroupRankings', 'users'],
+    getBatchGroupRankingsMembers: ['Failed to load batch group ranking members', 'getBatchGroupRankings', 'members'],
+    getBatchGroupRankingsSteps: ['Failed to load batch group ranking steps', 'getBatchGroupRankings', 'steps'],
+    getBatchGroupRankingsUsers: ['Failed to load batch group ranking users', 'getBatchGroupRankings', 'users'],
+    deriveBatchGroupRankingsMembers: ['GROUP_MEMBER_RANKING_DATABASE_ERROR', 'deriveBatchGroupRankings', 'members'],
+    deriveBatchGroupRankingsUsers: ['GROUP_RANKING_USERS_DATABASE_ERROR', 'deriveBatchGroupRankings', 'users'],
+} as const satisfies Record<
+    string,
+    readonly [message: string, operation: RankingDatabaseOperation, stage: RankingDatabaseStage]
+>;
+
+type RankingDatabaseFailureKey = keyof typeof RANKING_DATABASE_FAILURES;
+
+const RANKING_DATABASE_OPERATIONS: readonly RankingDatabaseOperation[] = [
+    'getRankings',
+    'fetchGlobalRankingMap',
+    'getAllRankings',
+    'getGroupRankings',
+    'getAllGroupRankings',
+    'getBatchGroupRankings',
+    'deriveBatchGroupRankings',
+];
+
+interface RankingDatabaseFailureContext {
+    scope?: 'GLOBAL' | 'GROUP';
+    period?: Period;
+    groupCount?: number;
+    userCount?: number;
+}
+
+function throwRankingDatabaseFailure(
+    key: RankingDatabaseFailureKey,
+    context: RankingDatabaseFailureContext = {},
+): never {
+    const [message, operation, stage] = RANKING_DATABASE_FAILURES[key];
+    throw new AppError(message, RANKING_DATABASE_ERROR_CODES[stage], {
+        operation,
+        stage,
+        ...context,
+    });
+}
+
+function isRankingDatabaseOperation(value: unknown): value is RankingDatabaseOperation {
+    return typeof value === 'string'
+        && RANKING_DATABASE_OPERATIONS.some((operation) => operation === value);
+}
+
+function isRankingDatabaseStage(value: unknown): value is RankingDatabaseStage {
+    return value === 'group' || value === 'members' || value === 'steps' || value === 'users';
+}
+
+function createRankingFailureLogError(error: unknown): AppError {
+    if (error instanceof AppError) {
+        const sourceOperation = error.context?.operation;
+        const stage = error.context?.stage;
+        if (
+            isRankingDatabaseOperation(sourceOperation)
+            && isRankingDatabaseStage(stage)
+            && error.code === RANKING_DATABASE_ERROR_CODES[stage]
+        ) {
+            return new AppError('Ranking service failure', error.code, {
+                operation: sourceOperation,
+                stage,
+            });
+        }
+    }
+
+    return new AppError(
+        'Ranking service failure',
+        'RANKING_SERVICE_UNEXPECTED_ERROR',
+        { operation: 'unknown', stage: 'unexpected' },
+    );
+}
+
+export function reportRankingServiceFailure(
+    operation: RankingFailureLogOperation,
+    error: unknown,
+): void {
+    reportError(operation, createRankingFailureLogError(error));
+}
 
 // Define type for User Stats Map
 export type UserStats = {
@@ -86,8 +208,7 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
             .single();
 
         if (groupError && groupError.code !== 'PGRST116') {
-            reportError('ranking-service:getRankings:group', groupError, { groupKeyword });
-            throw new Error('Failed to load ranking group');
+            throwRankingDatabaseFailure('getRankingsGroup');
         }
         if (!groupData) return [];
 
@@ -98,10 +219,7 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
             .returns<GroupMemberWithUser[]>();
 
         if (membersError) {
-            reportError('ranking-service:getRankings:members', membersError, {
-                groupId: groupData.id,
-            });
-            throw new Error('Failed to load ranking members');
+            throwRankingDatabaseFailure('getRankingsMembers');
         }
         if (!members || members.length === 0) return [];
 
@@ -116,8 +234,10 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
     });
 
     if (error) {
-        reportError('ranking-service:getRankings:steps', error, { scope, period });
-        throw new Error(`Failed to load ${scope.toLowerCase()} ranking steps`);
+        throwRankingDatabaseFailure(
+            scope === 'GLOBAL' ? 'getRankingsGlobalSteps' : 'getRankingsGroupSteps',
+            { scope, period },
+        );
     }
 
     // If GLOBAL (userIds was null), we need to fetch users now based on the steps we got
@@ -132,10 +252,9 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
                 .returns<RankingUserWithGroupKeyword[]>();
 
             if (usersError) {
-                reportError('ranking-service:getRankings:users', usersError, {
+                throwRankingDatabaseFailure('getRankingsUsers', {
                     userCount: uniqueUserIds.length,
                 });
-                throw new Error('Failed to load ranking users');
             }
             users?.forEach((u) => usersMap.set(u.id, u));
         }
@@ -219,7 +338,7 @@ const fetchGlobalRankingMap = async (): Promise<GlobalRankingMap> => {
     });
 
     if (error) {
-        throw new Error('GLOBAL_RANKING_DATABASE_ERROR');
+        throwRankingDatabaseFailure('fetchGlobalRankingMapSteps');
     }
 
     const uniqueUserIds = Array.from(new Set(rawSteps?.map((r) => r.user_id)));
@@ -233,7 +352,9 @@ const fetchGlobalRankingMap = async (): Promise<GlobalRankingMap> => {
             .returns<RankingUserWithGroupKeyword[]>();
 
         if (usersError) {
-            throw new Error('GLOBAL_RANKING_USERS_DATABASE_ERROR');
+            throwRankingDatabaseFailure('fetchGlobalRankingMapUsers', {
+                userCount: uniqueUserIds.length,
+            });
         }
 
         users?.forEach((u) => usersMap.set(u.id, u));
@@ -411,8 +532,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
             .single();
 
         if (groupError && groupError.code !== 'PGRST116') {
-            reportError('ranking-service:getAllRankings:group', groupError, { groupKeyword });
-            throw new Error('Failed to load ranking group');
+            throwRankingDatabaseFailure('getAllRankingsGroup');
         }
         if (!groupData) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
 
@@ -423,10 +543,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
             .returns<GroupMemberWithUser[]>();
 
         if (membersError) {
-            reportError('ranking-service:getAllRankings:members', membersError, {
-                groupId: groupData.id,
-            });
-            throw new Error('Failed to load ranking members');
+            throwRankingDatabaseFailure('getAllRankingsMembers');
         }
         if (!members || members.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
 
@@ -441,8 +558,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
     });
 
     if (error) {
-        reportError('ranking-service:getAllRankings:steps', error, { scope });
-        throw new Error(`Failed to load ${scope.toLowerCase()} ranking steps`);
+        throwRankingDatabaseFailure('getAllRankingsSteps', { scope });
     }
 
     // GROUP scope: userIds が null の場合（安全策フォールバック）
@@ -457,10 +573,9 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
                 .returns<RankingUserWithGroupKeyword[]>();
 
             if (usersError) {
-                reportError('ranking-service:getAllRankings:users', usersError, {
+                throwRankingDatabaseFailure('getAllRankingsUsers', {
                     userCount: uniqueUserIds.length,
                 });
-                throw new Error('Failed to load ranking users');
             }
             users?.forEach((u) => usersMap.set(u.id, u));
         }
@@ -604,8 +719,7 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
         .returns<GroupMemberWithUser[]>();
 
     if (memberError) {
-        reportError('ranking-service:getGroupRankings:members', memberError, { groupId });
-        throw new Error('Failed to load group ranking members');
+        throwRankingDatabaseFailure('getGroupRankingsMembers');
     }
 
     if (!groupMembers || groupMembers.length === 0) return [];
@@ -622,8 +736,7 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
     });
 
     if (error) {
-        reportError('ranking-service:getGroupRankings:steps', error, { groupId, period });
-        throw new Error('Failed to load group ranking steps');
+        throwRankingDatabaseFailure('getGroupRankingsSteps', { period });
     }
 
     // Aggregate
@@ -703,8 +816,7 @@ export const getAllGroupRankings = async (groupId: string) => {
         .eq('group_id', groupId);
 
     if (groupMembersError) {
-        reportError('ranking-service:getAllGroupRankings:members', groupMembersError, { groupId });
-        throw new Error('Failed to load group ranking members');
+        throwRankingDatabaseFailure('getAllGroupRankingsMembers');
     }
     const userIds = groupMembers?.map(m => m.user_id) || [];
     if (userIds.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
@@ -726,12 +838,12 @@ export const getAllGroupRankings = async (groupId: string) => {
     const { data: users, error: usersError } = usersResult;
 
     if (error) {
-        reportError('ranking-service:getAllGroupRankings:steps', error, { groupId });
-        throw new Error('Failed to load group ranking steps');
+        throwRankingDatabaseFailure('getAllGroupRankingsSteps');
     }
     if (usersError) {
-        reportError('ranking-service:getAllGroupRankings:users', usersError, { groupId });
-        throw new Error('Failed to load group ranking users');
+        throwRankingDatabaseFailure('getAllGroupRankingsUsers', {
+            userCount: userIds.length,
+        });
     }
 
     const usersMap = new Map(users?.map(u => [u.id, u]));
@@ -859,8 +971,9 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
         .in('group_id', groupIds);
 
     if (groupMembersError) {
-        reportError('ranking-service:getBatchGroupRankings:members', groupMembersError);
-        throw new Error('Failed to load batch group ranking members');
+        throwRankingDatabaseFailure('getBatchGroupRankingsMembers', {
+            groupCount: groupIds.length,
+        });
     }
     if (!groupMembers || groupMembers.length === 0) return {};
 
@@ -884,12 +997,16 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
     const users = usersResult.data;
 
     if (error) {
-        reportError('ranking-service:getBatchGroupRankings:steps', error);
-        throw new Error('Failed to load batch group ranking steps');
+        throwRankingDatabaseFailure('getBatchGroupRankingsSteps', {
+            groupCount: groupIds.length,
+            userCount: uniqueUserIds.length,
+        });
     }
     if (usersResult.error) {
-        reportError('ranking-service:getBatchGroupRankings:users', usersResult.error);
-        throw new Error('Failed to load batch group ranking users');
+        throwRankingDatabaseFailure('getBatchGroupRankingsUsers', {
+            groupCount: groupIds.length,
+            userCount: uniqueUserIds.length,
+        });
     }
 
     // 4. Aggregate Steps per User
@@ -994,8 +1111,9 @@ export const deriveBatchGroupRankings = async (
         .in('group_id', groupIds);
 
     if (groupMembersError) {
-        reportError('ranking-service:deriveBatchGroupRankings:members', groupMembersError, { groupIds });
-        throw new Error('GROUP_MEMBER_RANKING_DATABASE_ERROR');
+        throwRankingDatabaseFailure('deriveBatchGroupRankingsMembers', {
+            groupCount: groupIds.length,
+        });
     }
     if (!groupMembers || groupMembers.length === 0) return {};
 
@@ -1078,10 +1196,10 @@ export const deriveBatchGroupRankings = async (
             .returns<RankingUserSummary[]>();
 
         if (usersError) {
-            reportError('ranking-service:deriveBatchGroupRankings:users', usersError, {
+            throwRankingDatabaseFailure('deriveBatchGroupRankingsUsers', {
+                groupCount: groupIds.length,
                 userCount: missingUserIds.length,
             });
-            throw new Error('GROUP_RANKING_USERS_DATABASE_ERROR');
         }
         users?.forEach(u => {
             userStats.set(u.id, {

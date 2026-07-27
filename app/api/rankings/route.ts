@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { reportError } from '@/lib/errors';
-import { getGroupRankings, getRankings } from '@/lib/services/ranking-service';
+import {
+    getGroupRankings,
+    getRankings,
+    reportRankingServiceFailure,
+} from '@/lib/services/ranking-service';
 import { enrichRankingsWithEquip } from '@/lib/services/ranking-utils';
 import { supabaseAdmin } from '@/lib/supabase';
 
@@ -66,9 +70,15 @@ export async function GET(request: Request) {
             authorizedGroupId = group.id;
         }
 
-        const rankings = authorizedGroupId
-            ? await getGroupRankings(authorizedGroupId, period as Period)
-            : await getRankings('GLOBAL', period as Period);
+        let rankings: Awaited<ReturnType<typeof getRankings>>;
+        try {
+            rankings = authorizedGroupId
+                ? await getGroupRankings(authorizedGroupId, period as Period)
+                : await getRankings('GLOBAL', period as Period);
+        } catch (error: unknown) {
+            reportRankingServiceFailure('api:rankings', error);
+            return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        }
 
         // enrichRankingsWithEquip は Record<string, RankingEntry[]> を期待するため
         // 単一期間の配列をラップして渡し、結果をアンラップする

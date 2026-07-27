@@ -10,7 +10,11 @@ import GroupList from "@/components/group/GroupList";
 import GroupSettings from "@/components/group/GroupSettings";
 import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader';
 import { FocusAnchorLink } from '@/components/layout/SkipLink';
-import { getCachedGlobalRankings, deriveBatchGroupRankings } from "@/lib/services/ranking-service";
+import {
+    deriveBatchGroupRankings,
+    getCachedGlobalRankings,
+    reportRankingServiceFailure,
+} from "@/lib/services/ranking-service";
 import { getLocale, getTranslations } from "next-intl/server";
 import Footer from '@/components/layout/Footer';
 import PageIntro from '@/components/layout/PageIntro';
@@ -117,7 +121,7 @@ export default async function MyGroupsPage() {
         try {
             globalRankings = await getCachedGlobalRankings();
         } catch (error: unknown) {
-            reportError('groups:rankings', error, { userId });
+            reportRankingServiceFailure('groups:rankings', error);
             rankingDataError = true;
         }
     }
@@ -126,7 +130,7 @@ export default async function MyGroupsPage() {
         try {
             batchRankings = await deriveBatchGroupRankings(groupIds, globalRankings);
         } catch (error: unknown) {
-            reportError('groups:batch-rankings', error, { userId });
+            reportRankingServiceFailure('groups:batch-rankings', error);
             rankingDataError = true;
         }
     }

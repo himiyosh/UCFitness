@@ -881,6 +881,35 @@ else
   printf "%s\n" "$AGENT_CHECK_OUTPUT"
 fi
 
+# ---------- 36. ranking-service callerの固定ログ境界 ----------
+RANKING_CALLER_CONTRACTS=(
+  "app/api/rankings/route.ts|reportRankingServiceFailure('api:rankings', error);"
+  "app/[locale]/page.tsx|reportRankingServiceFailure('home:ranking', error);"
+  "app/[locale]/groups/page.tsx|reportRankingServiceFailure('groups:rankings', error);"
+  "app/[locale]/groups/page.tsx|reportRankingServiceFailure('groups:batch-rankings', error);"
+  "app/[locale]/groups/[groupId]/page.tsx|reportRankingServiceFailure('groups/detail:rankings', error);"
+  "app/[locale]/groups/[groupId]/page.tsx|captureGroupRankingDependency(getAllGroupRankings(groupId))"
+  "app/[locale]/user/[username]/page.tsx|reportRankingServiceFailure('profile:weekly-ranking', error);"
+  "app/[locale]/user/[username]/page.tsx|captureProfileRankingDependency(getRankings('GLOBAL', 'WEEKLY'))"
+)
+for contract in "${RANKING_CALLER_CONTRACTS[@]}"; do
+  file=${contract%%|*}
+  pattern=${contract#*|}
+  if ! grep -Fq "$pattern" "$file"; then
+    record "ranking callerの固定ログ境界欠落" "${file}: ${pattern}"
+  fi
+done
+
+HITS=$(grep -En "reportError\\('(api:rankings|home:ranking|groups:rankings|groups:batch-rankings|groups/detail:rankings|profile:weekly-ranking)'" \
+  'app/api/rankings/route.ts' \
+  'app/[locale]/page.tsx' \
+  'app/[locale]/groups/page.tsx' \
+  'app/[locale]/groups/[groupId]/page.tsx' \
+  'app/[locale]/user/[username]/page.tsx' 2>/dev/null || true)
+if [ -n "$HITS" ]; then
+  record "ranking callerが汎用reportErrorへ回帰" "$HITS"
+fi
+
 # ---------- 結果出力 ----------
 if [ "$VIOLATIONS" -eq 0 ]; then
   echo "OK: UCFitness rule-check passed (0 violations)"

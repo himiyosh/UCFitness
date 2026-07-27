@@ -1,8 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { deriveBatchGroupRankings } from '../services/ranking-service';
-import type { RankingAccumulatorEntry } from '../services/ranking-service';
-import type { Period } from '@/components/dashboard/LeaderboardTabs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { AppError } from '@/lib/errors';
 import { mockQueryResult } from '@/lib/__tests__/test-utils/supabase-query-mock';
+
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
+
+import {
+    deriveBatchGroupRankings,
+    reportRankingServiceFailure,
+} from '../services/ranking-service';
+
+import type { RankingAccumulatorEntry } from '../services/ranking-service';
 
 const { mockSupabase, mockSelect, mockIn, mockFrom } = vi.hoisted(() => {
     const mockSelect = vi.fn();
@@ -31,6 +39,68 @@ function testUser(id: string, name: string): RankingAccumulatorEntry['users'] {
     return { id, name, image: null, username: null };
 }
 
+describe('reportRankingServiceFailure', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('実際の構造化ログ出力から生識別子とDB詳細を除外する', () => {
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const rawMessage = 'sentinel caller database unavailable';
+        const userId = 'sentinel-user-id';
+        const groupId = 'sentinel-group-id';
+        const rawError = new AppError(
+            rawMessage,
+            'RANKING_MEMBERS_DATABASE_ERROR',
+            {
+                operation: 'deriveBatchGroupRankings',
+                stage: 'members',
+                userId,
+                groupId,
+            },
+            {
+                code: 'SENTINEL_PGRST500',
+                message: rawMessage,
+                userId,
+                groupId,
+            },
+        );
+
+        reportRankingServiceFailure('groups/detail:rankings', rawError);
+
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        const call = consoleError.mock.calls[0];
+        expect(call).toHaveLength(2);
+        expect(call[0]).toBe('[ERROR] groups/detail:rankings:');
+        expect(typeof call[1]).toBe('string');
+        const entry = JSON.parse(String(call[1])) as {
+            operation: string;
+            error: {
+                message: string;
+                code: string;
+                stack?: string;
+                errorContext: Record<string, unknown>;
+            };
+        };
+        expect(entry.operation).toBe('groups/detail:rankings');
+        expect(entry.error.message).toBe('Ranking service failure');
+        expect(entry.error.code).toBe('RANKING_MEMBERS_DATABASE_ERROR');
+        expect(entry.error.errorContext).toEqual({
+            operation: 'deriveBatchGroupRankings',
+            stage: 'members',
+        });
+        expect(entry.error.stack ?? '').not.toContain(userId);
+        expect(Object.keys(entry.error.errorContext)).not.toContain('userId');
+        expect(Object.keys(entry.error.errorContext)).not.toContain('groupId');
+        expect(Object.values(entry.error.errorContext)).not.toContain(userId);
+        expect(Object.values(entry.error.errorContext)).not.toContain(groupId);
+        expect(String(call[1])).not.toContain(rawMessage);
+        expect(String(call[1])).not.toContain('SENTINEL_PGRST500');
+        expect(String(call[1])).not.toContain(userId);
+        expect(String(call[1])).not.toContain(groupId);
+    });
+});
+
 describe('deriveBatchGroupRankings', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -39,6 +109,10 @@ describe('deriveBatchGroupRankings', () => {
         mockFrom.mockReturnValue({ select: mockSelect });
         mockSelect.mockReturnValue({ in: mockIn });
         mockIn.mockReturnValue(mockQueryResult([]));
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     it('should derive rankings for users in the group', async () => {
@@ -105,20 +179,47 @@ describe('deriveBatchGroupRankings', () => {
     });
 
     it('メンバー取得に失敗した場合は順位データ障害を送出する', async () => {
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const rawMessage = 'sentinel database unavailable';
+        const rawCode = 'SENTINEL_PGRST500';
+        const groupId = 'sentinel-group-id';
         mockIn.mockReturnValueOnce(mockQueryResult(null, {
-            message: 'database unavailable',
-            details: '',
+            message: rawMessage,
+            details: groupId,
             hint: '',
-            code: 'PGRST500',
+            code: rawCode,
         }));
 
-        await expect(
-            deriveBatchGroupRankings(['group1'], {
+        let failure: unknown;
+        try {
+            await deriveBatchGroupRankings([groupId], {
                 DAILY: [],
                 WEEKLY: [],
                 MONTHLY: [],
                 YEARLY: [],
-            }),
-        ).rejects.toThrow('GROUP_MEMBER_RANKING_DATABASE_ERROR');
+            });
+        } catch (error: unknown) {
+            failure = error;
+        }
+
+        expect(failure).toBeInstanceOf(AppError);
+        if (!(failure instanceof AppError)) {
+            throw new Error('Expected AppError');
+        }
+
+        expect(failure.message).toBe('GROUP_MEMBER_RANKING_DATABASE_ERROR');
+        expect(failure.code).toBe('RANKING_MEMBERS_DATABASE_ERROR');
+        expect(failure.context).toEqual({
+            operation: 'deriveBatchGroupRankings',
+            stage: 'members',
+            groupCount: 1,
+        });
+        expect(failure.cause).toBeUndefined();
+        expect(failure.message).not.toContain(rawMessage);
+        expect(failure.code).not.toContain(rawCode);
+        expect(failure.stack ?? '').not.toContain(groupId);
+        expect(Object.keys(failure.context ?? {})).not.toContain('groupId');
+        expect(Object.values(failure.context ?? {})).not.toContain(groupId);
+        expect(consoleError).not.toHaveBeenCalled();
     });
 });

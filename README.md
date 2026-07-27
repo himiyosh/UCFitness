@@ -394,6 +394,8 @@ RLS/policy/owned sequenceを確定できないためaudit-onlyとし、9/25に�
 | Cron / integration / debug | `app/api/cron/step-reminder/route.ts` (1), `app/api/cron/weekly-summary/route.ts` (1), `app/api/external/ranking/route.ts` (1), `app/api/notify-teams/route.ts` (1), `app/api/debug/db-check/route.ts` (1) | cron secret / API key / sessionを各routeで検証。外部ランキングはoptional `groupId`をUUID全文検証し、不正400・不存在404・DB/shape障害500を固定`AppError`へ分離する。4 list queryは`count: exact`と返却長を照合し、PostgREST上限による部分配列を500で拒否する。成功形`{ date, groups }`は維持し、記録済み正歩数だけを安定順で連続rank化する。設定上限を超える完全取得と一貫したsnapshotは将来のtransactional RPC対象 |
 | Utility / script | `lib/supabase-utils.ts` (1), `scripts/check_group_info.ts` (1) | server helper / service-role運用script。JSDoc例は件数から除外 |
 
+内部ランキング取得のDB障害は`ranking-service`で固定`AppError`へ変換し、Ranking API・Home・Groups・Group detail・Profileのcallerでは`reportRankingServiceFailure`が元例外を再利用せず、許可済みのservice operation・stage・codeだけを新しい例外へ写して記録する。user ID、group ID、username、group keyword、生DB message/code/causeはcallerの構造化ログへ渡さず、`check:rules`が6つのcaller operationと専用capture境界を固定する。
+
 `GET /api/user/achievement-progress`の累計歩数は`get_user_step_stats`で全期間集計し、PostgRESTの1000行上限を回避する。RPCのarray/object両形状、公開target user ID、購入・グループ件数0、streak・owned items空を受理し、errorless null・unsafe integer・重複日付・壊れたrelation rowはskipせず固定エラーにする。
 
 関連RPC呼び出しは合計11件である。4 writerは
