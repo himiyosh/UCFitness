@@ -13,6 +13,7 @@ import {
     LandingHeaderControls,
     LandingProofScroller,
 } from '@/components/landing/LandingInteractions';
+import PublicLandingVitals from '@/components/landing/PublicLandingVitals';
 import StoredCallbackAuthButtons from '@/components/landing/StoredCallbackAuthButtons';
 
 interface BenefitItem {
@@ -173,6 +174,7 @@ export default async function LandingPage({ locale, searchParams }: LandingPageP
 
     return (
         <div className="min-h-screen overflow-x-clip bg-[var(--color-bg)] pt-14 text-[var(--color-text)] sm:pt-16">
+            <PublicLandingVitals />
             <div className="landing-scroll-progress" aria-hidden="true" />
             <header className="fixed inset-x-0 top-0 z-50 h-14 border-b border-[var(--color-border)] bg-[var(--color-surface)] sm:h-16">
                 <div className="mx-auto flex h-full w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">

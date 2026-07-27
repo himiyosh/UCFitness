@@ -121,6 +121,7 @@ UCFitness/
 |   |   +-- wallet/          # ウォレット
 |   |   +-- layout.tsx       # 共通レイアウト
 |   +-- api/                 # API ルート
+|   |   +-- analytics/       # 識別子を持たない集約分析API
 |   |   +-- auth/            # NextAuth エンドポイント
 |   |   +-- cron/            # Cron ジョブ (歩数同期、リマインダー等)
 |   |   +-- group/           # グループ CRUD
@@ -132,6 +133,7 @@ UCFitness/
 |   +-- actions.ts           # Server Actions
 |   +-- globals.css          # グローバルスタイル (テーマ変数)
 +-- components/              # React コンポーネント (カテゴリ別サブフォルダ + 既存ルート配置)
+|   +-- landing/             # 公開LPの小さなClient island
 |   +-- layout/              # AuthenticatedPageHeader / PageIntro / AppBrandMark 等の共通Shell
 +-- hooks/                   # カスタム Hooks
 |   +-- useGearReactions.ts
@@ -143,6 +145,8 @@ UCFitness/
 |   +-- auth-redirect.ts     # 未ログイン深いリンクのログイン導線
 |   +-- supabase.ts          # Supabase クライアント (supabaseAdmin)
 |   +-- fitbit.ts            # Fitbit API 連携
+|   +-- public-landing-vitals.ts        # 公開LP計測の厳格schema・量子化
+|   +-- public-landing-vitals-client.ts # 最新値batchのprivacy-safe配送
 |   +-- services/
 |   |   +-- analytics-service.ts # 個人分析集計ロジック
 |   |   +-- badge-awards.ts     # ランキング・個人・ストリーク節目バッジ付与
@@ -727,6 +731,20 @@ npm run dev
 - 日本語本文はHiragino Sans / Yu Gothic / Meiryoのシステムフォントを使用する。複数weightの日本語Webフォントをグローバル配信する場合は、生成CSS・転送量とLCPを実測してから採用する
 - Lighthouse Mobile（Fast 3G相当・CPU 4倍）でLCP 2.5秒未満、CLS 0.1未満を出荷基準とする
 - 2026-07-16のF019基準値: LCP 2,349ms、CLS 0、操作Event Timing最大48ms。LCP要素はヒーロー説明文
+- 2026-07-28のproduction lab再計測はLCP 3,555ms、TTFB 2,111ms、render delay 1,444ms、CLS 0.00。サーバー待ちとrender pathのどちらを次に改善すべきか判断するため、未認証LPだけで識別子なしのfield evidenceを収集する
+
+#### 公開LPパフォーマンス計測API
+
+`POST /api/analytics/public-landing`は未認証LandingPage専用のEdge endpoint。Client islandはNext.js 15の`useReportWebVitals`でLCP / INP / CLS / TTFBの最新値だけを保持し、対応ブラウザでは`fetchLater`、非対応ブラウザではpage非表示またはisland終了時のsame-origin `fetch(..., { keepalive: true })`へ1つのsnapshotとしてまとめる。Cookie・credential・referrer・storage・第三者scriptは使用しない。
+
+| 項目 | 契約 |
+|---|---|
+| Request | `Content-Type: application/json`、same-origin、Cookieなし、最大768 bytes、1〜4件 |
+| Body | `surface: "public-landing"`、`viewport: "mobile" \| "desktop"`、`metrics[]` |
+| Metric | `name: "LCP" \| "INP" \| "CLS" \| "TTFB"`、指標別に量子化済みの有限値、`rating` |
+| Rejected | 余分なkey、metric/session/account/user/device ID、URL/path/query/referrer、UA/IP/locale、Cookie/storage値、健康・歩数データ、重複・範囲外・未量子化値 |
+| Response | `{ "accepted": 1..4 }`、`Cache-Control: no-store`。入力値や識別子をechoしない |
+| Logging | `PUBLIC_LANDING_VITALS`に許可済みbatchだけを構造化出力し、metric×mobile/desktopのp75算出に使用。DB・第三者analyticsへ保存しない |
 
 ### Client bundle budget
 
