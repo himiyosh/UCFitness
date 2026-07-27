@@ -1,8 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { deriveBatchGroupRankings } from '../services/ranking-service';
-import type { RankingAccumulatorEntry } from '../services/ranking-service';
-import type { Period } from '@/components/dashboard/LeaderboardTabs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { AppError } from '@/lib/errors';
 import { mockQueryResult } from '@/lib/__tests__/test-utils/supabase-query-mock';
+
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
+
+import { deriveBatchGroupRankings } from '../services/ranking-service';
+
+import type { RankingAccumulatorEntry } from '../services/ranking-service';
 
 const { mockSupabase, mockSelect, mockIn, mockFrom } = vi.hoisted(() => {
     const mockSelect = vi.fn();
@@ -39,6 +44,10 @@ describe('deriveBatchGroupRankings', () => {
         mockFrom.mockReturnValue({ select: mockSelect });
         mockSelect.mockReturnValue({ in: mockIn });
         mockIn.mockReturnValue(mockQueryResult([]));
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     it('should derive rankings for users in the group', async () => {
@@ -105,20 +114,51 @@ describe('deriveBatchGroupRankings', () => {
     });
 
     it('メンバー取得に失敗した場合は順位データ障害を送出する', async () => {
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const rawMessage = 'sentinel database unavailable';
+        const rawCode = 'SENTINEL_PGRST500';
+        const groupId = 'sentinel-group-id';
         mockIn.mockReturnValueOnce(mockQueryResult(null, {
-            message: 'database unavailable',
-            details: '',
+            message: rawMessage,
+            details: groupId,
             hint: '',
-            code: 'PGRST500',
+            code: rawCode,
         }));
 
-        await expect(
-            deriveBatchGroupRankings(['group1'], {
+        let failure: unknown;
+        try {
+            await deriveBatchGroupRankings([groupId], {
                 DAILY: [],
                 WEEKLY: [],
                 MONTHLY: [],
                 YEARLY: [],
-            }),
-        ).rejects.toThrow('GROUP_MEMBER_RANKING_DATABASE_ERROR');
+            });
+        } catch (error: unknown) {
+            failure = error;
+        }
+
+        expect(failure).toBeInstanceOf(AppError);
+        if (!(failure instanceof AppError)) {
+            throw new Error('Expected AppError');
+        }
+
+        expect(failure.message).toBe('GROUP_MEMBER_RANKING_DATABASE_ERROR');
+        expect(failure.code).toBe('RANKING_MEMBERS_DATABASE_ERROR');
+        expect(failure.context).toEqual({
+            operation: 'deriveBatchGroupRankings',
+            stage: 'members',
+            groupCount: 1,
+        });
+        expect(failure.cause).toBeUndefined();
+        const metadata = JSON.stringify({
+            message: failure.message,
+            code: failure.code,
+            context: failure.context,
+            cause: failure.cause,
+        });
+        expect(metadata).not.toContain(rawMessage);
+        expect(metadata).not.toContain(rawCode);
+        expect(metadata).not.toContain(groupId);
+        expect(consoleError).not.toHaveBeenCalled();
     });
 });

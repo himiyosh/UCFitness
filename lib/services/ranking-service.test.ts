@@ -1,19 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { AppError } from '@/lib/errors';
 import { mockQueryResult } from '@/lib/__tests__/test-utils/supabase-query-mock';
 
 const mocks = vi.hoisted(() => ({
     fetchDailyStepsPaginated: vi.fn(),
     from: vi.fn(),
-    reportError: vi.fn(),
 }));
 
 vi.mock('next/cache', () => ({
     unstable_cache: (callback: unknown) => callback,
-}));
-
-vi.mock('@/lib/errors', () => ({
-    reportError: mocks.reportError,
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -34,39 +30,119 @@ import {
     getRankings,
 } from './ranking-service';
 
+interface ExpectedRankingFailure {
+    message: string;
+    code: string;
+    operation: string;
+    stage: string;
+    context?: Record<string, unknown>;
+}
+
+async function captureRankingFailure(promise: Promise<unknown>): Promise<AppError> {
+    try {
+        await promise;
+    } catch (error: unknown) {
+        if (error instanceof AppError) return error;
+        throw error;
+    }
+
+    throw new Error('Expected ranking failure');
+}
+
+function expectSanitizedRankingFailure(
+    error: AppError,
+    expected: ExpectedRankingFailure,
+    forbiddenValues: readonly string[],
+): void {
+    expect(error.message).toBe(expected.message);
+    expect(error.code).toBe(expected.code);
+    expect(error.context).toEqual({
+        operation: expected.operation,
+        stage: expected.stage,
+        ...expected.context,
+    });
+    expect(error.cause).toBeUndefined();
+
+    const metadata = JSON.stringify({
+        message: error.message,
+        code: error.code,
+        context: error.context,
+        cause: error.cause,
+    });
+    forbiddenValues.forEach((value) => expect(metadata).not.toContain(value));
+}
+
+afterEach(() => {
+    vi.restoreAllMocks();
+});
+
 describe('getRankings', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
     it('歩数取得が失敗した場合、空ランキングへ変換せず例外を返す', async () => {
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const rawMessage = 'sentinel ranking database unavailable';
+        const rawCode = 'SENTINEL_PGRST500';
+        const rawIdentifier = 'sentinel-user-id';
         mocks.fetchDailyStepsPaginated.mockResolvedValue({
             data: null,
-            error: { message: 'database unavailable' },
+            error: {
+                message: rawMessage,
+                code: rawCode,
+                details: rawIdentifier,
+            },
         });
 
-        await expect(getRankings('GLOBAL', 'DAILY')).rejects.toThrow(
-            'Failed to load global ranking steps',
+        const failure = await captureRankingFailure(getRankings('GLOBAL', 'DAILY'));
+
+        expectSanitizedRankingFailure(
+            failure,
+            {
+                message: 'Failed to load global ranking steps',
+                code: 'RANKING_STEPS_DATABASE_ERROR',
+                operation: 'getRankings',
+                stage: 'steps',
+                context: { scope: 'GLOBAL', period: 'DAILY' },
+            },
+            [rawMessage, rawCode, rawIdentifier],
         );
-        expect(mocks.reportError).toHaveBeenCalled();
+        expect(consoleError).not.toHaveBeenCalled();
     });
 
     it('グループ取得が失敗した場合、空ランキングへ変換せず例外を返す', async () => {
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const rawMessage = 'sentinel group database unavailable';
+        const rawCode = 'SENTINEL_XX000';
+        const groupKeyword = 'sentinel-group-keyword';
         mocks.from.mockReturnValue({
             select: () => ({
                 eq: () => ({
                     single: vi.fn().mockResolvedValue({
                         data: null,
-                        error: { code: 'XX000', message: 'database unavailable' },
+                        error: { code: rawCode, message: rawMessage },
                     }),
                 }),
             }),
         });
 
-        await expect(
-            getRankings('GROUP', 'WEEKLY', 'walking-club'),
-        ).rejects.toThrow('Failed to load ranking group');
+        const failure = await captureRankingFailure(
+            getRankings('GROUP', 'WEEKLY', groupKeyword),
+        );
+
+        expectSanitizedRankingFailure(
+            failure,
+            {
+                message: 'Failed to load ranking group',
+                code: 'RANKING_GROUP_DATABASE_ERROR',
+                operation: 'getRankings',
+                stage: 'group',
+            },
+            [rawMessage, rawCode, groupKeyword],
+        );
         expect(mocks.fetchDailyStepsPaginated).not.toHaveBeenCalled();
+        expect(consoleError).not.toHaveBeenCalled();
     });
 
     it('グループが存在しない場合、PGRST116を空ランキングとして扱う', async () => {
@@ -143,22 +219,35 @@ describe('getRankings', () => {
     });
 
     it('ランキングユーザー取得が失敗した場合、空ランキングへ偽装しない', async () => {
+        const rawMessage = 'sentinel users database unavailable';
+        const rawCode = 'SENTINEL_USERS_PGRST500';
+        const rawUserId = 'sentinel-user-id';
         mocks.fetchDailyStepsPaginated.mockResolvedValue({
-            data: [{ user_id: 'user-1', date: '2026-07-18', steps: 500 }],
+            data: [{ user_id: rawUserId, date: '2026-07-18', steps: 500 }],
             error: null,
         });
         mocks.from.mockReturnValue({
             select: () => ({
                 in: vi.fn().mockReturnValue(mockQueryResult(
                     null,
-                    { message: 'database unavailable' },
+                    { message: rawMessage, code: rawCode },
                 )),
             }),
         });
 
-        await expect(getAllRankings('GROUP'))
-            .rejects.toThrow('Failed to load ranking users');
-        expect(mocks.reportError).toHaveBeenCalled();
+        const failure = await captureRankingFailure(getAllRankings('GROUP'));
+
+        expectSanitizedRankingFailure(
+            failure,
+            {
+                message: 'Failed to load ranking users',
+                code: 'RANKING_USERS_DATABASE_ERROR',
+                operation: 'getAllRankings',
+                stage: 'users',
+                context: { userCount: 1 },
+            },
+            [rawMessage, rawCode, rawUserId],
+        );
     });
 });
 
@@ -227,11 +316,15 @@ describe('deriveBatchGroupRankings', () => {
     });
 
     it('不足プロフィール取得が失敗した場合、空ランキングへ偽装しない', async () => {
+        const rawMessage = 'sentinel profile database unavailable';
+        const rawCode = 'SENTINEL_PROFILE_PGRST500';
+        const groupId = 'sentinel-group-id';
+        const userId = 'sentinel-user-id';
         mocks.from
             .mockReturnValueOnce({
                 select: () => ({
                     in: vi.fn().mockResolvedValue({
-                        data: [{ group_id: 'group-1', user_id: 'user-1' }],
+                        data: [{ group_id: groupId, user_id: userId }],
                         error: null,
                     }),
                 }),
@@ -240,15 +333,26 @@ describe('deriveBatchGroupRankings', () => {
                 select: () => ({
                     in: vi.fn().mockReturnValue(mockQueryResult(
                         null,
-                        { message: 'database unavailable' },
+                        { message: rawMessage, code: rawCode },
                     )),
                 }),
             });
 
-        await expect(deriveBatchGroupRankings(
-            ['group-1'],
+        const failure = await captureRankingFailure(deriveBatchGroupRankings(
+            [groupId],
             { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] },
-        )).rejects.toThrow('GROUP_RANKING_USERS_DATABASE_ERROR');
-        expect(mocks.reportError).toHaveBeenCalled();
+        ));
+
+        expectSanitizedRankingFailure(
+            failure,
+            {
+                message: 'GROUP_RANKING_USERS_DATABASE_ERROR',
+                code: 'RANKING_USERS_DATABASE_ERROR',
+                operation: 'deriveBatchGroupRankings',
+                stage: 'users',
+                context: { groupCount: 1, userCount: 1 },
+            },
+            [rawMessage, rawCode, groupId, userId],
+        );
     });
 });
