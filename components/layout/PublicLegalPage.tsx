@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
-
-import { Link } from '@/navigation';
+import Link from 'next/link';
 
 import AppBrandMark from '@/components/layout/AppBrandMark';
 import Footer from '@/components/layout/Footer';
@@ -31,6 +30,7 @@ export default function PublicLegalPage({
         <div className="mx-auto flex min-h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <Link
             href="/"
+            target="_top"
             className="inline-flex min-h-11 items-center gap-2 rounded-xl font-bold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
           >
             <AppBrandMark />
@@ -38,6 +38,7 @@ export default function PublicLegalPage({
           </Link>
           <Link
             href="/"
+            target="_top"
             className="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-medium text-[var(--color-primary-strong)] transition-colors hover:bg-[var(--color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
           >
             {homeLabel}

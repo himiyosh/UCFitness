@@ -624,7 +624,7 @@
         "coverage": "主要 10 フローを網羅",
         "stability": "連続 10 回実行で合格率 100%"
       },
-      "status": "not-started",
+      "status": "in-progress",
       "lastAttempt": null,
       "lastError": null
     },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, MouseEvent, ReactNode, UIEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 
@@ -19,6 +19,8 @@ interface LandingHeaderControlsProps {
     switchLabel: string;
 }
 
+let pendingLocaleFocus: string | null = null;
+
 export function LandingHeaderControls({
     locale,
     navItems,
@@ -29,14 +31,22 @@ export function LandingHeaderControls({
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [switching, setSwitching] = useState(false);
+    const localeSwitchButtonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         setSwitching(false);
+        if (pendingLocaleFocus === locale) {
+            pendingLocaleFocus = null;
+            localeSwitchButtonRef.current?.focus();
+        }
     }, [locale]);
 
     useEffect(() => {
         if (!switching) return;
-        const timeoutId = window.setTimeout(() => setSwitching(false), 5000);
+        const timeoutId = window.setTimeout(() => {
+            pendingLocaleFocus = null;
+            setSwitching(false);
+        }, 5000);
         return () => window.clearTimeout(timeoutId);
     }, [switching]);
 
@@ -45,6 +55,7 @@ export function LandingHeaderControls({
         const next = locale === 'ja' ? 'en' : 'ja';
         const query = getLocaleSwitchQuery(searchParams.toString(), next);
         const href = query ? `${pathname}?${query}` : pathname;
+        pendingLocaleFocus = next;
         setSwitching(true);
         router.replace(href, { locale: next });
     };
@@ -112,6 +123,7 @@ export function LandingHeaderControls({
                 </nav>
             </details>
             <button
+                ref={localeSwitchButtonRef}
                 type="button"
                 onClick={toggleLocale}
                 disabled={switching}
