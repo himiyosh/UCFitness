@@ -988,6 +988,7 @@ GROUP_COMPARISON_CONTRACTS=(
   "values: Record<string, number>;"
   "seriesKey: createSeriesKey(uid)"
   "point.values[user.seriesKey] = 0;"
+  "value.normalize('NFC').trim()"
 )
 for pattern in "${GROUP_COMPARISON_CONTRACTS[@]}"; do
   if ! grep -Fq "$pattern" "$GROUP_COMPARISON_SERVICE"; then
@@ -1014,8 +1015,12 @@ GROUP_COMPARISON_TEST_CONTRACTS=(
   "expect(call).not.toContain(rawError)"
   "GROUP_COMPARISON_STEPS_INCOMPLETE"
   "expect('range' in chains.steps).toBe(false)"
-  "it.each(['label', 'date'] as const)"
+  "reservedName: 'label'"
+  "reservedName: 'date'"
   "username欠落時のfallback名が重複する"
+  "Unicode正規化で同値になる名前"
+  "usernameが空または空白でも、有効なname fallback"
+  "profileのusernameとnameが両方空である"
   "values: {"
 )
 for pattern in "${GROUP_COMPARISON_TEST_CONTRACTS[@]}"; do

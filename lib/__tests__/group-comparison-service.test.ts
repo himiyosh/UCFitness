@@ -62,8 +62,10 @@ const USER_A = '11111111-1111-4111-8111-111111111111';
 const USER_B = '22222222-2222-4222-8222-222222222222';
 const FOREIGN_USER_ID = '33333333-3333-4333-8333-333333333333';
 const NESTED_ID = '44444444-4444-4444-8444-444444444444';
+const USER_C = '55555555-5555-4555-8555-555555555555';
 const SERIES_A = `series_${USER_A.replaceAll('-', '_')}`;
 const SERIES_B = `series_${USER_B.replaceAll('-', '_')}`;
+const SERIES_C = `series_${USER_C.replaceAll('-', '_')}`;
 
 function createQueryResult(
     data: unknown,
@@ -140,6 +142,14 @@ function createTwoMemberResults(): Pick<DependencyResults, 'members' | 'users'> 
             { id: USER_B, username: 'walker-b', name: 'Walker B' },
         ]),
     };
+}
+
+function createThreeMemberRows(): QueryResult {
+    return createQueryResult([
+        { group_id: GROUP_ID, user_id: USER_A },
+        { group_id: GROUP_ID, user_id: USER_B },
+        { group_id: GROUP_ID, user_id: USER_C },
+    ]);
 }
 
 async function captureFailure(promise: Promise<unknown>): Promise<AppError> {
@@ -261,6 +271,26 @@ const invalidDependencyScenarios: FailureScenario[] = [
         overrides: () => ({
             users: createQueryResult([
                 { id: USER_A, username: null, name: null },
+            ]),
+        }),
+        code: 'GROUP_COMPARISON_USERS_INVALID',
+        stage: 'users',
+    },
+    {
+        name: 'profileのusernameとnameが両方空である',
+        overrides: () => ({
+            users: createQueryResult([
+                { id: USER_A, username: '', name: '   ' },
+            ]),
+        }),
+        code: 'GROUP_COMPARISON_USERS_INVALID',
+        stage: 'users',
+    },
+    {
+        name: 'profileのfallback名が空白だけである',
+        overrides: () => ({
+            users: createQueryResult([
+                { id: USER_A, username: null, name: '   ' },
             ]),
         }),
         code: 'GROUP_COMPARISON_USERS_INVALID',
@@ -430,12 +460,48 @@ describe('getAllGroupComparisonData', () => {
         expect(today?.values[SERIES_A]).toBe(0);
     });
 
-    it.each(['label', 'date'] as const)(
-        '表示名が予約キー%sの場合、期間構造を上書きせず内部seriesへ格納する',
-        async (reservedName) => {
+    it.each([
+        { username: '', name: 'Walker' },
+        { username: '   ', name: '  Walker  ' },
+    ])(
+        'usernameが空または空白でも、有効なname fallbackとseriesを維持する',
+        async ({ username, name }) => {
             installQueryResults({
                 users: createQueryResult([
-                    { id: USER_A, username: reservedName, name: 'Walker' },
+                    { id: USER_A, username, name },
+                ]),
+                steps: createQueryResult([
+                    { user_id: USER_A, date: '2026-07-19', steps: 200 },
+                ]),
+            });
+
+            const result = await getAllGroupComparisonData(GROUP_ID, USER_A);
+            const today = result.DAILY.data.find((point) => point.date === '2026-07-19');
+
+            expect(today).toEqual({
+                date: '2026-07-19',
+                label: '7/19',
+                values: { [SERIES_A]: 200 },
+            });
+            expect(result.DAILY.users[0]).toEqual(expect.objectContaining({
+                seriesKey: SERIES_A,
+                displayName: 'Walker',
+                displayLabel: 'Walker',
+            }));
+        },
+    );
+
+    it.each([
+        { field: 'username', reservedName: 'label', username: 'label', name: 'Walker' },
+        { field: 'username', reservedName: 'date', username: 'date', name: 'Walker' },
+        { field: 'name', reservedName: 'label', username: null, name: 'label' },
+        { field: 'name', reservedName: 'date', username: null, name: 'date' },
+    ] as const)(
+        '$fieldが予約キー$reservedNameの場合、期間構造を上書きせず内部seriesへ格納する',
+        async ({ reservedName, username, name }) => {
+            installQueryResults({
+                users: createQueryResult([
+                    { id: USER_A, username, name },
                 ]),
                 steps: createQueryResult([
                     { user_id: USER_A, date: '2026-07-19', steps: 200 },
@@ -514,6 +580,74 @@ describe('getAllGroupComparisonData', () => {
             expect(new Set(result.DAILY.users.map((user) => user.seriesKey)).size).toBe(2);
         },
     );
+
+    it('Unicode正規化で同値になる名前でも、両seriesを一意ラベルで維持する', async () => {
+        installQueryResults({
+            ...createTwoMemberResults(),
+            users: createQueryResult([
+                { id: USER_A, username: null, name: '\u00E9' },
+                { id: USER_B, username: null, name: 'e\u0301' },
+            ]),
+            steps: createQueryResult([
+                { user_id: USER_A, date: '2026-07-19', steps: 100 },
+                { user_id: USER_B, date: '2026-07-19', steps: 200 },
+            ]),
+        });
+
+        const result = await getAllGroupComparisonData(GROUP_ID, USER_A);
+        const today = result.DAILY.data.find((point) => point.date === '2026-07-19');
+
+        expect(today).toEqual({
+            date: '2026-07-19',
+            label: '7/19',
+            values: {
+                [SERIES_A]: 100,
+                [SERIES_B]: 200,
+            },
+        });
+        expect(result.DAILY.users.map((user) => user.displayName)).toEqual(['é', 'é']);
+        expect(result.DAILY.users.map((user) => user.displayLabel)).toEqual(['é (1)', 'é (2)']);
+    });
+
+    it('生成済みsuffixと同じ実名がある場合も、全display labelとseriesを一意に保つ', async () => {
+        installQueryResults({
+            members: createThreeMemberRows(),
+            users: createQueryResult([
+                { id: USER_A, username: 'walker', name: 'Walker A' },
+                { id: USER_B, username: 'walker', name: 'Walker B' },
+                { id: USER_C, username: 'walker (1)', name: 'Walker C' },
+            ]),
+            steps: createQueryResult([
+                { user_id: USER_A, date: '2026-07-19', steps: 100 },
+                { user_id: USER_B, date: '2026-07-19', steps: 200 },
+                { user_id: USER_C, date: '2026-07-19', steps: 300 },
+            ]),
+        });
+
+        const result = await getAllGroupComparisonData(GROUP_ID, USER_A);
+        const today = result.DAILY.data.find((point) => point.date === '2026-07-19');
+
+        expect(today).toEqual({
+            date: '2026-07-19',
+            label: '7/19',
+            values: {
+                [SERIES_A]: 100,
+                [SERIES_B]: 200,
+                [SERIES_C]: 300,
+            },
+        });
+        expect(result.DAILY.users.map((user) => user.seriesKey)).toEqual([
+            SERIES_C,
+            SERIES_B,
+            SERIES_A,
+        ]);
+        expect(result.DAILY.users.map((user) => user.displayLabel)).toEqual([
+            'walker (1)',
+            'walker (2)',
+            'walker (3)',
+        ]);
+        expect(new Set(result.DAILY.users.map((user) => user.displayLabel)).size).toBe(3);
+    });
 
     it.each([
         ['members', 'GROUP_COMPARISON_MEMBERS_DATABASE_ERROR', 'members'],

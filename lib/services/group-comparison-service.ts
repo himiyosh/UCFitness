@@ -126,10 +126,11 @@ function parseMemberRows(data: unknown, count: unknown, groupId: string): Member
 
 function parseDisplayName(value: unknown): string | null {
     if (value === null) return null;
-    if (typeof value !== 'string' || value.trim().length === 0) {
+    if (typeof value !== 'string') {
         throwGroupComparisonFailure('usersInvalid');
     }
-    return value;
+    const normalized = value.normalize('NFC').trim();
+    return normalized.length > 0 ? normalized : null;
 }
 
 function parseUserDisplayNames(
