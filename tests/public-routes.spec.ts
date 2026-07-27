@@ -1,6 +1,6 @@
 import { test, expect } from "playwright/test";
 
-import type { Page } from "playwright/test";
+import type { Locator, Page } from "playwright/test";
 
 interface PublicLocaleCase {
   locale: "ja" | "en";
@@ -10,6 +10,7 @@ interface PublicLocaleCase {
   switchToLabel: string;
   skipLabel: string;
   loginLabel: string;
+  connectFitbitCopy: string;
   landingTitle: string;
   termsLabel: string;
   privacyLabel: string;
@@ -26,6 +27,7 @@ const PUBLIC_LOCALE_CASES: readonly PublicLocaleCase[] = [
     switchToLabel: "日本語に切り替え",
     skipLabel: "メインコンテンツへ",
     loginLabel: "Fitbit でログイン",
+    connectFitbitCopy: "30秒で連携。歩数は自動で反映されます。",
     landingTitle: "歩く、競う、続く。歩数を習慣に変える。",
     termsLabel: "利用規約",
     privacyLabel: "プライバシーポリシー",
@@ -40,6 +42,7 @@ const PUBLIC_LOCALE_CASES: readonly PublicLocaleCase[] = [
     switchToLabel: "Switch to English",
     skipLabel: "Skip to content",
     loginLabel: "Sign in with Fitbit",
+    connectFitbitCopy: "Connect in about 30 seconds. Steps sync automatically.",
     landingTitle: "Walk, Compete, Persist.Turn steps into a habit.",
     termsLabel: "Terms of Service",
     privacyLabel: "Privacy Policy",
@@ -47,6 +50,12 @@ const PUBLIC_LOCALE_CASES: readonly PublicLocaleCase[] = [
     homeLabel: "Back to home",
   },
 ];
+
+const ACTIVATION_VIEWPORTS = [
+  { width: 320, height: 800 },
+  { width: 375, height: 812 },
+  { width: 1280, height: 800 },
+] as const;
 
 async function switchToLocale(page: Page, localeCase: PublicLocaleCase): Promise<void> {
   const html = page.locator("html");
@@ -85,6 +94,15 @@ async function expectPublicShell(page: Page, title: string): Promise<void> {
       ),
     )
     .toBeLessThanOrEqual(0);
+}
+
+async function getVisibleBox(locator: Locator): Promise<NonNullable<Awaited<ReturnType<Locator["boundingBox"]>>>> {
+  await expect(locator).toBeVisible();
+  const box = await locator.boundingBox();
+  if (!box) {
+    throw new Error("Visible element did not expose layout geometry");
+  }
+  return box;
 }
 
 test.describe("公開主要導線", () => {
@@ -142,5 +160,61 @@ test.describe("公開主要導線", () => {
         await expectPublicShell(page, localeCase.landingTitle);
       });
     });
+  }
+});
+
+test.describe("Fitbit連携前のプライバシー導線", () => {
+  for (const localeCase of PUBLIC_LOCALE_CASES) {
+    for (const viewport of ACTIVATION_VIEWPORTS) {
+      test(`${localeCase.locale}_${viewport.width}px_CTA直後からプライバシーポリシーを確認できる`, async ({ page }) => {
+        await page.setViewportSize(viewport);
+        await page.goto("/");
+        await switchToLocale(page, localeCase);
+        await expectPublicShell(page, localeCase.landingTitle);
+
+        const hero = page.locator('section[aria-labelledby="landing-headline"]');
+        const loginButton = hero.getByRole("button", {
+          name: localeCase.loginLabel,
+          exact: true,
+        });
+        const connectionCopy = hero.getByText(localeCase.connectFitbitCopy, {
+          exact: true,
+        });
+        const privacyLink = hero.getByRole("link", {
+          name: localeCase.privacyLinkLabel,
+          exact: true,
+        });
+
+        await expect(privacyLink).toHaveText(localeCase.privacyLinkLabel);
+        const [loginBox, copyBox, privacyBox] = await Promise.all([
+          getVisibleBox(loginButton),
+          getVisibleBox(connectionCopy),
+          getVisibleBox(privacyLink),
+        ]);
+
+        expect(privacyBox.width).toBeGreaterThanOrEqual(44);
+        expect(privacyBox.height).toBeGreaterThanOrEqual(44);
+        expect(privacyBox.y - (copyBox.y + copyBox.height)).toBeLessThanOrEqual(8);
+        expect(Math.abs(privacyBox.y - loginBox.y)).toBeLessThanOrEqual(128);
+        expect(privacyBox.y).toBeGreaterThanOrEqual(0);
+        expect(privacyBox.y + privacyBox.height).toBeLessThanOrEqual(viewport.height);
+        await expect
+          .poll(async () => privacyLink.evaluate((element) => getComputedStyle(element).whiteSpace))
+          .toBe("nowrap");
+
+        await loginButton.focus();
+        await expect(loginButton).toBeFocused();
+        await page.keyboard.press("Tab");
+        await expect(privacyLink).toBeFocused();
+        await expect
+          .poll(async () => privacyLink.evaluate((element) => getComputedStyle(element).boxShadow))
+          .not.toBe("none");
+
+        await privacyLink.press("Enter");
+        await expect(page).toHaveURL(/\/legal\/privacy$/);
+        await expect(page.locator("html")).toHaveAttribute("lang", localeCase.locale);
+        await expectPublicShell(page, localeCase.privacyLabel);
+      });
+    }
   }
 });
