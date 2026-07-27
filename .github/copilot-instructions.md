@@ -1691,3 +1691,10 @@ export const runtime = "edge";
 - **根本原因**: DB queryからservice throwまでだけをエラーデータフローとして監査し、callerでのcatch・再ログを同じ秘匿境界に含めなかった。service単体testも送出例外だけを検証し、実際のcaller log引数と`console.error`出力を確認していなかった。
 - **対策**: ranking caller専用loggerが元例外を再利用せず、許可済みoperation・stage・codeだけの新しい`AppError`へ再固定化してから記録する。一般依存のログ境界は変更せず、Ranking APIを含む6つのcaller operationと専用captureを`check:rules`で固定する。
 - **教訓**: 固定エラー変換の完了条件はthrow地点ではなく最終log sinkまでのend-to-end追跡である。raw errorを`JSON.stringify`して空に見えることを証拠にせず、`reportError`へ渡るオブジェクトのidentity・message・code・cause・contextと実構造化出力を直接検証する。リファレンス: `lib/services/ranking-service.ts`, `lib/services/ranking-service.test.ts`, `app/[locale]/groups/page.tsx`
+
+### LL-099: follow一覧の部分データと生DBエラーを成功状態へ畳まない
+
+- **事象**: follow API群がSupabase errorやcatch値をそのまま`reportError`へ渡し、`/following`は欠落プロフィールをdrop、`/followers`は重複・切り捨て、`/follow/status`は不正なtruthy行をフォロー済みとして返し得た。
+- **根本原因**: TypeScriptのquery型を実行時shapeの保証とみなし、error・正当なno-row・不正null・重複・exact count不一致・必須プロフィール欠落をAPI境界で分類していなかった。
+- **対策**: 4 route familyをoperation・stage・codeだけの固定`AppError`へ統一し、raw errorやuser IDを再利用しない。exact count、UUID、timestamp、nullable profile、非負safe integer歩数、一意性、参照集合、必須プロフィールを検証し、`.maybeSingle()`の`null/errorなし`だけを正当なno-rowとして扱う。`check:rules`で固定loggerとruntime guardを機械検査する。
+- **教訓**: social APIの成功はqueryがrejectしなかったことではなく、依存結果が完全かつ契約どおりであることを証明してから返す。記録済み0歩と未記録は維持しつつ、部分データ・重複・不正shapeを空・0・false・dropへ変換しない。回帰テストは`JSON.stringify(Error)`に頼らず、report引数のidentity・message・code・cause・context・nested field・UUID識別子を直接検査する。リファレンス: `app/api/user/following/route.ts`, `app/api/user/followers/route.ts`, `app/api/user/follow/route.ts`, `app/api/user/follow/status/route.ts`

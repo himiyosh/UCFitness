@@ -10,17 +10,22 @@ vi.mock('@/lib/auth', () => ({ auth: mocks.auth }));
 vi.mock('@/lib/date-utils', () => ({
     getJSTDateString: vi.fn(() => '2026-07-15'),
 }));
-vi.mock('@/lib/errors', () => ({ reportError: mocks.reportError }));
+vi.mock('@/lib/errors', async (importOriginal) => ({
+    ...await importOriginal<typeof import('@/lib/errors')>(),
+    reportError: mocks.reportError,
+}));
 vi.mock('@/lib/supabase', () => ({
     supabaseAdmin: { from: mocks.from },
 }));
 
 import { GET as getFollowers } from './followers/route';
 import { GET as getComparison } from './following-comparison/route';
+import { AppError } from '@/lib/errors';
 
 interface QueryResult {
-    data: unknown[] | null;
+    data: unknown;
     error: unknown;
+    count: unknown;
 }
 
 interface QueryChain extends PromiseLike<QueryResult> {
@@ -57,26 +62,76 @@ function createQueryChain(result: QueryResult): QueryChain {
     return chain;
 }
 
-const ok = (data: unknown[]): QueryResult => ({ data, error: null });
-const failed = (message: string): QueryResult => ({ data: null, error: { message } });
+const ok = (data: unknown[]): QueryResult => ({ data, error: null, count: data.length });
+const failed = (message: string): QueryResult => ({ data: null, error: { message }, count: null });
 
 function setupQueries(results: Record<string, QueryResult>): void {
     mocks.from.mockImplementation((table: string) => createQueryChain(results[table] ?? ok([])));
 }
 
 describe('GET /api/user/followers', () => {
+    const viewerId = '11111111-1111-4111-8111-111111111111';
+    const followerOne = '22222222-2222-4222-8222-222222222222';
+    const followerTwo = '33333333-3333-4333-8333-333333333333';
+    const foreignId = '44444444-4444-4444-8444-444444444444';
+    const rawMessage = `database unavailable for ${viewerId}`;
     const followRows = [
-        { follower_id: 'follower-1', created_at: '2026-07-15T01:00:00Z' },
-        { follower_id: 'follower-2', created_at: '2026-07-14T01:00:00Z' },
+        { follower_id: followerOne, created_at: '2026-07-15T01:00:00Z' },
+        { follower_id: followerTwo, created_at: '2026-07-14T01:00:00Z' },
     ];
     const profiles = [
-        { id: 'follower-1', name: 'One', image: null, username: 'one' },
-        { id: 'follower-2', name: 'Two', image: null, username: 'two' },
+        { id: followerOne, name: 'One', image: null, username: 'one' },
+        { id: followerTwo, name: 'Two', image: null, username: 'two' },
     ];
+
+    function createRawFailure(): Error {
+        return Object.assign(new Error(rawMessage), {
+            code: 'XX000',
+            cause: { followerId: followerOne },
+            context: { userId: viewerId },
+            nested: { detail: foreignId },
+        });
+    }
+
+    function expectFixedFollowersReport(stage: string, rawFailure?: Error): void {
+        expect(mocks.reportError).toHaveBeenCalledTimes(1);
+        const call = mocks.reportError.mock.calls[0];
+        expect(call).toHaveLength(2);
+        expect(call[0]).toBe('user/followers');
+        expect(call[1]).toBeInstanceOf(AppError);
+        expect(call[1]).not.toBe(rawFailure);
+
+        const error = call[1] as AppError;
+        expect(error.name).toBe('AppError');
+        expect(error.message).toBe('Followers request failed');
+        expect(error.code).toBe('FOLLOWERS_DATA_UNAVAILABLE');
+        expect(error.context).toEqual({ stage });
+        expect(Object.keys(error.context ?? {})).toEqual(['stage']);
+        expect(error.cause).toBeUndefined();
+        if (rawFailure) {
+            const rawDetails = rawFailure as Error & {
+                code?: unknown;
+                context?: unknown;
+                nested?: unknown;
+            };
+            expect(error.message).not.toBe(rawFailure.message);
+            expect(error.code).not.toBe(rawDetails.code);
+            expect(error.context).not.toBe(rawDetails.context);
+            expect(error.cause).not.toBe(rawFailure.cause);
+            expect(Object.prototype.hasOwnProperty.call(error, 'nested')).toBe(false);
+        }
+        for (const sensitiveValue of [rawMessage, viewerId, followerOne, foreignId]) {
+            expect(call[0]).not.toContain(sensitiveValue);
+            expect(error.message).not.toContain(sensitiveValue);
+            expect(error.code).not.toContain(sensitiveValue);
+            expect(Object.keys(error.context ?? {})).not.toContain(sensitiveValue);
+            expect(Object.values(error.context ?? {})).not.toContain(sensitiveValue);
+        }
+    }
 
     beforeEach(() => {
         vi.clearAllMocks();
-        mocks.auth.mockResolvedValue({ user: { id: 'viewer' } });
+        mocks.auth.mockResolvedValue({ user: { id: viewerId } });
     });
 
     it('フォロワーが空の場合、プロフィールを照会せず空の200を返す', async () => {
@@ -100,21 +155,87 @@ describe('GET /api/user/followers', () => {
     });
 
     it.each([
-        ['DBエラー', failed('profiles unavailable'), 'Follower profile lookup failed'],
-        ['不正なnull', { data: null, error: null }, 'Follower profile lookup returned no data without an error'],
-        ['プロフィール欠落', ok(profiles.slice(0, 1)), 'Follower profile lookup did not return all requested profiles'],
-    ])('%sの場合、欠落を隠さず500を報告する', async (_label, usersResult, message) => {
-        setupQueries({ user_follows: ok(followRows), users: usersResult });
+        ['フォロー関係', 'user_follows', 'followers-query', 'Failed to fetch followers'],
+        ['プロフィール', 'users', 'profiles-query', 'Failed to fetch follower profiles'],
+    ] as const)('%s照会が失敗した場合、生エラーを捨てた固定500を返す', async (
+        _label,
+        table,
+        stage,
+        responseError,
+    ) => {
+        const rawFailure = createRawFailure();
+        setupQueries({
+            user_follows: ok(followRows),
+            users: ok(profiles),
+            [table]: { data: null, error: rawFailure, count: null },
+        });
 
         const response = await getFollowers();
 
         expect(response.status).toBe(500);
-        expect(await response.json()).toEqual({ error: 'Failed to fetch follower profiles' });
-        expect(mocks.reportError).toHaveBeenCalledWith(
-            'user/followers:profiles',
-            expect.objectContaining({ message }),
-            expect.objectContaining({ expectedProfileCount: 2 }),
-        );
+        expect(await response.json()).toEqual({ error: responseError });
+        expectFixedFollowersReport(stage, rawFailure);
+    });
+
+    it.each([
+        ['フォロー行のerrorless null', 'user_follows', { data: null, error: null, count: 0 }, 'followers-data', 'Failed to fetch followers'],
+        ['フォロー行の切り捨て', 'user_follows', { data: followRows.slice(0, 1), error: null, count: 2 }, 'followers-data', 'Failed to fetch followers'],
+        ['フォロー行の重複', 'user_follows', {
+            data: [followRows[0], { ...followRows[0], created_at: '2026-07-14T00:00:00Z' }],
+            error: null,
+            count: 2,
+        }, 'followers-data', 'Failed to fetch followers'],
+        ['フォロー行の非ISO日時', 'user_follows', {
+            data: [{ ...followRows[0], created_at: '0' }],
+            error: null,
+            count: 1,
+        }, 'followers-data', 'Failed to fetch followers'],
+        ['フォロー行の不可能日', 'user_follows', {
+            data: [{ ...followRows[0], created_at: '2026-02-31T00:00:00Z' }],
+            error: null,
+            count: 1,
+        }, 'followers-data', 'Failed to fetch followers'],
+        ['プロフィールのerrorless null', 'users', { data: null, error: null, count: 2 }, 'profiles-data', 'Failed to fetch follower profiles'],
+        ['プロフィール欠落', 'users', ok(profiles.slice(0, 1)), 'profiles-data', 'Failed to fetch follower profiles'],
+        ['プロフィール重複', 'users', {
+            data: [profiles[0], profiles[0]],
+            error: null,
+            count: 2,
+        }, 'profiles-data', 'Failed to fetch follower profiles'],
+        ['対象外プロフィール', 'users', {
+            data: [profiles[0], { ...profiles[1], id: foreignId }],
+            error: null,
+            count: 2,
+        }, 'profiles-data', 'Failed to fetch follower profiles'],
+    ] as const)('%sの場合、部分データを成功形へ変換せず固定500を返す', async (
+        _label,
+        table,
+        result,
+        stage,
+        responseError,
+    ) => {
+        setupQueries({
+            user_follows: ok(followRows),
+            users: ok(profiles),
+            [table]: result,
+        });
+
+        const response = await getFollowers();
+
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({ error: responseError });
+        expectFixedFollowersReport(stage);
+    });
+
+    it('認証処理が予期せず失敗した場合、生Errorと識別子をログへ渡さない', async () => {
+        const rawFailure = createRawFailure();
+        mocks.auth.mockRejectedValueOnce(rawFailure);
+
+        const response = await getFollowers();
+
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({ error: 'Internal server error' });
+        expectFixedFollowersReport('unexpected', rawFailure);
     });
 });
 
@@ -134,7 +255,7 @@ describe('GET /api/user/following-comparison', () => {
 
     it.each([
         ['DBエラー', failed('follows unavailable'), 'Following lookup failed'],
-        ['不正なnull', { data: null, error: null }, 'Following lookup returned no data without an error'],
+        ['不正なnull', { data: null, error: null, count: null }, 'Following lookup returned no data without an error'],
     ])('following照会が%sの場合、後続照会せず500を報告する', async (_label, result, message) => {
         setupQueries({ user_follows: result });
 
@@ -161,10 +282,10 @@ describe('GET /api/user/following-comparison', () => {
 
     it.each([
         ['usersエラー', failed('users unavailable'), ok([]), 'profiles', 'Comparison profile lookup failed'],
-        ['users不正null', { data: null, error: null }, ok([]), 'profiles', 'Comparison profile lookup returned no data without an error'],
+        ['users不正null', { data: null, error: null, count: null }, ok([]), 'profiles', 'Comparison profile lookup returned no data without an error'],
         ['users欠落', ok(profiles.slice(0, 1)), ok([]), 'profiles', 'Comparison profile lookup did not return all requested profiles'],
         ['stepsエラー', ok(profiles), failed('steps unavailable'), 'steps', 'Comparison steps lookup failed'],
-        ['steps不正null', ok(profiles), { data: null, error: null }, 'steps', 'Comparison steps lookup returned no data without an error'],
+        ['steps不正null', ok(profiles), { data: null, error: null, count: null }, 'steps', 'Comparison steps lookup returned no data without an error'],
     ])('%sの場合、成功レスポンスを構築せず500を報告する', async (
         _label,
         usersResult,

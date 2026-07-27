@@ -155,8 +155,12 @@ describe("user_follows RLS audit", () => {
     expect(operations).not.toContain("update");
     expect(operations).not.toContain("upsert");
     expect(routeSource).toMatch(/\.select\(["']id["']\)/);
-    expect(routeSource).toContain('.select("following_id, created_at"');
-    expect(routeSource).toContain('.select("follower_id, created_at")');
+    expect(routeSource).toContain(
+      '.select("following_id, created_at", { count: "exact" })',
+    );
+    expect(routeSource).toContain(
+      '.select("follower_id, created_at", { count: "exact" })',
+    );
     expect(routeSource).toMatch(/\.select\(["']following_id["']\)/);
     expect(routeSource).toMatch(
       /\.insert\(\{\s*follower_id: userId,\s*following_id: targetUserId,\s*\}\)/,
@@ -230,12 +234,22 @@ describe("user_follows RLS audit", () => {
     const groupRoute = readRepositoryFile("app/api/user/group/route.ts");
 
     expect(followRoute).toContain("error: targetLookupError");
-    expect(followRoute).toContain('targetLookupError?.code === "PGRST116"');
-    expect(followRoute).toContain('"user/follow:target_lookup"');
-    expect(followRoute).toContain('"Failed to load target user"');
+    expect(followRoute).toContain(".maybeSingle();");
+    expect(followRoute).toContain("if (targetLookupError)");
+    expect(followRoute).toContain("if (targetUser === null)");
+    expect(followRoute).toContain(
+      'followFailure("target-query", "Failed to load target user")',
+    );
+    expect(followRoute).toContain(
+      'followFailure("target-data", "Failed to load target user")',
+    );
     expect(followersRoute).toContain("error: profilesError");
-    expect(followersRoute).toContain('"user/followers:profiles"');
-    expect(followersRoute).toContain('"Failed to fetch follower profiles"');
+    expect(followersRoute).toContain(
+      'followersFailure("profiles-query", "Failed to fetch follower profiles")',
+    );
+    expect(followersRoute).toContain(
+      'followersFailure("profiles-data", "Failed to fetch follower profiles")',
+    );
     expect(comparisonRoute).toContain("error: followingError");
     expect(comparisonRoute).toContain("'user/following-comparison:follows'");
     expect(comparisonRoute).toContain("'user/following-comparison:profiles'");

@@ -61,7 +61,7 @@ const trackedArtifactHashes: Record<string, string> = {
     'migrations/20260720_harden_user_badges_rls.sql': 'afb875da92a405b692b12ef702ea7a7b739088f9a4179cab452be02df9eccc3d',
     'migrations/20260720_harden_badges_rls.sql': 'b584c8edc85db244c9e8412a8b5a1bc58d95006448e1f492eb67a58283d8d06c',
     'lib/__tests__/walking-routes-rls-audit.test.ts': 'b9e3facb93417dd8a5ad0dfbd129e6006388c87d64e4f72c13bba26fa7d090e1',
-    'lib/__tests__/user-follows-rls-audit.test.ts': '3ee22874a099bacb220ddc10f7b3da7cb5150754add1daddaaaa532bfe9bd93d',
+    'lib/__tests__/user-follows-rls-audit.test.ts': '26a89f77a78f77c38a72903918ec73f799cd8b0765e78b8b10746b0b4dc4647e',
 };
 
 describe('daily_steps RLS Phase 9 audit', () => {

@@ -1,17 +1,37 @@
 export const runtime = 'edge';
 
-import { auth } from "@/lib/auth";
-import { reportError } from "@/lib/errors";
-import { supabaseAdmin } from "@/lib/supabase";
-import { isValidUUID } from "@/lib/validation";
 import { NextResponse } from "next/server";
+
+import { auth } from "@/lib/auth";
+import { AppError, reportError } from "@/lib/errors";
+import { supabaseAdmin } from "@/lib/supabase";
+import { isRecord, isValidUUID } from "@/lib/validation";
 
 // ============================================
 // フォロー状態チェック API
 // GET: 指定ユーザーをフォローしているか確認
 // ============================================
 
-export async function GET(request: Request) {
+type FailureStage = "query" | "data" | "unexpected";
+
+interface FollowStatusRow {
+    id: string;
+}
+
+function isFollowStatusRow(value: unknown): value is FollowStatusRow {
+    return isRecord(value) && isValidUUID(value.id);
+}
+
+function followStatusFailure(stage: FailureStage, responseError: string): NextResponse {
+    reportError("user/follow-status", new AppError(
+        "Follow status request failed",
+        "FOLLOW_STATUS_UNAVAILABLE",
+        { stage },
+    ));
+    return NextResponse.json({ error: responseError }, { status: 500 });
+}
+
+export async function GET(request: Request): Promise<NextResponse> {
     try {
         const session = await auth();
         if (!session?.user || !session.user.id) {
@@ -37,13 +57,15 @@ export async function GET(request: Request) {
             .maybeSingle();
 
         if (error) {
-            reportError("GET /api/user/follow/status", error);
-            return NextResponse.json({ error: "Failed to check status" }, { status: 500 });
+            return followStatusFailure("query", "Failed to check status");
         }
 
-        return NextResponse.json({ isFollowing: !!data });
-    } catch (err) {
-        reportError("GET /api/user/follow/status", err);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        if (data !== null && !isFollowStatusRow(data)) {
+            return followStatusFailure("data", "Failed to check status");
+        }
+
+        return NextResponse.json({ isFollowing: data !== null });
+    } catch {
+        return followStatusFailure("unexpected", "Internal server error");
     }
 }
