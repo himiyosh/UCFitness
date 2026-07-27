@@ -985,6 +985,9 @@ GROUP_COMPARISON_CONTRACTS=(
   ".select('steps, date, user_id', { count: 'exact' })"
   "parseUserDisplayNames(users, userCount, memberIds)"
   "parseStepRows("
+  "values: Record<string, number>;"
+  "seriesKey: createSeriesKey(uid)"
+  "point.values[user.seriesKey] = 0;"
 )
 for pattern in "${GROUP_COMPARISON_CONTRACTS[@]}"; do
   if ! grep -Fq "$pattern" "$GROUP_COMPARISON_SERVICE"; then
@@ -993,8 +996,8 @@ for pattern in "${GROUP_COMPARISON_CONTRACTS[@]}"; do
 done
 
 if [ "$(grep -Fc 'reportError(' "$GROUP_COMPARISON_SERVICE")" -ne 1 ] || \
-   grep -Eq "reportError\\([^,]+, (membersError|usersError|stepsError|error)|\\.range\\(|'Unknown'|isNaN\\(" "$GROUP_COMPARISON_SERVICE"; then
-  record "group comparisonが生エラー・OFFSET・成功形fallbackへ回帰" "$GROUP_COMPARISON_SERVICE"
+   grep -Eq "reportError\\([^,]+, (membersError|usersError|stepsError|error)|\\.range\\(|'Unknown'|isNaN\\(|point\\[[^]]*username|p\\[[^]]*username" "$GROUP_COMPARISON_SERVICE"; then
+  record "group comparisonが生エラー・OFFSET・表示名data key・成功形fallbackへ回帰" "$GROUP_COMPARISON_SERVICE"
 fi
 
 GROUP_COMPARISON_CALLER='app/[locale]/groups/[groupId]/page.tsx'
@@ -1011,12 +1014,31 @@ GROUP_COMPARISON_TEST_CONTRACTS=(
   "expect(call).not.toContain(rawError)"
   "GROUP_COMPARISON_STEPS_INCOMPLETE"
   "expect('range' in chains.steps).toBe(false)"
+  "it.each(['label', 'date'] as const)"
+  "username欠落時のfallback名が重複する"
+  "values: {"
 )
 for pattern in "${GROUP_COMPARISON_TEST_CONTRACTS[@]}"; do
   if ! grep -Fq "$pattern" "$GROUP_COMPARISON_TEST"; then
     record "group comparisonの実sink・部分取得回帰欠落" "${GROUP_COMPARISON_TEST}: ${pattern}"
   fi
 done
+
+GROUP_COMPARISON_CHART='components/group/GroupComparisonChart.tsx'
+GROUP_COMPARISON_CHART_CONTRACTS=(
+  "dataKey={seriesDataKey(user.seriesKey)}"
+  "name={user.displayLabel}"
+  "dataPoint.values[user.seriesKey]"
+  "key={user.seriesKey}"
+)
+for pattern in "${GROUP_COMPARISON_CHART_CONTRACTS[@]}"; do
+  if ! grep -Fq "$pattern" "$GROUP_COMPARISON_CHART"; then
+    record "group comparison chartのseries key分離欠落" "${GROUP_COMPARISON_CHART}: ${pattern}"
+  fi
+done
+if grep -Eq "dataKey=\\{user\\.(username|displayName|displayLabel)\\}|dataPoint\\[user\\.(username|displayName|displayLabel)\\]" "$GROUP_COMPARISON_CHART"; then
+  record "group comparison chartが表示名data keyへ回帰" "$GROUP_COMPARISON_CHART"
+fi
 
 # ---------- 結果出力 ----------
 if [ "$VIOLATIONS" -eq 0 ]; then

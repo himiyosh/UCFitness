@@ -62,6 +62,8 @@ const USER_A = '11111111-1111-4111-8111-111111111111';
 const USER_B = '22222222-2222-4222-8222-222222222222';
 const FOREIGN_USER_ID = '33333333-3333-4333-8333-333333333333';
 const NESTED_ID = '44444444-4444-4444-8444-444444444444';
+const SERIES_A = `series_${USER_A.replaceAll('-', '_')}`;
+const SERIES_B = `series_${USER_B.replaceAll('-', '_')}`;
 
 function createQueryResult(
     data: unknown,
@@ -265,18 +267,6 @@ const invalidDependencyScenarios: FailureScenario[] = [
         stage: 'users',
     },
     {
-        name: 'profileの表示名が重複する',
-        overrides: () => ({
-            ...createTwoMemberResults(),
-            users: createQueryResult([
-                { id: USER_A, username: 'walker', name: 'Walker A' },
-                { id: USER_B, username: 'walker', name: 'Walker B' },
-            ]),
-        }),
-        code: 'GROUP_COMPARISON_USERS_INVALID',
-        stage: 'users',
-    },
-    {
         name: 'step行が別memberを参照する',
         overrides: () => ({
             steps: createQueryResult([
@@ -382,8 +372,15 @@ describe('getAllGroupComparisonData', () => {
         const previousWeek = result.WEEKLY.data.find((point) => point.date === '2026-07-06');
         const currentWeek = result.WEEKLY.data.find((point) => point.date === '2026-07-13');
 
-        expect(previousWeek?.walker).toBe(100);
-        expect(currentWeek?.walker).toBe(500);
+        expect(previousWeek?.values[SERIES_A]).toBe(100);
+        expect(currentWeek?.values[SERIES_A]).toBe(500);
+        expect(result.WEEKLY.users[0]).toEqual({
+            seriesKey: SERIES_A,
+            displayName: 'walker',
+            displayLabel: 'walker',
+            color: '#4F46E5',
+            isCurrentUser: true,
+        });
     });
 
     it('memberが0件の場合、依存照会を増やさず正当な空比較を返す', async () => {
@@ -423,9 +420,100 @@ describe('getAllGroupComparisonData', () => {
         const result = await getAllGroupComparisonData(GROUP_ID, USER_A);
         const today = result.DAILY.data.find((point) => point.date === '2026-07-19');
 
-        expect(result.DAILY.users).toEqual([{ username: 'walker', color: '#4F46E5' }]);
-        expect(today?.walker).toBe(0);
+        expect(result.DAILY.users).toEqual([{
+            seriesKey: SERIES_A,
+            displayName: 'walker',
+            displayLabel: 'walker',
+            color: '#4F46E5',
+            isCurrentUser: true,
+        }]);
+        expect(today?.values[SERIES_A]).toBe(0);
     });
+
+    it.each(['label', 'date'] as const)(
+        '表示名が予約キー%sの場合、期間構造を上書きせず内部seriesへ格納する',
+        async (reservedName) => {
+            installQueryResults({
+                users: createQueryResult([
+                    { id: USER_A, username: reservedName, name: 'Walker' },
+                ]),
+                steps: createQueryResult([
+                    { user_id: USER_A, date: '2026-07-19', steps: 200 },
+                ]),
+            });
+
+            const result = await getAllGroupComparisonData(GROUP_ID, USER_A);
+            const today = result.DAILY.data.find((point) => point.date === '2026-07-19');
+
+            expect(today).toEqual({
+                date: '2026-07-19',
+                label: '7/19',
+                values: { [SERIES_A]: 200 },
+            });
+            expect(result.DAILY.users[0]).toEqual(expect.objectContaining({
+                seriesKey: SERIES_A,
+                displayName: reservedName,
+                displayLabel: reservedName,
+            }));
+        },
+    );
+
+    it.each([
+        {
+            name: 'usernameが重複する',
+            users: [
+                { id: USER_A, username: 'walker', name: 'Walker A' },
+                { id: USER_B, username: 'walker', name: 'Walker B' },
+            ],
+            expectedLabels: ['walker (1)', 'walker (2)'],
+        },
+        {
+            name: 'nameが重複してもusernameが一意である',
+            users: [
+                { id: USER_A, username: 'walker-a', name: 'Walker' },
+                { id: USER_B, username: 'walker-b', name: 'Walker' },
+            ],
+            expectedLabels: ['walker-b', 'walker-a'],
+        },
+        {
+            name: 'username欠落時のfallback名が重複する',
+            users: [
+                { id: USER_A, username: null, name: 'Walker' },
+                { id: USER_B, username: null, name: 'Walker' },
+            ],
+            expectedLabels: ['Walker (1)', 'Walker (2)'],
+        },
+    ])(
+        '$name場合、表示ラベルを分離して両seriesの値を維持する',
+        async ({ users, expectedLabels }) => {
+            installQueryResults({
+                ...createTwoMemberResults(),
+                users: createQueryResult(users),
+                steps: createQueryResult([
+                    { user_id: USER_A, date: '2026-07-19', steps: 100 },
+                    { user_id: USER_B, date: '2026-07-19', steps: 200 },
+                ]),
+            });
+
+            const result = await getAllGroupComparisonData(GROUP_ID, USER_A);
+            const today = result.DAILY.data.find((point) => point.date === '2026-07-19');
+
+            expect(today).toEqual({
+                date: '2026-07-19',
+                label: '7/19',
+                values: {
+                    [SERIES_A]: 100,
+                    [SERIES_B]: 200,
+                },
+            });
+            expect(result.DAILY.users.map((user) => user.seriesKey)).toEqual([
+                SERIES_B,
+                SERIES_A,
+            ]);
+            expect(result.DAILY.users.map((user) => user.displayLabel)).toEqual(expectedLabels);
+            expect(new Set(result.DAILY.users.map((user) => user.seriesKey)).size).toBe(2);
+        },
+    );
 
     it.each([
         ['members', 'GROUP_COMPARISON_MEMBERS_DATABASE_ERROR', 'members'],

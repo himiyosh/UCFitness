@@ -7,12 +7,20 @@ import type { Period } from '@/components/dashboard/LeaderboardTabs';
 export interface ComparisonDataPoint {
     date: string; // YYYY-MM-DD or YYYY-MM
     label: string; // Display label (e.g. "Mon", "Jan", "1/15")
-    [username: string]: number | string;
+    values: Record<string, number>;
+}
+
+export interface ComparisonSeries {
+    seriesKey: string;
+    displayName: string;
+    displayLabel: string;
+    color: string;
+    isCurrentUser: boolean;
 }
 
 export interface ChartData {
     data: ComparisonDataPoint[];
-    users: { username: string, color: string }[];
+    users: ComparisonSeries[];
 }
 
 type GroupComparisonStage = 'input' | 'members' | 'users' | 'steps';
@@ -136,8 +144,6 @@ function parseUserDisplayNames(
 
     const expectedIds = new Set(memberIds);
     const displayNames = new Map<string, string>();
-    const usedDisplayNames = new Set<string>();
-
     for (const value of rows) {
         if (
             !isRecord(value)
@@ -151,11 +157,10 @@ function parseUserDisplayNames(
         const username = parseDisplayName(value.username);
         const name = parseDisplayName(value.name);
         const displayName = username ?? name;
-        if (displayName === null || usedDisplayNames.has(displayName)) {
+        if (displayName === null) {
             throwGroupComparisonFailure('usersInvalid');
         }
         displayNames.set(value.id, displayName);
-        usedDisplayNames.add(displayName);
     }
 
     if (memberIds.some((memberId) => !displayNames.has(memberId))) {
@@ -207,6 +212,26 @@ function addSafeSteps(current: number, increment: number): number {
         throwGroupComparisonFailure('stepsInvalid');
     }
     return total;
+}
+
+function createSeriesKey(userId: string): string {
+    return `series_${userId.replaceAll('-', '_')}`;
+}
+
+function createUniqueDisplayLabel(
+    displayName: string,
+    ordinal: number,
+    duplicateCount: number,
+    usedLabels: Set<string>,
+): string {
+    let disambiguator = duplicateCount > 1 ? ordinal : 0;
+    let label = disambiguator > 0 ? `${displayName} (${disambiguator})` : displayName;
+    while (usedLabels.has(label)) {
+        disambiguator += 1;
+        label = `${displayName} (${disambiguator})`;
+    }
+    usedLabels.add(label);
+    return label;
 }
 
 function isGroupComparisonStage(value: unknown): value is GroupComparisonStage {
@@ -382,10 +407,33 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
         '#4F46E5', '#EC4899', '#10B981', '#F59E0B', '#3B82F6',
         '#8B5CF6', '#EF4444', '#06B6D4', '#84CC16', '#F97316'
     ];
-    const chartUsers = topUserIds.map((uid, i) => ({
-        username: userIdToName.get(uid) ?? throwGroupComparisonFailure('usersIncomplete'),
-        color: colors[i % colors.length]
-    }));
+    const displayNameCounts = new Map<string, number>();
+    topUserIds.forEach((userId) => {
+        const displayName = userIdToName.get(userId) ?? throwGroupComparisonFailure('usersIncomplete');
+        displayNameCounts.set(displayName, (displayNameCounts.get(displayName) ?? 0) + 1);
+    });
+    const displayNameOrdinals = new Map<string, number>();
+    const usedDisplayLabels = new Set<string>();
+    const chartUsers = topUserIds.map((uid, i) => {
+        const displayName = userIdToName.get(uid) ?? throwGroupComparisonFailure('usersIncomplete');
+        const ordinal = (displayNameOrdinals.get(displayName) ?? 0) + 1;
+        displayNameOrdinals.set(displayName, ordinal);
+        return {
+            seriesKey: createSeriesKey(uid),
+            displayName,
+            displayLabel: createUniqueDisplayLabel(
+                displayName,
+                ordinal,
+                displayNameCounts.get(displayName) ?? 0,
+                usedDisplayLabels,
+            ),
+            color: colors[i % colors.length],
+            isCurrentUser: uid === currentUserId,
+        };
+    });
+    const seriesKeyByUserId = new Map(
+        topUserIds.map((userId) => [userId, createSeriesKey(userId)]),
+    );
 
     // Filter steps to only top users
     const topUserIdSet = new Set(topUserIds);
@@ -408,7 +456,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
                 // Label: MM/DD
                 const label = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
 
-                map.set(dStr, { date: dStr, label });
+                map.set(dStr, { date: dStr, label, values: {} });
                 current.setDate(current.getDate() + 1);
             }
         } else if (aggregation === 'week') {
@@ -426,7 +474,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
                 const label = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
 
                 // Use weekStartStr as key
-                map.set(weekStartStr, { date: weekStartStr, label });
+                map.set(weekStartStr, { date: weekStartStr, label, values: {} });
                 const weekStartUtc = new Date(`${weekStartStr}T00:00:00Z`);
                 for (let offset = 0; offset < 7; offset += 1) {
                     const day = new Date(weekStartUtc);
@@ -453,7 +501,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
                 const dateObj = new Date(cY, cM - 1, 1);
                 const label = dateObj.toLocaleDateString('en-US', { month: 'short' });
 
-                map.set(mStr, { date: mStr, label });
+                map.set(mStr, { date: mStr, label, values: {} });
 
                 cM++;
                 if (cM > 12) { cM = 1; cY++; }
@@ -462,8 +510,8 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
 
         // Initialize all users to 0 for every point to ensure continuous lines
         for (const point of map.values()) {
-            chartUsers.forEach(u => {
-                point[u.username] = 0;
+            chartUsers.forEach((user) => {
+                point.values[user.seriesKey] = 0;
             });
         }
 
@@ -487,12 +535,11 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
                 if (!p) {
                     throwGroupComparisonFailure('stepsInvalid');
                 }
-                const username = userIdToName.get(row.user_id);
-                if (!username) {
+                const seriesKey = seriesKeyByUserId.get(row.user_id);
+                if (!seriesKey) {
                     throwGroupComparisonFailure('usersIncomplete');
                 }
-                const currentVal = typeof p[username] === 'number' ? p[username] : 0;
-                p[username] = addSafeSteps(currentVal, row.steps);
+                p.values[seriesKey] = addSafeSteps(p.values[seriesKey] ?? 0, row.steps);
             }
         });
 

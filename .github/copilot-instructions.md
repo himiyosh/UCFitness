@@ -1705,3 +1705,10 @@ export const runtime = "edge";
 - **根本原因**: TypeScriptのquery型とfilterを実行時shape・参照整合性の保証とみなし、正当な空/記録済み0と依存障害・欠落・外部参照・重複・unsafe値を分類していなかった。stable orderと複数HTTP要求が同じMVCC snapshotを共有すると誤認し、汎用callerも元例外とgroup/user IDを再ログしていた。
 - **対策**: member/profile/step結果を`unknown`からexact count、UUID、参照集合、一意性、表示名、ISO日付、非負safe integerで検証し、固定`AppError`だけを投げる。callerは比較専用reporterでoperation・stage・codeだけを再固定化し、実`reportError`の構造化JSONまで非露出を検証する。複数OFFSETを単一のexact-count要求へ置換し、1,000行超・件数不一致を明示失敗にする。
 - **教訓**: stable orderはsnapshotではなく、アプリ側の複数照会でメンバー集合と歩数集合の同時点整合性は証明できない。上限超または厳密な同時点比較が必要なら、DB内のtransactional集約RPCを別タスクで設計し、それまでは部分結果を成功として返さない。リファレンス: `lib/services/group-comparison-service.ts`, `lib/__tests__/group-comparison-service.test.ts`, `app/[locale]/groups/[groupId]/page.tsx`
+
+### LL-101: ユーザー表示名をチャートdata keyへ使うと構造キーと系列が衝突する
+
+- **事象**: PR #326のmerge-gateで、username/nameが`label`または`date`の利用者を比較すると、歩数代入が期間ラベルや日付を上書きして軸・数値表を破壊することを検出した。表示名重複も同じobject keyを共有し、一方の系列値を失わせた。
+- **根本原因**: 表示ラベルと内部系列IDを同じ文字列へ兼用し、プロフィール行の一意性だけを検証して構造キー予約と同名利用者をテストしなかった。独立レビューもログ・shape・件数境界へ集中し、生成後のチャートobject contractを実値で確認していなかった。
+- **対策**: UUID由来の非ユーザー制御`seriesKey`を導入し、値を`ComparisonDataPoint.values[seriesKey]`へ隔離する。username/nameは`displayName`、重複時は衝突しない`displayLabel`としてのみ使い、Recharts、凡例切替、tooltip、共有画像、数値表のkey/dataKeyを内部系列IDへ統一する。`label`/`date`、重複username、重複name、fallback重複の回帰と、表示名data keyを禁止する`check:rules`を追加する。
+- **教訓**: ユーザー表示文字列をobject key、React key、chart dataKey、選択stateのidentityへ使わない。構造フィールドと値mapを分離し、安定した内部ID→一意な表示ラベルの明示mappingを持たせ、予約語と同名データを正常系として検証する。リファレンス: `lib/services/group-comparison-service.ts`, `components/group/GroupComparisonChart.tsx`, `lib/__tests__/group-comparison-service.test.ts`
