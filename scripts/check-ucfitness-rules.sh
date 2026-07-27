@@ -975,6 +975,49 @@ else
   done
 fi
 
+# ---------- 38. group comparisonの固定ログ・完全性境界 ----------
+GROUP_COMPARISON_SERVICE='lib/services/group-comparison-service.ts'
+GROUP_COMPARISON_CONTRACTS=(
+  "throw new AppError(message, code, {"
+  "reportError(operation, createGroupComparisonLogError(error));"
+  ".select('group_id, user_id', { count: 'exact' })"
+  ".select('id, username, name', { count: 'exact' })"
+  ".select('steps, date, user_id', { count: 'exact' })"
+  "parseUserDisplayNames(users, userCount, memberIds)"
+  "parseStepRows("
+)
+for pattern in "${GROUP_COMPARISON_CONTRACTS[@]}"; do
+  if ! grep -Fq "$pattern" "$GROUP_COMPARISON_SERVICE"; then
+    record "group comparisonの固定ログ・完全性境界欠落" "${GROUP_COMPARISON_SERVICE}: ${pattern}"
+  fi
+done
+
+if [ "$(grep -Fc 'reportError(' "$GROUP_COMPARISON_SERVICE")" -ne 1 ] || \
+   grep -Eq "reportError\\([^,]+, (membersError|usersError|stepsError|error)|\\.range\\(|'Unknown'|isNaN\\(" "$GROUP_COMPARISON_SERVICE"; then
+  record "group comparisonが生エラー・OFFSET・成功形fallbackへ回帰" "$GROUP_COMPARISON_SERVICE"
+fi
+
+GROUP_COMPARISON_CALLER='app/[locale]/groups/[groupId]/page.tsx'
+if ! grep -Fq "reportGroupComparisonServiceFailure('groups/detail:comparison', error);" "$GROUP_COMPARISON_CALLER" || \
+   ! grep -Fq "captureGroupComparisonDependency(getAllGroupComparisonData(groupId, userId))" "$GROUP_COMPARISON_CALLER"; then
+  record "group comparison callerの専用固定ログ境界欠落" "$GROUP_COMPARISON_CALLER"
+fi
+
+GROUP_COMPARISON_TEST='lib/__tests__/group-comparison-service.test.ts'
+GROUP_COMPARISON_TEST_CONTRACTS=(
+  "vi.spyOn(console, 'error')"
+  "JSON.parse(String(call[1]))"
+  "collectStructuredFields(entry)"
+  "expect(call).not.toContain(rawError)"
+  "GROUP_COMPARISON_STEPS_INCOMPLETE"
+  "expect('range' in chains.steps).toBe(false)"
+)
+for pattern in "${GROUP_COMPARISON_TEST_CONTRACTS[@]}"; do
+  if ! grep -Fq "$pattern" "$GROUP_COMPARISON_TEST"; then
+    record "group comparisonの実sink・部分取得回帰欠落" "${GROUP_COMPARISON_TEST}: ${pattern}"
+  fi
+done
+
 # ---------- 結果出力 ----------
 if [ "$VIOLATIONS" -eq 0 ]; then
   echo "OK: UCFitness rule-check passed (0 violations)"

@@ -1,5 +1,6 @@
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { isRecord, isValidISODate, isValidUUID } from '@/lib/validation';
 
 import type { Period } from '@/components/dashboard/LeaderboardTabs';
 
@@ -14,18 +15,237 @@ export interface ChartData {
     users: { username: string, color: string }[];
 }
 
-/** daily_steps クエリ結果の行型 */
+type GroupComparisonStage = 'input' | 'members' | 'users' | 'steps';
+type GroupComparisonLogStage = GroupComparisonStage | 'unexpected';
+type GroupComparisonLogOperation = 'groups/detail:comparison';
+
+interface MemberRow {
+    groupId: string;
+    userId: string;
+}
+
 interface StepRow {
     steps: number;
     date: string;
     user_id: string;
 }
 
+const GROUP_COMPARISON_ROW_LIMIT = 1000;
+const GROUP_COMPARISON_OPERATION = 'getAllGroupComparisonData';
+const GROUP_COMPARISON_FAILURES = {
+    invalidInput: ['Invalid group comparison input', 'GROUP_COMPARISON_INPUT_INVALID', 'input'],
+    membersDatabase: ['Failed to load comparison members', 'GROUP_COMPARISON_MEMBERS_DATABASE_ERROR', 'members'],
+    membersInvalid: ['Invalid comparison member data', 'GROUP_COMPARISON_MEMBERS_INVALID', 'members'],
+    membersIncomplete: ['Incomplete comparison member data', 'GROUP_COMPARISON_MEMBERS_INCOMPLETE', 'members'],
+    usersDatabase: ['Failed to load comparison users', 'GROUP_COMPARISON_USERS_DATABASE_ERROR', 'users'],
+    usersInvalid: ['Invalid comparison user data', 'GROUP_COMPARISON_USERS_INVALID', 'users'],
+    usersIncomplete: ['Incomplete comparison user data', 'GROUP_COMPARISON_USERS_INCOMPLETE', 'users'],
+    stepsDatabase: ['Failed to load comparison steps', 'GROUP_COMPARISON_STEPS_DATABASE_ERROR', 'steps'],
+    stepsInvalid: ['Invalid comparison step data', 'GROUP_COMPARISON_STEPS_INVALID', 'steps'],
+    stepsIncomplete: ['Incomplete comparison step data', 'GROUP_COMPARISON_STEPS_INCOMPLETE', 'steps'],
+} as const satisfies Record<string, readonly [string, string, GroupComparisonStage]>;
+
+type GroupComparisonFailureKey = keyof typeof GROUP_COMPARISON_FAILURES;
+
+const GROUP_COMPARISON_CODES_BY_STAGE: Readonly<Record<GroupComparisonStage, readonly string[]>> = {
+    input: [GROUP_COMPARISON_FAILURES.invalidInput[1]],
+    members: [
+        GROUP_COMPARISON_FAILURES.membersDatabase[1],
+        GROUP_COMPARISON_FAILURES.membersInvalid[1],
+        GROUP_COMPARISON_FAILURES.membersIncomplete[1],
+    ],
+    users: [
+        GROUP_COMPARISON_FAILURES.usersDatabase[1],
+        GROUP_COMPARISON_FAILURES.usersInvalid[1],
+        GROUP_COMPARISON_FAILURES.usersIncomplete[1],
+    ],
+    steps: [
+        GROUP_COMPARISON_FAILURES.stepsDatabase[1],
+        GROUP_COMPARISON_FAILURES.stepsInvalid[1],
+        GROUP_COMPARISON_FAILURES.stepsIncomplete[1],
+    ],
+};
+
+function createEmptyComparisonData(): Record<Period, ChartData> {
+    return {
+        DAILY: { data: [], users: [] },
+        WEEKLY: { data: [], users: [] },
+        MONTHLY: { data: [], users: [] },
+        YEARLY: { data: [], users: [] },
+    };
+}
+
+function throwGroupComparisonFailure(key: GroupComparisonFailureKey): never {
+    const [message, code, stage] = GROUP_COMPARISON_FAILURES[key];
+    throw new AppError(message, code, {
+        operation: GROUP_COMPARISON_OPERATION,
+        stage,
+    });
+}
+
+function parseCompleteRows(
+    data: unknown,
+    count: unknown,
+    invalidKey: GroupComparisonFailureKey,
+    incompleteKey: GroupComparisonFailureKey,
+): unknown[] {
+    if (!Array.isArray(data) || !Number.isSafeInteger(count) || Number(count) < 0) {
+        throwGroupComparisonFailure(invalidKey);
+    }
+    if (Number(count) > GROUP_COMPARISON_ROW_LIMIT || data.length !== Number(count)) {
+        throwGroupComparisonFailure(incompleteKey);
+    }
+    return data;
+}
+
+function parseMemberRows(data: unknown, count: unknown, groupId: string): MemberRow[] {
+    const rows = parseCompleteRows(data, count, 'membersInvalid', 'membersIncomplete');
+    const memberIds = new Set<string>();
+
+    return rows.map((value) => {
+        if (
+            !isRecord(value)
+            || value.group_id !== groupId
+            || !isValidUUID(value.user_id)
+            || memberIds.has(value.user_id)
+        ) {
+            throwGroupComparisonFailure('membersInvalid');
+        }
+        memberIds.add(value.user_id);
+        return { groupId, userId: value.user_id };
+    });
+}
+
+function parseDisplayName(value: unknown): string | null {
+    if (value === null) return null;
+    if (typeof value !== 'string' || value.trim().length === 0) {
+        throwGroupComparisonFailure('usersInvalid');
+    }
+    return value;
+}
+
+function parseUserDisplayNames(
+    data: unknown,
+    count: unknown,
+    memberIds: readonly string[],
+): Map<string, string> {
+    const rows = parseCompleteRows(data, count, 'usersInvalid', 'usersIncomplete');
+    if (rows.length !== memberIds.length) {
+        throwGroupComparisonFailure('usersIncomplete');
+    }
+
+    const expectedIds = new Set(memberIds);
+    const displayNames = new Map<string, string>();
+    const usedDisplayNames = new Set<string>();
+
+    for (const value of rows) {
+        if (
+            !isRecord(value)
+            || !isValidUUID(value.id)
+            || !expectedIds.has(value.id)
+            || displayNames.has(value.id)
+        ) {
+            throwGroupComparisonFailure('usersInvalid');
+        }
+
+        const username = parseDisplayName(value.username);
+        const name = parseDisplayName(value.name);
+        const displayName = username ?? name;
+        if (displayName === null || usedDisplayNames.has(displayName)) {
+            throwGroupComparisonFailure('usersInvalid');
+        }
+        displayNames.set(value.id, displayName);
+        usedDisplayNames.add(displayName);
+    }
+
+    if (memberIds.some((memberId) => !displayNames.has(memberId))) {
+        throwGroupComparisonFailure('usersIncomplete');
+    }
+    return displayNames;
+}
+
+function parseStepRows(
+    data: unknown,
+    count: unknown,
+    memberIds: ReadonlySet<string>,
+    minDate: string,
+    maxDate: string,
+): StepRow[] {
+    const rows = parseCompleteRows(data, count, 'stepsInvalid', 'stepsIncomplete');
+    const recordedDays = new Set<string>();
+
+    return rows.map((value) => {
+        if (
+            !isRecord(value)
+            || !isValidUUID(value.user_id)
+            || !memberIds.has(value.user_id)
+            || !isValidISODate(value.date)
+            || value.date < minDate
+            || value.date > maxDate
+            || !Number.isSafeInteger(value.steps)
+            || Number(value.steps) < 0
+        ) {
+            throwGroupComparisonFailure('stepsInvalid');
+        }
+
+        const rowKey = `${value.user_id}:${value.date}`;
+        if (recordedDays.has(rowKey)) {
+            throwGroupComparisonFailure('stepsInvalid');
+        }
+        recordedDays.add(rowKey);
+        return {
+            user_id: value.user_id,
+            date: value.date,
+            steps: Number(value.steps),
+        };
+    });
+}
+
+function addSafeSteps(current: number, increment: number): number {
+    const total = current + increment;
+    if (!Number.isSafeInteger(total)) {
+        throwGroupComparisonFailure('stepsInvalid');
+    }
+    return total;
+}
+
+function isGroupComparisonStage(value: unknown): value is GroupComparisonStage {
+    return value === 'input' || value === 'members' || value === 'users' || value === 'steps';
+}
+
+function createGroupComparisonLogError(error: unknown): AppError {
+    if (error instanceof AppError) {
+        const operation = error.context?.operation;
+        const stage = error.context?.stage;
+        if (
+            operation === GROUP_COMPARISON_OPERATION
+            && isGroupComparisonStage(stage)
+            && GROUP_COMPARISON_CODES_BY_STAGE[stage].includes(error.code)
+        ) {
+            return new AppError('Group comparison service failure', error.code, {
+                operation,
+                stage,
+            });
+        }
+    }
+
+    return new AppError(
+        'Group comparison service failure',
+        'GROUP_COMPARISON_UNEXPECTED_ERROR',
+        { operation: GROUP_COMPARISON_OPERATION, stage: 'unexpected' satisfies GroupComparisonLogStage },
+    );
+}
+
+export function reportGroupComparisonServiceFailure(
+    operation: GroupComparisonLogOperation,
+    error: unknown,
+): void {
+    reportError(operation, createGroupComparisonLogError(error));
+}
+
 export const getAllGroupComparisonData = async (groupId: string, currentUserId?: string): Promise<Record<Period, ChartData>> => {
-    // 入力バリデーション
-    if (!groupId || typeof groupId !== 'string' || groupId.trim().length === 0) {
-        const empty = { data: [], users: [] };
-        return { DAILY: empty, WEEKLY: empty, MONTHLY: empty, YEARLY: empty };
+    if (!isValidUUID(groupId) || (currentUserId !== undefined && !isValidUUID(currentUserId))) {
+        throwGroupComparisonFailure('invalidInput');
     }
 
     // Helper to get formatted date
@@ -89,90 +309,69 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
     const minDateStr = dates[0]; // The earliest date
 
     // 2. Fetch Group Members
-    const { data: members, error: membersError } = await supabase
+    const { data: members, error: membersError, count: memberCount } = await supabase
         .from('group_members')
-        .select('user_id')
-        .eq('group_id', groupId);
+        .select('group_id, user_id', { count: 'exact' })
+        .eq('group_id', groupId)
+        .order('user_id', { ascending: true })
+        .limit(GROUP_COMPARISON_ROW_LIMIT);
 
     if (membersError) {
-        reportError('group-comparison-service:members', membersError, { groupId });
-        throw new Error('Failed to load comparison members');
+        throwGroupComparisonFailure('membersDatabase');
     }
-    const memberIds = members?.map(m => m.user_id) || [];
+    const memberIds = parseMemberRows(members, memberCount, groupId).map((member) => member.userId);
     if (memberIds.length === 0) {
-        const empty = { data: [], users: [] };
-        return { DAILY: empty, WEEKLY: empty, MONTHLY: empty, YEARLY: empty };
+        return createEmptyComparisonData();
     }
 
-    // ⚡ Bolt Optimization: Fetch users separately to avoid payload bloat from Joins
-    const { data: users, error: usersError } = await supabase
+    const { data: users, error: usersError, count: userCount } = await supabase
         .from('users')
-        .select('id, username, name')
-        .in('id', memberIds);
+        .select('id, username, name', { count: 'exact' })
+        .in('id', memberIds)
+        .order('id', { ascending: true })
+        .limit(GROUP_COMPARISON_ROW_LIMIT);
 
     if (usersError) {
-        reportError('group-comparison-service:users', usersError, { groupId });
-        throw new Error('Failed to load comparison users');
+        throwGroupComparisonFailure('usersDatabase');
     }
-    const userMap = new Map<string, { username: string | null, name: string | null }>();
-    users?.forEach(u => userMap.set(u.id, u));
+    const userIdToName = parseUserDisplayNames(users, userCount, memberIds);
 
-    // 3. Determine Top 10 Members - Fetching ALL steps with pagination
-    let allSteps: StepRow[] = [];
-    let page = 0;
-    const pageSize = 1000;
+    const { data: stepData, error: stepsError, count: stepCount } = await supabase
+        .from('daily_steps')
+        .select('steps, date, user_id', { count: 'exact' })
+        .in('user_id', memberIds)
+        .gte('date', minDateStr)
+        .lte('date', todayStr)
+        .order('date', { ascending: true })
+        .order('user_id', { ascending: true })
+        .limit(GROUP_COMPARISON_ROW_LIMIT);
 
-    while (true) {
-        const { data: stepsChunk, error } = await supabase
-            .from('daily_steps')
-            .select(`
-                steps,
-                date,
-                user_id
-            `) // Optimization: Removed users!inner join
-            .in('user_id', memberIds)
-            .gte('date', minDateStr)
-            .range(page * pageSize, (page + 1) * pageSize - 1);
-
-        if (error) {
-            reportError('group-comparison-service:steps', error, { groupId, page });
-            throw new Error('Failed to load comparison steps');
-        }
-
-        if (!stepsChunk || stepsChunk.length === 0) break;
-
-        allSteps = allSteps.concat(stepsChunk);
-
-        if (stepsChunk.length < pageSize) break; // Reached end
-        page++;
+    if (stepsError) {
+        throwGroupComparisonFailure('stepsDatabase');
     }
+    const allSteps = parseStepRows(
+        stepData,
+        stepCount,
+        new Set(memberIds),
+        minDateStr,
+        todayStr,
+    );
 
     if (allSteps.length === 0) {
-        const empty = { data: [], users: [] };
-        return { DAILY: empty, WEEKLY: empty, MONTHLY: empty, YEARLY: empty };
+        return createEmptyComparisonData();
     }
 
     // Identify Top 10 based on Total Steps in the fetched range
     const userTotals = new Map<string, number>();
-    const userIdToName = new Map<string, string>();
-
     allSteps.forEach((row) => {
-        const uid = row.user_id;
-        const safeSteps = Number(row.steps);
-        const stepsToAdd = isNaN(safeSteps) ? 0 : safeSteps;
-        userTotals.set(uid, (userTotals.get(uid) || 0) + stepsToAdd);
-
-        // Robust name resolution
-        // Optimization: Use in-memory map instead of row.users
-        const u = userMap.get(uid);
-        const displayName = u?.username || u?.name || 'Unknown';
-        userIdToName.set(uid, displayName);
+        userTotals.set(row.user_id, addSafeSteps(userTotals.get(row.user_id) ?? 0, row.steps));
     });
 
     const topUserIds = Array.from(userTotals.entries())
-        .sort((a, b) => b[1] - a[1])
+        .sort(([firstId, firstSteps], [secondId, secondSteps]) =>
+            secondSteps - firstSteps || firstId.localeCompare(secondId))
         .slice(0, 10)
-        .map(e => e[0]);
+        .map(([userId]) => userId);
 
     if (currentUserId && memberIds.includes(currentUserId) && !topUserIds.includes(currentUserId)) {
         topUserIds.push(currentUserId);
@@ -184,12 +383,13 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
         '#8B5CF6', '#EF4444', '#06B6D4', '#84CC16', '#F97316'
     ];
     const chartUsers = topUserIds.map((uid, i) => ({
-        username: userIdToName.get(uid) || 'Unknown',
+        username: userIdToName.get(uid) ?? throwGroupComparisonFailure('usersIncomplete'),
         color: colors[i % colors.length]
     }));
 
     // Filter steps to only top users
-    const relevantSteps = allSteps.filter((r) => topUserIds.includes(r.user_id));
+    const topUserIdSet = new Set(topUserIds);
+    const relevantSteps = allSteps.filter((row) => topUserIdSet.has(row.user_id));
 
     // 4. Build Data for each Period
 
@@ -269,9 +469,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
 
         // Fill Data
         relevantSteps.forEach((row) => {
-            // NORMALIZE DATE: Extract YYYY-MM-DD only
-            const rowDateRaw = row.date;
-            const rowDateStr = rowDateRaw.length >= 10 ? rowDateRaw.substring(0, 10) : rowDateRaw;
+            const rowDateStr = row.date;
 
             if (rowDateStr < startStr || rowDateStr > endStr) return;
 
@@ -285,15 +483,16 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
             }
 
             if (map.has(key)) {
-                const p = map.get(key)!;
-                const username = userIdToName.get(row.user_id);
-                if (username) {
-                    const currentVal = typeof p[username] === 'number' ? p[username] as number : 0;
-                    const increment = Number(row.steps);
-                    // Ensure we don't propagate NaNs
-                    const safeIncrement = isNaN(increment) ? 0 : increment;
-                    p[username] = currentVal + safeIncrement;
+                const p = map.get(key);
+                if (!p) {
+                    throwGroupComparisonFailure('stepsInvalid');
                 }
+                const username = userIdToName.get(row.user_id);
+                if (!username) {
+                    throwGroupComparisonFailure('usersIncomplete');
+                }
+                const currentVal = typeof p[username] === 'number' ? p[username] : 0;
+                p[username] = addSafeSteps(currentVal, row.steps);
             }
         });
 
