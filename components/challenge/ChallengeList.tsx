@@ -8,10 +8,15 @@ import { useTranslations } from 'next-intl';
 
 import ChallengeCard from '@/components/challenge/ChallengeCard';
 import {
+    MAX_CHALLENGE_PROGRESS_BATCH_SIZE,
+    parseChallengeProgressBatchResponse,
+} from '@/lib/challenge-progress';
+import {
     getChallengePriorityMetrics,
     isActionableChallenge,
     sortChallengesForAction,
 } from '@/lib/services/challenge-utils';
+import type { ChallengeProgressRecordStatus } from '@/lib/challenge-progress';
 
 const ChallengeGearBanner = dynamic(() => import('@/components/challenge/ChallengeGearBanner'));
 const EditChallengeModal = dynamic(() => import('@/components/challenge/EditChallengeModal'));
@@ -47,6 +52,9 @@ interface ChallengeListProps {
 }
 
 type TabKey = 'active' | 'completed' | 'my';
+type ChallengeProgressDisplayStatus =
+    | ChallengeProgressRecordStatus
+    | 'unavailable';
 
 const TAB_ORDER: readonly TabKey[] = ['active', 'completed', 'my'];
 
@@ -57,6 +65,9 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [progressMap, setProgressMap] = useState<Record<string, number | null>>({});
+    const [progressStatusMap, setProgressStatusMap] = useState<
+        Record<string, ChallengeProgressDisplayStatus>
+    >({});
     const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
     const requestIdRef = useRef(0);
     const abortControllerRef = useRef<AbortController | null>(null);
@@ -79,6 +90,7 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
         setLoading(true);
         setError(null);
         setProgressMap({});
+        setProgressStatusMap({});
         try {
             const res = await fetch(`/api/challenge?status=${status}`, {
                 signal: abortController.signal,
@@ -89,41 +101,55 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
                 ? data.challenges
                 : [];
             const nextProgressMap: Record<string, number | null> = {};
+            const nextProgressStatusMap: Record<string, ChallengeProgressDisplayStatus> = {};
 
-            // 参加済みチャレンジの進捗を取得
             const joined = nextChallenges.filter((challenge) => challenge.is_joined);
             if (joined.length > 0) {
-                const progressEntries = await Promise.all(
-                    joined.map(async (c: Challenge) => {
-                        try {
-                            const res = await fetch(`/api/challenge/${c.id}/progress`, {
-                                signal: abortController.signal,
-                            });
-                            if (!res.ok) return [c.id, null];
-                            const pData = await res.json();
-                            const totalSteps = pData.progress?.total_steps;
-                            return [
-                                c.id,
-                                typeof totalSteps === 'number' && Number.isFinite(totalSteps)
-                                    ? totalSteps
-                                    : null,
-                            ];
-                        } catch (progressError: unknown) {
-                            if (
-                                progressError instanceof DOMException
-                                && progressError.name === 'AbortError'
-                            ) {
-                                throw progressError;
+                const joinedIds = joined.map((challenge) => challenge.id);
+                for (const challengeId of joinedIds) {
+                    nextProgressMap[challengeId] = null;
+                    nextProgressStatusMap[challengeId] = 'unavailable';
+                }
+                if (joinedIds.length <= MAX_CHALLENGE_PROGRESS_BATCH_SIZE) {
+                    try {
+                        const progressResponse = await fetch('/api/challenge/progress', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ challengeIds: joinedIds }),
+                            signal: abortController.signal,
+                        });
+                        if (progressResponse.ok) {
+                            const parsed = parseChallengeProgressBatchResponse(
+                                await progressResponse.json(),
+                                joinedIds,
+                            );
+                            if (parsed) {
+                                for (const result of parsed.results) {
+                                    if (result.status !== 'ok') continue;
+                                    const { progress } = result;
+                                    nextProgressStatusMap[result.challenge_id] =
+                                        progress.record_status;
+                                    nextProgressMap[result.challenge_id] =
+                                        progress.record_status === 'recorded'
+                                            ? progress.total_steps
+                                            : null;
+                                }
                             }
-                            return [c.id, null];
                         }
-                    })
-                );
-                Object.assign(nextProgressMap, Object.fromEntries(progressEntries));
+                    } catch (progressError: unknown) {
+                        if (
+                            progressError instanceof DOMException
+                            && progressError.name === 'AbortError'
+                        ) {
+                            throw progressError;
+                        }
+                    }
+                }
             }
             if (requestIdRef.current !== requestId) return;
             setChallenges(nextChallenges);
             setProgressMap(nextProgressMap);
+            setProgressStatusMap(nextProgressStatusMap);
         } catch (fetchError: unknown) {
             if (fetchError instanceof DOMException && fetchError.name === 'AbortError') return;
             if (requestIdRef.current === requestId) {
@@ -387,6 +413,7 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
                             key={challenge.id}
                             challenge={challenge}
                             progress={progressMap[challenge.id]}
+                            progressStatus={progressStatusMap[challenge.id]}
                             currentUserId={currentUserId}
                             onJoin={handleJoin}
                             onLeave={handleLeave}

@@ -1475,6 +1475,8 @@
     "joinFailed": "チャレンジに参加できませんでした",
     "leaveFailed": "チャレンジから離脱できませんでした",
     "progressUnavailable": "進捗を取得できませんでした。時間をおいて再度お試しください。",
+    "progressNotRecorded": "この期間の歩数はまだ記録されていません。歩数を同期すると進捗へ反映されます。",
+    "progressNotStarted": "進捗の集計は{date}から始まります。",
     "priorityTitle": "次に集中するチャレンジ",
     "priorityRemaining": "あと{steps}歩で達成",
     "priorityNextStep": "まず次の{steps}歩から",

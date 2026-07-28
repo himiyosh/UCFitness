@@ -29,6 +29,10 @@ interface GroupChallengeReference {
     group_id: string | null;
 }
 
+interface GroupAuthorizationOptions {
+    reportFailure?: boolean;
+}
+
 export function isGroupManagerRole(role: unknown): role is 'OWNER' | 'ADMIN' {
     return role === 'OWNER' || role === 'ADMIN';
 }
@@ -37,6 +41,7 @@ export async function authorizeGroupManagement(
     groupId: string,
     userId: string,
     operation: string,
+    options: GroupAuthorizationOptions = {},
 ): Promise<GroupManagementAuthorization> {
     const [groupResult, membershipResult] = await Promise.all([
         supabaseAdmin
@@ -53,11 +58,15 @@ export async function authorizeGroupManagement(
     ]);
 
     if (groupResult.error) {
-        reportError(`${operation}:group`, groupResult.error, { userId, groupId });
+        if (options.reportFailure !== false) {
+            reportError(`${operation}:group`, groupResult.error, { userId, groupId });
+        }
         return { allowed: false, status: 500 };
     }
     if (membershipResult.error) {
-        reportError(`${operation}:membership`, membershipResult.error, { userId, groupId });
+        if (options.reportFailure !== false) {
+            reportError(`${operation}:membership`, membershipResult.error, { userId, groupId });
+        }
         return { allowed: false, status: 500 };
     }
     if (!groupResult.data) {
@@ -77,6 +86,7 @@ export async function authorizeGroupParticipation(
     groupId: string,
     userId: string,
     operation: string,
+    options: GroupAuthorizationOptions = {},
 ): Promise<GroupParticipationAuthorization> {
     const [groupResult, membershipResult] = await Promise.all([
         supabaseAdmin
@@ -93,7 +103,13 @@ export async function authorizeGroupParticipation(
     ]);
     if (groupResult.error || membershipResult.error) {
         const source = groupResult.error ? 'group' : 'membership';
-        reportError(`${operation}:${source}`, groupResult.error ?? membershipResult.error, { userId, groupId });
+        if (options.reportFailure !== false) {
+            reportError(
+                `${operation}:${source}`,
+                groupResult.error ?? membershipResult.error,
+                { userId, groupId },
+            );
+        }
         return { allowed: false, status: 500 };
     }
     if (!groupResult.data || (!groupResult.data.is_public && !membershipResult.data)) {
@@ -109,17 +125,20 @@ export async function authorizeChallengeGroup(
     userId: string,
     action: 'participate' | 'manage',
     operation: string,
+    options: GroupAuthorizationOptions = {},
 ): Promise<GroupParticipationAuthorization | GroupManagementAuthorization> {
     if (challenge.type !== 'GROUP') {
         return { allowed: true };
     }
     if (!isValidUUID(challenge.group_id)) {
-        reportError(`${operation}:group`, new Error('GROUP challenge has no valid group_id'));
+        if (options.reportFailure !== false) {
+            reportError(`${operation}:group`, new Error('GROUP challenge has no valid group_id'));
+        }
         return { allowed: false, status: 500 };
     }
     return action === 'manage'
-        ? authorizeGroupManagement(challenge.group_id, userId, operation)
-        : authorizeGroupParticipation(challenge.group_id, userId, operation);
+        ? authorizeGroupManagement(challenge.group_id, userId, operation, options)
+        : authorizeGroupParticipation(challenge.group_id, userId, operation, options);
 }
 
 export async function authorizeGroupView(

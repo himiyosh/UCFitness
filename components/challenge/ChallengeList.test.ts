@@ -108,14 +108,18 @@ describe('ChallengeList Hall of Fame', () => {
                         {...baseChallenge, id: 'history-unjoined', title: 'History unjoined', end_date: '2020-01-02', is_joined: false},
                         {...baseChallenge, id: 'history-achieved', title: 'History achieved', end_date: '2020-01-02', is_joined: true},
                         {...baseChallenge, id: 'history-incomplete', title: 'History incomplete', end_date: '2020-01-02', is_joined: true},
+                        {...baseChallenge, id: 'history-unavailable', title: 'History unavailable', end_date: '2020-01-02', is_joined: true},
                     ];
                     const progressById = {
                         'active-more': 1000,
                         'active-less': 9000,
                         'ending-joined': 5000,
-                        'ending-creator': 5000,
+                        'ending-creator': 0,
                         'history-achieved': 12000,
-                        'history-incomplete': 5000,
+                        'history-incomplete': 0,
+                    };
+                    const progressRecordStatusById = {
+                        'ending-creator': 'not_recorded',
                     };
                     const detailChallenges = new Map();
                     let dashboardChallenges = [];
@@ -182,6 +186,127 @@ describe('ChallengeList Hall of Fame', () => {
                                 }),
                             };
                         }
+                        if (url.pathname === '/api/challenge/progress' && init.method === 'POST') {
+                            const count = Number(
+                                document.body.dataset.challengeProgressBatchCount ?? '0',
+                            );
+                            document.body.dataset.challengeProgressBatchCount = String(count + 1);
+                            const body = typeof init.body === 'string'
+                                ? JSON.parse(init.body)
+                                : {};
+                            const challengeIds = Array.isArray(body.challengeIds)
+                                ? body.challengeIds
+                                : [];
+                            const bodies = JSON.parse(
+                                document.body.dataset.challengeProgressBatchBodies ?? '[]',
+                            );
+                            bodies.push(challengeIds);
+                            document.body.dataset.challengeProgressBatchBodies =
+                                JSON.stringify(bodies);
+                            const buildResponse = () => ({
+                                ok: true,
+                                json: async () => ({
+                                    results: challengeIds.map((challengeId) => {
+                                        const totalSteps = progressById[challengeId];
+                                        if (totalSteps === undefined) {
+                                            return {
+                                                challenge_id: challengeId,
+                                                status: 'not_participating',
+                                                progress: null,
+                                            };
+                                        }
+                                        const recordStatus =
+                                            progressRecordStatusById[challengeId] ?? 'recorded';
+                                        return {
+                                            challenge_id: challengeId,
+                                            status: 'ok',
+                                            progress: {
+                                                total_steps: totalSteps,
+                                                target_steps: 10000,
+                                                progress_percent: Math.min(
+                                                    100,
+                                                    Math.round((totalSteps / 10000) * 100),
+                                                ),
+                                                is_completed: totalSteps >= 10000,
+                                                completed_at: null,
+                                                reward_uc: 500,
+                                                type: 'INDIVIDUAL',
+                                                record_status: recordStatus,
+                                                schedule_status: challengeId.startsWith('history-')
+                                                    ? 'ended'
+                                                    : 'active',
+                                            },
+                                        };
+                                    }),
+                                }),
+                            });
+                            if (document.body.dataset.delayNextChallengeProgress === 'true') {
+                                delete document.body.dataset.delayNextChallengeProgress;
+                                const started = Number(
+                                    document.body.dataset.challengeDelayedProgressStarted ?? '0',
+                                );
+                                document.body.dataset.challengeDelayedProgressStarted =
+                                    String(started + 1);
+                                return new Promise((resolve, reject) => {
+                                    let settled = false;
+                                    const handleAbort = () => {
+                                        if (settled) return;
+                                        settled = true;
+                                        const abortCount = Number(
+                                            document.body.dataset.challengeProgressAbortCount ?? '0',
+                                        );
+                                        document.body.dataset.challengeProgressAbortCount =
+                                            String(abortCount + 1);
+                                        reject(new DOMException('Aborted', 'AbortError'));
+                                    };
+                                    init.signal?.addEventListener('abort', handleAbort, {
+                                        once: true,
+                                    });
+                                    globalThis.resolveDelayedChallengeProgress = () => {
+                                        if (settled) return;
+                                        settled = true;
+                                        init.signal?.removeEventListener('abort', handleAbort);
+                                        resolve(buildResponse());
+                                    };
+                                });
+                            }
+                            return buildResponse();
+                        }
+                        const actionMatch = url.pathname.match(
+                            /^\\/api\\/challenge\\/([^/]+)\\/(join|leave)$/,
+                        );
+                        if (actionMatch) {
+                            const [, challengeId, action] = actionMatch;
+                            const challenge = activeChallenges.find(
+                                (candidate) => candidate.id === challengeId,
+                            );
+                            if (!challenge) {
+                                return {ok: false, status: 404, json: async () => ({})};
+                            }
+                            if (action === 'join' && init.method === 'POST') {
+                                challenge.is_joined = true;
+                                challenge.participant_count += 1;
+                                progressById[challengeId] = 0;
+                                const count = Number(
+                                    document.body.dataset.challengeJoinCount ?? '0',
+                                );
+                                document.body.dataset.challengeJoinCount = String(count + 1);
+                                return {ok: true, status: 200, json: async () => ({success: true})};
+                            }
+                            if (action === 'leave' && init.method === 'DELETE') {
+                                challenge.is_joined = false;
+                                challenge.participant_count = Math.max(
+                                    0,
+                                    challenge.participant_count - 1,
+                                );
+                                delete progressById[challengeId];
+                                const count = Number(
+                                    document.body.dataset.challengeLeaveCount ?? '0',
+                                );
+                                document.body.dataset.challengeLeaveCount = String(count + 1);
+                                return {ok: true, status: 200, json: async () => ({success: true})};
+                            }
+                        }
                         const detailMatch = url.pathname.match(/^\\/api\\/challenge\\/(detail-[^/]+)$/);
                         if (detailMatch) {
                             const challenge = detailChallenges.get(detailMatch[1]);
@@ -192,6 +317,10 @@ describe('ChallengeList Hall of Fame', () => {
                         }
                         const progressMatch = url.pathname.match(/^\\/api\\/challenge\\/([^/]+)\\/progress$/);
                         if (progressMatch) {
+                            const count = Number(
+                                document.body.dataset.challengeProgressSingleCount ?? '0',
+                            );
+                            document.body.dataset.challengeProgressSingleCount = String(count + 1);
                             const totalSteps = progressById[progressMatch[1]];
                             return {
                                 ok: totalSteps !== undefined,
@@ -628,9 +757,9 @@ describe('ChallengeList Hall of Fame', () => {
                 await activeHeading.waitFor();
                 expect(await page.locator('[role="tabpanel"] h3').allTextContents()).toEqual([
                     'Active less remaining',
-                    'Ending creator',
                     'Ending joined',
                     'Active more remaining',
+                    'Ending creator',
                     'Ending unjoined',
                     'Visibility ending',
                     'Active unjoined',
@@ -667,6 +796,58 @@ describe('ChallengeList Hall of Fame', () => {
                     '2099-01-02',
                 );
                 expect(await startedJoin.count()).toBe(1);
+                expect(await endingCreatorCard.innerText()).toContain(
+                    messages.progressNotRecorded,
+                );
+                const initialBatchBodies = await page.evaluate(() => JSON.parse(
+                    document.body.dataset.challengeProgressBatchBodies ?? '[]',
+                ));
+                expect(initialBatchBodies.at(-1)).toEqual([
+                    'active-more',
+                    'active-less',
+                    'ending-joined',
+                    'ending-creator',
+                ]);
+                expect(await page.locator('body').getAttribute(
+                    'data-challenge-progress-single-count',
+                )).toBeNull();
+
+                const joinCountBefore = Number(
+                    await page.locator('body').getAttribute('data-challenge-join-count') ?? '0',
+                );
+                await startedJoin.click();
+                const startedLeave = startedCard.getByRole('button', {
+                    name: messages.leave,
+                    exact: true,
+                });
+                await startedLeave.waitFor();
+                expect(Number(
+                    await page.locator('body').getAttribute('data-challenge-join-count'),
+                )).toBe(joinCountBefore + 1);
+                expect(await startedCard.innerText()).toContain('0 / 10,000');
+                const afterJoinBodies = await page.evaluate(() => JSON.parse(
+                    document.body.dataset.challengeProgressBatchBodies ?? '[]',
+                ));
+                expect(afterJoinBodies.at(-1)).toHaveLength(5);
+
+                const leaveCountBefore = Number(
+                    await page.locator('body').getAttribute('data-challenge-leave-count') ?? '0',
+                );
+                await startedLeave.click();
+                const leaveDialog = page.getByRole('alertdialog');
+                await leaveDialog.getByRole('button', {
+                    name: messages.leave,
+                    exact: true,
+                }).click();
+                await leaveDialog.waitFor({ state: 'detached' });
+                await startedJoin.waitFor();
+                expect(Number(
+                    await page.locator('body').getAttribute('data-challenge-leave-count'),
+                )).toBe(leaveCountBefore + 1);
+                const afterLeaveBodies = await page.evaluate(() => JSON.parse(
+                    document.body.dataset.challengeProgressBatchBodies ?? '[]',
+                ));
+                expect(afterLeaveBodies.at(-1)).toHaveLength(4);
                 expect(await upcomingCard.getByRole('button', {
                     name: messages.join,
                     exact: true,
@@ -874,6 +1055,7 @@ describe('ChallengeList Hall of Fame', () => {
                     'History unjoined',
                     'History achieved',
                     'History incomplete',
+                    'History unavailable',
                 ]);
 
                 const unjoinedCard = historyPanel
@@ -885,9 +1067,13 @@ describe('ChallengeList Hall of Fame', () => {
                 const incompleteCard = historyPanel
                     .locator('h3', { hasText: 'History incomplete' })
                     .locator('..');
+                const unavailableCard = historyPanel
+                    .locator('h3', { hasText: 'History unavailable' })
+                    .locator('..');
                 const unjoinedText = await unjoinedCard.innerText();
                 const achievedText = await achievedCard.innerText();
                 const incompleteText = await incompleteCard.innerText();
+                const unavailableText = await unavailableCard.innerText();
                 expect(unjoinedText).toContain(messages.ended);
                 expect(unjoinedText).not.toContain(messages.detailCompleted);
                 expect(achievedText).toContain(messages.ended);
@@ -895,6 +1081,11 @@ describe('ChallengeList Hall of Fame', () => {
                 expect(incompleteText).toContain(messages.ended);
                 expect(incompleteText).toContain(messages.joined);
                 expect(incompleteText).not.toContain(messages.detailCompleted);
+                expect(incompleteText).toContain('0 / 10,000');
+                expect(incompleteText).not.toContain(messages.progressNotRecorded);
+                expect(incompleteText).not.toContain(messages.progressUnavailable);
+                expect(unavailableText).toContain(messages.progressUnavailable);
+                expect(unavailableText).not.toContain('0 / 10,000');
 
                 for (const width of [320, 375, 1280]) {
                     await page.setViewportSize({ width, height: 800 });
@@ -937,6 +1128,32 @@ describe('ChallengeList Hall of Fame', () => {
                     document.querySelector('[role="tabpanel"]')?.getAttribute('aria-busy') === 'false'
                 ));
                 expect(await myPanel.innerText()).toContain(messages.listEmptyMy);
+
+                const raceCountsBefore = await page.evaluate(() => ({
+                    aborts: Number(
+                        document.body.dataset.challengeProgressAbortCount ?? '0',
+                    ),
+                    delayed: Number(
+                        document.body.dataset.challengeDelayedProgressStarted ?? '0',
+                    ),
+                }));
+                await page.evaluate(() => {
+                    document.body.dataset.delayNextChallengeProgress = 'true';
+                });
+                await activeTab.click();
+                await page.waitForFunction((expectedCount) => (
+                    Number(document.body.dataset.challengeDelayedProgressStarted ?? '0')
+                        === expectedCount
+                ), raceCountsBefore.delayed + 1);
+                await historyTab.click();
+                await page.locator('h3', { hasText: 'History incomplete' }).waitFor();
+                expect(Number(
+                    await page.locator('body').getAttribute(
+                        'data-challenge-progress-abort-count',
+                    ),
+                )).toBe(raceCountsBefore.aborts + 1);
+                expect(await page.locator('h3', { hasText: 'Active less remaining' }).count())
+                    .toBe(0);
 
                 await page.clock.setSystemTime(new Date('2099-03-01T14:59:59.800Z'));
                 await page.evaluate(() => {
@@ -1834,7 +2051,29 @@ describe('ChallengeList Hall of Fame', () => {
             }
 
             expect(await page.locator('body').getAttribute('data-challenge-requests'))
-                .toBe('active,active,completed,my,active,active,completed,my');
+                .toBe(
+                    'active,active,active,active,completed,my,active,completed,'
+                    + 'active,active,active,active,completed,my,active,completed',
+                );
+            expect(await page.locator('body').getAttribute(
+                'data-challenge-progress-batch-count',
+            )).toBe('14');
+            expect(await page.evaluate(() => JSON.parse(
+                document.body.dataset.challengeProgressBatchBodies ?? '[]',
+            ).map((challengeIds: unknown[]) => challengeIds.length))).toEqual([
+                4, 4, 5, 4, 3, 4, 3,
+                4, 4, 5, 4, 3, 4, 3,
+            ]);
+            expect(await page.locator('body').getAttribute(
+                'data-challenge-progress-single-count',
+            )).toBeNull();
+            expect(await page.locator('body').getAttribute(
+                'data-challenge-progress-abort-count',
+            )).toBe('2');
+            expect(await page.locator('body').getAttribute('data-challenge-join-count'))
+                .toBe('2');
+            expect(await page.locator('body').getAttribute('data-challenge-leave-count'))
+                .toBe('2');
             expect(pageErrors).toEqual([]);
             expect(consoleErrors).toEqual([]);
         } finally {

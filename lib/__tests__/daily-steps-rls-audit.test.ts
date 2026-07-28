@@ -30,7 +30,6 @@ const expectedDailyStepsSources = [
     'app/[locale]/user/[username]/page.tsx',
     'app/[locale]/wallet/page.tsx',
     'app/api/amazon/personalized/route.ts',
-    'app/api/challenge/[challengeId]/progress/route.ts',
     'app/api/challenge/[challengeId]/route.ts',
     'app/api/cron/step-reminder/route.ts',
     'app/api/cron/weekly-summary/route.ts',
@@ -49,6 +48,7 @@ const expectedDailyStepsSources = [
     'app/api/user/step-calendar/route.ts', 'app/api/user/weekly-goal/route.ts',
     'lib/services/analytics-service.ts', 'lib/services/badge-allocator.ts',
     'lib/services/badge-awards.ts', 'lib/services/coin-service.ts',
+    'lib/services/challenge-progress-service.ts',
     'lib/services/group-comparison-service.ts', 'lib/services/title-achievement-service.ts',
     'lib/supabase-utils.ts', 'scripts/check_group_info.ts',
 ].sort();

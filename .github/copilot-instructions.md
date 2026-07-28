@@ -398,6 +398,13 @@ UCFitness は**フィットネスゲーム**であり、ユーザーが**毎日�
 - **障害を空状態へ偽装しない** — 取得失敗時に空ランキング・空メンバーを正常状態として表示しない。メンバー管理Dialog内も明示的な取得不能状態にし、部分的に取得できた不正形状は警告して有効行だけを表示する
 - **未所属の次行動を明示する** — グループ未所属空状態は、44px以上のCTAで同一ページの参加パネルへ移動できること。リファレンス: `app/[locale]/groups/page.tsx`, `app/[locale]/groups/[groupId]/page.tsx`, `lib/services/ranking-service.ts`, `lib/services/group-ranking-service.ts`
 
+### チャレンジ進捗一括取得契約
+
+- **表示対象だけを厳格に一括化する** — ChallengeListは表示中の参加済みchallenge IDだけを`POST /api/challenge/progress`へ送り、bodyを`{ challengeIds: string[] }`の1〜50件・重複なしUUIDに限定する。全challenge取得、上限なし配列、項目ごとのbrowser GETを使わない
+- **認証共有と単件意味論を両立する** — batch routeはrequest単位で認証を1回だけ行い、server-only単件serviceを最大4 workerで実行する。各challengeの現GROUP membership認可、GROUP RPC再認可、fresh歩数再計算、`challenge_participants`永続化を維持し、既存単件GETも同じserviceを再利用する
+- **状態を0へ偽装しない** — batch項目は`ok` / `not_found` / `forbidden` / `not_participating` / `unavailable`を分け、成功時も`record_status`と`schedule_status`で未記録・記録済み0・開始前・active・終了を明示する。partial failureは他項目を止めず、壊れたDB/API shapeを0や空へ変換しない
+- **旧応答を隔離する** — Clientは一覧1世代につきprogress batchを1回だけ発行し、AbortController、request ID、mounted ref、最新tab refをjoin / leave / tab変更でも維持する。実Chrome回帰で表示N件に対するprogress HTTPがN回ではなく1回、旧batchがAbortされ後着しないことを固定する。リファレンス: `components/challenge/ChallengeList.tsx`, `lib/services/challenge-progress-service.ts`, `app/api/challenge/progress/route.ts`
+
 ### ユーザー項目のプロフィール遷移（必須）
 
 **ユーザーのアバター・名前・行を表示するすべてのコンポーネントで、ユーザー行クリック時に `/user/{username}` プロフィールページへ遷移する機能を必ず実装すること。**

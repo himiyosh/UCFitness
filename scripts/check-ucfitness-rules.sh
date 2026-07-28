@@ -690,6 +690,18 @@ if [ -z "$challenge_list_line" ] || [ -z "$challenge_create_line" ] || \
    ! grep -q 'Math.floor((progressValue / challenge.target_steps)' components/challenge/ChallengeCard.tsx; then
   record "Challenge参加中優先/期限報酬/未達99%/作成補助導線契約欠落" "ChallengesPageClient / ChallengeList / ChallengeCard"
 fi
+if ! grep -Fq "fetch('/api/challenge/progress'" components/challenge/ChallengeList.tsx || \
+   grep -Eq '/api/challenge/\$\{[^}]+\}/progress' components/challenge/ChallengeList.tsx || \
+   ! grep -Fq 'MAX_CHALLENGE_PROGRESS_BATCH_SIZE = 50' lib/challenge-progress.ts || \
+   ! grep -Fq 'CHALLENGE_PROGRESS_BATCH_CONCURRENCY = 4' lib/challenge-progress.ts || \
+   ! grep -Fq 'parseChallengeProgressBatchRequest' app/api/challenge/progress/route.ts || \
+   ! grep -Fq 'getFreshChallengeProgressBatch' app/api/challenge/progress/route.ts || \
+   ! grep -Fq 'getFreshChallengeProgress' 'app/api/challenge/[challengeId]/progress/route.ts' || \
+   ! grep -Fq 'data-challenge-progress-batch-count' components/challenge/ChallengeList.test.ts || \
+   ! grep -Fq 'data-challenge-progress-single-count' components/challenge/ChallengeList.test.ts || \
+   ! grep -Fq 'data-challenge-progress-abort-count' components/challenge/ChallengeList.test.ts; then
+  record "Challenge進捗の50件上限・4並列service再利用・単一batch HTTP・Abort回帰契約欠落" "Challenge progress API / service / ChallengeList"
+fi
 if grep -Eq 'T23:59:59|new Date\([^)]*(start_date|end_date)' \
      components/challenge/ChallengeDetailModal.tsx \
      components/dashboard/DashboardChallenges.tsx || \
