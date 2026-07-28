@@ -104,18 +104,9 @@ function progressFailure(stage: ChallengeProgressFailureStage): AppError {
     );
 }
 
-export function normalizeChallengeProgressFailure(error: unknown): AppError {
-    return error instanceof AppError
-        && error.code === CHALLENGE_PROGRESS_UNAVAILABLE_CODE
-        ? error
-        : progressFailure('unexpected');
-}
-
-export function getChallengeProgressFailureStage(
-    error: unknown,
+function parseChallengeProgressFailureStage(
+    stage: unknown,
 ): ChallengeProgressFailureStage {
-    const normalized = normalizeChallengeProgressFailure(error);
-    const stage = normalized.context?.stage;
     switch (stage) {
         case 'authorization':
         case 'batch-input':
@@ -135,6 +126,21 @@ export function getChallengeProgressFailureStage(
         default:
             return 'unexpected';
     }
+}
+
+export function normalizeChallengeProgressFailure(error: unknown): AppError {
+    const stage = error instanceof AppError
+        && error.code === CHALLENGE_PROGRESS_UNAVAILABLE_CODE
+        ? parseChallengeProgressFailureStage(error.context?.stage)
+        : 'unexpected';
+    return progressFailure(stage);
+}
+
+export function getChallengeProgressFailureStage(
+    error: unknown,
+): ChallengeProgressFailureStage {
+    const normalized = normalizeChallengeProgressFailure(error);
+    return parseChallengeProgressFailureStage(normalized.context?.stage);
 }
 
 function isChallengeProgressChallenge(

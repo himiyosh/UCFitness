@@ -3,8 +3,9 @@ export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
 import {
+    CHALLENGE_PROGRESS_UNAVAILABLE_CODE,
     getChallengeProgressFailureStage,
     getFreshChallengeProgress,
     normalizeChallengeProgressFailure,
@@ -41,12 +42,14 @@ export async function GET(
     _req: NextRequest,
     { params }: { params: Promise<{ challengeId: string }> },
 ): Promise<NextResponse> {
-    const session = await auth();
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    let authenticationComplete = false;
     try {
+        const session = await auth();
+        authenticationComplete = true;
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { challengeId } = await params;
         const canonicalChallengeId = parseCanonicalUUID(challengeId);
         if (canonicalChallengeId === null) {
@@ -68,7 +71,13 @@ export async function GET(
             { status: 403 },
         );
     } catch (error: unknown) {
-        const normalized = normalizeChallengeProgressFailure(error);
+        const normalized = authenticationComplete
+            ? normalizeChallengeProgressFailure(error)
+            : new AppError(
+                'Challenge progress request failed',
+                CHALLENGE_PROGRESS_UNAVAILABLE_CODE,
+                { stage: 'unexpected' },
+            );
         reportError('challenge:progress', normalized);
         return NextResponse.json(
             { error: getFailureMessage(getChallengeProgressFailureStage(normalized)) },

@@ -94,6 +94,15 @@ describe('GROUP challenge操作認可', () => {
         ['leave', (ctx = context) => DELETE(request('DELETE'), ctx)],
     ] as const;
     const allOperations = [...operations, ['update', (ctx = context) => PUT(request('PUT'), ctx)] as const];
+    it('progressは未認証の場合、DB処理前に401を返す', async () => {
+        mocks.auth.mockResolvedValue(null);
+
+        const response = await GET(request(), context);
+
+        expect(response.status).toBe(401);
+        expect(mocks.from).not.toHaveBeenCalled();
+        expect(mocks.reportError).not.toHaveBeenCalled();
+    });
     it.each(allOperations)('%sは不正UUIDをDB前に400で拒否する', async (_name, invoke) => {
         const response = await invoke({ params: Promise.resolve({ challengeId: 'invalid' }) });
         expect(response.status).toBe(400); expect(mocks.from).not.toHaveBeenCalled();

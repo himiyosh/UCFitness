@@ -6,6 +6,7 @@ import { MAX_CHALLENGE_PROGRESS_BATCH_SIZE } from '@/lib/challenge-progress';
 
 const mocks = vi.hoisted(() => ({
     auth: vi.fn(),
+    getChallengeProgressFailureStage: vi.fn(),
     getFreshChallengeProgressBatch: vi.fn(),
     reportError: vi.fn(),
 }));
@@ -18,6 +19,7 @@ vi.mock('@/lib/errors', async (importOriginal) => ({
 }));
 vi.mock('@/lib/services/challenge-progress-service', () => ({
     CHALLENGE_PROGRESS_UNAVAILABLE_CODE: 'CHALLENGE_PROGRESS_UNAVAILABLE',
+    getChallengeProgressFailureStage: mocks.getChallengeProgressFailureStage,
     getFreshChallengeProgressBatch: mocks.getFreshChallengeProgressBatch,
 }));
 
@@ -39,6 +41,7 @@ function request(body: unknown): NextRequest {
 beforeEach(() => {
     vi.clearAllMocks();
     mocks.auth.mockResolvedValue({ user: { id: USER_ID } });
+    mocks.getChallengeProgressFailureStage.mockReturnValue('unexpected');
     mocks.getFreshChallengeProgressBatch.mockResolvedValue([
         {
             challenge_id: FIRST_ID,
