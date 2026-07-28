@@ -27,6 +27,10 @@ export function isValidUUID(value: unknown): value is string {
     return typeof value === 'string' && UUID_REGEX.test(value);
 }
 
+export function parseCanonicalUUID(value: unknown): string | null {
+    return isValidUUID(value) ? value.toLowerCase() : null;
+}
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

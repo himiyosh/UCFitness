@@ -398,6 +398,13 @@ UCFitness は**フィットネスゲーム**であり、ユーザーが**毎日�
 - **障害を空状態へ偽装しない** — 取得失敗時に空ランキング・空メンバーを正常状態として表示しない。メンバー管理Dialog内も明示的な取得不能状態にし、部分的に取得できた不正形状は警告して有効行だけを表示する
 - **未所属の次行動を明示する** — グループ未所属空状態は、44px以上のCTAで同一ページの参加パネルへ移動できること。リファレンス: `app/[locale]/groups/page.tsx`, `app/[locale]/groups/[groupId]/page.tsx`, `lib/services/ranking-service.ts`, `lib/services/group-ranking-service.ts`
 
+### チャレンジ進捗一括取得契約
+
+- **表示対象だけを厳格に一括化する** — ChallengeListは表示中の参加済みchallenge IDだけを`POST /api/challenge/progress`へ送り、bodyを`{ challengeIds: string[] }`の1〜50件・重複なしUUIDに限定する。UUIDはcase-insensitive検証の直後にlowercaseへcanonicalizeし、case-only重複、DB query、DB返却ID、batch response照合へ同じ値を使う。全challenge取得、上限なし配列、項目ごとのbrowser GETを使わない
+- **認証共有と単件意味論を両立する** — batch routeはrequest単位で認証を1回だけ行い、server-only単件serviceを最大4 workerで実行する。各challengeの現GROUP membership認可、GROUP RPC再認可、fresh歩数再計算、`challenge_participants`永続化を維持し、既存単件GETも同じserviceを再利用する
+- **状態を0へ偽装しない** — batch項目は`ok` / `not_found` / `forbidden` / `not_participating` / `unavailable`を分け、成功時も`record_status`と`schedule_status`で未記録・記録済み0・開始前・active・終了を明示する。GROUP RPCの合計0は記録済みと推測せず、0歩GROUP全件を1回の`daily_steps` relation queryで取得し、exact count・最大1,000行・challenge参加・現group membership・各期間を照合する。不完全shape、DB障害、上限超過は対象項目を`unavailable`にし、複数OFFSETやGROUP件数分の追加queryを使わない。partial failureは他項目を止めず、壊れたDB/API shapeを0や空へ変換しない
+- **旧応答を隔離する** — Clientは一覧1世代につきprogress batchを1回だけ発行し、AbortController、request ID、mounted ref、最新tab refをjoin / leave / tab変更でも維持する。実Chrome回帰で表示N件に対するprogress HTTPがN回ではなく1回、旧batchがAbortされ後着しないことを固定する。リファレンス: `components/challenge/ChallengeList.tsx`, `lib/services/challenge-progress-service.ts`, `app/api/challenge/progress/route.ts`
+
 ### ユーザー項目のプロフィール遷移（必須）
 
 **ユーザーのアバター・名前・行を表示するすべてのコンポーネントで、ユーザー行クリック時に `/user/{username}` プロフィールページへ遷移する機能を必ず実装すること。**
@@ -1434,6 +1441,8 @@ export const runtime = "edge";
 - **根本原因**: チャレンジを作成/閲覧リソースとして並べ、継続ユーザーの主ジョブ「参加中の未達成を少し進める」を優先度計算へ入れていなかった。進捗`undefined`を0へ変換し、一覧/カード/参加APIでUTC・端末ローカル・JSTが混在した。さらに`ChallengeDetailModal`、`DashboardChallenges`、`GroupEventList`、`GroupEventCard`にoffsetなし`Date`を残し、viewer timezoneで期限が変わっていた。タブ変更中の旧参加操作も古いtabを再取得できた。
 - **対策**: 参加中・active・開始済み・未終了・未達成・進捗取得済みだけを優先帯候補にし、残り歩数→期限→報酬で並べる。主表示は残り総量ではなく最大500歩の次アクション、🔥は残り3日以内だけに限定する。作成ボタンは一覧後の補助導線へ移す。schedule-onlyの共有pure authorityをChallenge一覧、カード、詳細Dialog、Home widgetとGroup Eventのactive/past分類・カードの日付/状態表示のJST期限正本とし、参加APIも同じJST開始日境界を強制する。null/undefinedは取得不能として0へ落とさない。Challengeカードと詳細Dialogは各1件、Home widgetとGroup Event一覧は表示surface全体の最早開始/終了境界だけを上限付きtimerで再スケジュールする。hidden中に境界を跨いだ場合はvisible復帰時に即再計算し、終了後は参加・離脱・編集を遮断して未送信の編集Dialogも閉じる。境界競合submitは同じ純粋時間契約で可視エラーを表示し、保存と入力を無効化する。開始済みPUTが境界を跨いだ場合はDialogを保持して追加送信を遮断し、successだけ更新・close、failureはdraftとalertを残して退出可能にする。更新APIはGROUP認可とcreator確認を終えてからJST当日より前の保存済み`end_date`を拒否し、同じ更新文へ`end_date >= today`を含める。要求された`end_date`も認可完了後に同じJST当日と比較し、前日以前は400 `CHALLENGE_END_DATE_IN_PAST`、当日は許可する。Edit Dialogはこのcodeだけをdraft保持・再送信可能なja/en field alertへ写像し、終了済み409の永久遮断と分離する。0件更新は409 `CHALLENGE_NOT_EDITABLE`としてraw server文を表示せず、ja/enの単一alert、draft保持、追加送信遮断、閉じて一覧へ戻るCTA/Escapeのfocus復帰へ写像する。list/progress取得はAbortController+request generation、参加/離脱後はmounted refと最新tab refで再取得する。
 - **教訓**: リテンション面では「作れるもの」より「今続けているもの」を先にする。期限・報酬は圧力ではなく補足であり、低活動時の主CTAは100〜500歩の達成可能な入口にする。日付駆動UIは初回算出だけで完了とせず、次の意味境界だけを予約し、可視復帰時の再計算とtimer/listener cleanupを同じライフサイクル契約にする。複数項目を持つsurfaceはcardごとでなく最早境界を1本だけ予約し、カードから開くparent-owned Dialogなど別rootの操作面も同じ境界へ接続してsubmit直前に再検証する。非同期mutationのpending中は時刻境界が来ても結果面をunmountせず、操作をdisabledにしてPromiseのsuccess/failureを既存Dialog内へ確定させる。StrictModeでは同じkeyのprop変更で旧timer/listenerが各1本のreplacementへ置換され、最終teardownで0になることを実DOMで固定する。状態を跨ぐ非同期操作は開始時tabのclosureではなく最新refへ戻し、期限の同一判定関数を表示・ソート・最終API認可まで共有する。Client期限ガードはserver authorityの代替ではなく、read後に期限・削除状態が変わり得るwriteは更新文内の保存済み行条件と0件更新の非成功処理でfail closedにする。DB行条件は保存済み行の状態しか保護しないため、更新payloadが新たな禁止状態を作らないことも同じserver authorityで検証し、clientの修正可能なfield errorとterminal conflictを分ける。ChallengeとGroup Eventの各surfaceでdate-only scheduleを直接parseせず共有JST正本へ委譲することをmechanical guardで固定する。リファレンス: `challenge-utils.ts`, `ChallengeList.tsx`, `ChallengeCard.tsx`, `ChallengeDetailModal.tsx`, `EditChallengeModal.tsx`, `DashboardChallenges.tsx`, `GroupEventList.tsx`, `GroupEventCard.tsx`, `ChallengesPageClient.tsx`, `app/api/challenge/[challengeId]/route.ts`
+- **追加教訓**: case-insensitiveに受理する識別子は、検証直後に1つのcanonical表現へ変換し、重複検査・query・DB返却値・response照合を混在させない。UUIDの大小文字違いを別IDとして扱わない
+- **追加教訓**: `COALESCE(SUM(...), 0)`の0だけでは、記録行なしと記録済み0を区別できない。既存集約結果へ意味を追加する場合は行存在を共有bounded queryで確認し、完全性を証明できない上限超過・shape障害を記録済みへ推測しない
 
 ### LL-050: 初回セットアップがプロフィール保存で終わり、歩き始める理由を作れていなかった
 

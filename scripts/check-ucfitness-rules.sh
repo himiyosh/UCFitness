@@ -690,6 +690,25 @@ if [ -z "$challenge_list_line" ] || [ -z "$challenge_create_line" ] || \
    ! grep -q 'Math.floor((progressValue / challenge.target_steps)' components/challenge/ChallengeCard.tsx; then
   record "Challenge参加中優先/期限報酬/未達99%/作成補助導線契約欠落" "ChallengesPageClient / ChallengeList / ChallengeCard"
 fi
+if ! grep -Eq "fetch\\([[:space:]]*['\"]/api/challenge/progress['\"]" components/challenge/ChallengeList.tsx || \
+   grep -Eq '/api/challenge/\$\{[^}]+\}/progress' components/challenge/ChallengeList.tsx || \
+   ! grep -Fq 'MAX_CHALLENGE_PROGRESS_BATCH_SIZE = 50' lib/challenge-progress.ts || \
+   ! grep -Fq 'CHALLENGE_PROGRESS_BATCH_CONCURRENCY = 4' lib/challenge-progress.ts || \
+   ! grep -Fq 'parseCanonicalUUID' lib/challenge-progress.ts || \
+   ! grep -Fq 'parseCanonicalUUID' 'app/api/challenge/[challengeId]/progress/route.ts' || \
+   ! grep -Fq 'MAX_GROUP_PROGRESS_RECORD_ROWS = 1000' lib/services/challenge-progress-service.ts || \
+   ! grep -Fq 'getGroupProgressRecordStatuses' lib/services/challenge-progress-service.ts || \
+   ! grep -Fq "result.total_steps === 0 ? null : 'recorded'" lib/services/challenge-progress-service.ts || \
+   ! grep -Fq 'parseChallengeProgressBatchRequest' app/api/challenge/progress/route.ts || \
+   ! grep -Fq 'getFreshChallengeProgressBatch' app/api/challenge/progress/route.ts || \
+   ! grep -Fq 'getFreshChallengeProgress' 'app/api/challenge/[challengeId]/progress/route.ts' || \
+   ! grep -Fq 'data-challenge-progress-batch-count' components/challenge/ChallengeList.test.ts || \
+   ! grep -Fq 'data-challenge-progress-single-count' components/challenge/ChallengeList.test.ts || \
+   ! grep -Fq 'data-challenge-progress-abort-count' components/challenge/ChallengeList.test.ts || \
+   ! grep -Fq 'case-only duplicate' lib/services/challenge-progress-service.test.ts || \
+   ! grep -Fq '複数の0歩GROUPを1回の共有query' lib/services/challenge-progress-service.test.ts; then
+  record "Challenge進捗のUUID正規化・GROUP 0歩共有取得・50件上限・4並列・単一batch HTTP・Abort契約欠落" "Challenge progress API / service / ChallengeList"
+fi
 if grep -Eq 'T23:59:59|new Date\([^)]*(start_date|end_date)' \
      components/challenge/ChallengeDetailModal.tsx \
      components/dashboard/DashboardChallenges.tsx || \

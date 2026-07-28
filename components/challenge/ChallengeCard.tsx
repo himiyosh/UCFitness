@@ -10,6 +10,7 @@ import {
     getChallengeBoundaryTimerDelay,
     getChallengePriorityMetrics,
 } from '@/lib/services/challenge-utils';
+import type { ChallengeProgressRecordStatus } from '@/lib/challenge-progress';
 
 const ChallengeDetailModal = dynamic(() => import('@/components/challenge/ChallengeDetailModal'));
 
@@ -49,13 +50,22 @@ interface Challenge {
 interface ChallengeCardProps {
     challenge: Challenge;
     progress?: number | null;
+    progressStatus?: ChallengeProgressRecordStatus | 'unavailable';
     currentUserId?: string;
     onJoin?: (challengeId: string) => Promise<void>;
     onLeave?: (challengeId: string) => Promise<void>;
     onEdit?: (challenge: Challenge) => void;
 }
 
-export default function ChallengeCard({ challenge, progress, currentUserId, onJoin, onLeave, onEdit }: ChallengeCardProps) {
+export default function ChallengeCard({
+    challenge,
+    progress,
+    progressStatus,
+    currentUserId,
+    onJoin,
+    onLeave,
+    onEdit,
+}: ChallengeCardProps) {
     const t = useTranslations('Challenge');
     const [joining, setJoining] = useState(false);
     const [leaving, setLeaving] = useState(false);
@@ -69,8 +79,6 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
     const leaveCancelRef = useRef<HTMLButtonElement>(null);
     const closeLeaveDialog = useCallback(() => setShowLeaveConfirm(false), []);
 
-    const progressUnavailable = isJoined
-        && (progress === null || progress === undefined || !Number.isFinite(progress));
     const progressValue = typeof progress === 'number' && Number.isFinite(progress)
         ? progress
         : 0;
@@ -93,6 +101,19 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
     const daysLeft = priorityMetrics.daysLeft;
     const hasStarted = priorityMetrics.hasStarted;
     const isExpired = priorityMetrics.isExpired;
+    const progressNotStarted = isJoined && !hasStarted;
+    const progressNotRecorded = isJoined
+        && !progressNotStarted
+        && progressStatus === 'not_recorded';
+    const progressUnavailable = isJoined
+        && !progressNotStarted
+        && !progressNotRecorded
+        && (
+            progressStatus === 'unavailable'
+            || progress === null
+            || progress === undefined
+            || !Number.isFinite(progress)
+        );
 
     useDialogFocus({
         isOpen: showLeaveConfirm && !isExpired,
@@ -262,12 +283,26 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                 </div>
 
                 {/* 進捗バー（参加済みの場合のみ） — より楽しいデザイン */}
+                {progressNotStarted && (
+                    <p className="mb-3 rounded-lg bg-[var(--color-competition-soft)] px-3 py-2 text-xs text-[var(--color-competition-strong)]" role="status">
+                        {t('progressNotStarted', { date: challenge.start_date })}
+                    </p>
+                )}
+                {progressNotRecorded && (
+                    <p className="mb-3 rounded-lg bg-[var(--color-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-muted)]" role="status">
+                        {t('progressNotRecorded')}
+                    </p>
+                )}
                 {isJoined && progressUnavailable && (
                     <p className="mb-3 rounded-lg bg-[var(--color-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-muted)]" role="status">
                         {t('progressUnavailable')}
                     </p>
                 )}
-                {isJoined && !progressUnavailable && (
+                {isJoined
+                    && !progressNotStarted
+                    && !progressNotRecorded
+                    && !progressUnavailable
+                    && (
                     <div className="mb-3">
                         <div className="flex items-center justify-between mb-1">
                             <span className="text-xs font-semibold text-[var(--foreground-muted)]">
@@ -304,7 +339,7 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                             {progressValue.toLocaleString()} / {challenge.target_steps.toLocaleString()} {t('stepsUnit')}
                         </div>
                     </div>
-                )}
+                    )}
 
                 {/* フッター: 参加者アバター & ボタン */}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">

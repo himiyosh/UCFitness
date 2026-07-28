@@ -1475,6 +1475,8 @@
     "joinFailed": "Could not join the challenge",
     "leaveFailed": "Could not leave the challenge",
     "progressUnavailable": "Challenge progress is unavailable. Please try again shortly.",
+    "progressNotRecorded": "No steps are recorded for this period yet. Sync your steps to update progress.",
+    "progressNotStarted": "Progress tracking starts on {date}.",
     "priorityTitle": "Your next challenge",
     "priorityRemaining": "{steps} steps to finish",
     "priorityNextStep": "Start with the next {steps} steps",
