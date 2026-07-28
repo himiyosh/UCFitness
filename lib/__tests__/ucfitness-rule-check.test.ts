@@ -204,6 +204,16 @@ const unsafeDateParseCases: UnsafeDateParseCase[] = [
         callKind: 'new Date',
     },
     {
+        label: 'dateで終わるだけの未検証candidate',
+        source: 'export function parseCandidate(candidate: string) { return new Date(`${candidate}T00:00:00Z`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: '関数名にdateを含むだけの未検証value',
+        source: 'export function updateProfile(value: string) { return Date.parse(`${value}T00:00:00Z`); }',
+        callKind: 'Date.parse',
+    },
+    {
         label: 'full timestamp構造を持たないZ付きbinary',
         source: 'export function parseOffsetOnlyBinary(value: string) { return Date.parse(value + "Z"); }',
         callKind: 'Date.parse',
