@@ -10,7 +10,7 @@ import { getChallengePriorityMetrics } from '@/lib/services/challenge-utils';
 
 const ChallengeDetailModal = dynamic(() => import('@/components/challenge/ChallengeDetailModal'));
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
-const START_BOUNDARY_BUFFER_MS = 50;
+const BOUNDARY_TIMER_BUFFER_MS = 50;
 
 // ============================================
 // チャレンジカード コンポーネント
@@ -68,12 +68,6 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
     const leaveCancelRef = useRef<HTMLButtonElement>(null);
     const closeLeaveDialog = useCallback(() => setShowLeaveConfirm(false), []);
 
-    useDialogFocus({
-        isOpen: showLeaveConfirm,
-        onClose: closeLeaveDialog,
-        dialogRef: leaveDialogRef,
-        initialFocusRef: leaveCancelRef,
-    });
     const progressUnavailable = isJoined
         && (progress === null || progress === undefined || !Number.isFinite(progress));
     const progressValue = typeof progress === 'number' && Number.isFinite(progress)
@@ -94,9 +88,20 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
         progress,
         Date.now(),
     );
+    const remainingSteps = priorityMetrics.remainingSteps ?? challenge.target_steps;
+    const daysLeft = priorityMetrics.daysLeft;
+    const hasStarted = priorityMetrics.hasStarted;
+    const isExpired = priorityMetrics.isExpired;
+
+    useDialogFocus({
+        isOpen: showLeaveConfirm && !isExpired,
+        onClose: closeLeaveDialog,
+        dialogRef: leaveDialogRef,
+        initialFocusRef: leaveCancelRef,
+    });
     useEffect(() => {
-        const millisecondsUntilStart = priorityMetrics.millisecondsUntilStart;
-        if (millisecondsUntilStart === null) return;
+        const millisecondsUntilNextBoundary = priorityMetrics.millisecondsUntilNextBoundary;
+        if (millisecondsUntilNextBoundary === null) return;
 
         const refreshTimeBoundary = () => {
             setTimeRevision((revision) => revision + 1);
@@ -104,7 +109,7 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
         const timerId = window.setTimeout(
             refreshTimeBoundary,
             Math.min(
-                millisecondsUntilStart + START_BOUNDARY_BUFFER_MS,
+                millisecondsUntilNextBoundary + BOUNDARY_TIMER_BUFFER_MS,
                 MAX_TIMER_DELAY_MS,
             ),
         );
@@ -116,11 +121,7 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
             window.clearTimeout(timerId);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, [priorityMetrics.millisecondsUntilStart]);
-    const remainingSteps = priorityMetrics.remainingSteps ?? challenge.target_steps;
-    const daysLeft = priorityMetrics.daysLeft;
-    const hasStarted = priorityMetrics.hasStarted;
-    const isExpired = priorityMetrics.isExpired;
+    }, [priorityMetrics.millisecondsUntilNextBoundary]);
 
     const isCreator = currentUserId && challenge.created_by === currentUserId;
     const isCompleted = progressPercent >= 100 && isJoined;
@@ -129,7 +130,7 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
 
     const handleJoin = useCallback(async (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (joining || isJoined || !hasStarted || !onJoin) return;
+        if (joining || isJoined || !hasStarted || isExpired || !onJoin) return;
         setJoining(true);
         setActionError(null);
         try {
@@ -143,10 +144,10 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
         } finally {
             setJoining(false);
         }
-    }, [joining, isJoined, hasStarted, onJoin, challenge.id, t]);
+    }, [joining, isJoined, hasStarted, isExpired, onJoin, challenge.id, t]);
 
     const handleLeave = useCallback(async () => {
-        if (leaving || !onLeave) return;
+        if (leaving || isExpired || !onLeave) return;
         setLeaving(true);
         setActionError(null);
         try {
@@ -158,12 +159,13 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
         } finally {
             setLeaving(false);
         }
-    }, [leaving, onLeave, challenge.id, t]);
+    }, [leaving, isExpired, onLeave, challenge.id, t]);
 
     const handleEditClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
+        if (isExpired) return;
         onEdit?.(challenge);
-    }, [onEdit, challenge]);
+    }, [isExpired, onEdit, challenge]);
 
     return (
         <>
@@ -212,12 +214,16 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                         {challenge.type === 'INDIVIDUAL' ? t('individual') : t('group')}
                     </span>
 
-                    {!hasStarted ? (
+                    {isExpired ? (
+                        <span className="text-xs font-semibold text-red-500 px-2 py-0.5 rounded-full bg-red-50">
+                            {t('ended')}
+                        </span>
+                    ) : !hasStarted ? (
                         <span className="inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-full bg-[var(--color-competition-soft)] px-2.5 py-1 text-xs font-bold text-[var(--color-competition-strong)]">
                             <span aria-hidden="true">📅</span>
                             {t('upcomingStartsOn', { date: challenge.start_date })}
                         </span>
-                    ) : !isExpired ? (
+                    ) : (
                         <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                             isUrgent
                                 ? 'bg-[var(--color-reward-soft)] text-[var(--color-reward-strong)]'
@@ -229,10 +235,6 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                                     reward: challenge.reward_uc.toLocaleString(),
                                 })
                                 : `🕐 ${t('daysLeft', { count: daysLeft })}`}
-                        </span>
-                    ) : (
-                        <span className="text-xs font-semibold text-red-500 px-2 py-0.5 rounded-full bg-red-50">
-                            {t('ended')}
                         </span>
                     )}
                 </div>
@@ -348,7 +350,7 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
 
                     <div className="flex items-center gap-2">
                         {/* 編集ボタン（作成者のみ） */}
-                        {isCreator && onEdit && (
+                        {!isExpired && isCreator && onEdit && (
                             <button
                                 onClick={handleEditClick}
                                 className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-200"
@@ -368,7 +370,7 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                                     {isCompleted ? '🏆' : '✅'} {isCompleted ? t('detailCompleted') : t('joined')}
                                 </span>
                                 {/* 離脱ボタン（作成者は離脱不可） */}
-                                {!isCreator && onLeave && (
+                                {!isExpired && !isCreator && onLeave && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setShowLeaveConfirm(true); }}
                                         className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full px-2 py-2 text-xs text-red-700 transition-colors hover:bg-red-50 hover:text-red-800"
@@ -425,7 +427,7 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
             )}
 
             {/* 離脱確認ダイアログ */}
-            {showLeaveConfirm && createPortal(
+            {showLeaveConfirm && !isExpired && createPortal(
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/40" onClick={closeLeaveDialog} aria-hidden="true" />
                     <div

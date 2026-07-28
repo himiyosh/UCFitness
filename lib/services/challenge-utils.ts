@@ -1,4 +1,4 @@
-import { getJSTDateString } from '@/lib/date-utils';
+import { isValidISODate } from '@/lib/validation';
 
 export interface ChallengePriorityItem {
     id: string;
@@ -16,6 +16,7 @@ export interface ChallengePriorityMetrics {
     progressUnavailable: boolean;
     hasStarted: boolean;
     millisecondsUntilStart: number | null;
+    millisecondsUntilNextBoundary: number | null;
     isExpired: boolean;
     isCompleted: boolean;
     nextStepTarget: number | null;
@@ -28,17 +29,30 @@ export function getChallengePriorityMetrics(
     progress: number | null | undefined,
     now = Date.now(),
 ): ChallengePriorityMetrics {
-    const endAt = Date.parse(`${challenge.end_date}T23:59:59+09:00`);
-    const startAt = Date.parse(`${challenge.start_date}T00:00:00+09:00`);
-    const daysLeft = Number.isFinite(endAt)
-        ? Math.max(0, Math.ceil((endAt - now) / DAY_MS))
-        : Number.MAX_SAFE_INTEGER;
-    const isExpired = Number.isFinite(endAt) && now > endAt;
-    const hasStarted = !Number.isFinite(startAt)
-        || getJSTDateString(new Date(now)) >= challenge.start_date;
-    const millisecondsUntilStart = !hasStarted && Number.isFinite(startAt)
-        ? Math.max(0, startAt - now)
+    const startAt = isValidISODate(challenge.start_date)
+        ? Date.parse(`${challenge.start_date}T00:00:00+09:00`)
+        : Number.NaN;
+    const endDateStartAt = isValidISODate(challenge.end_date)
+        ? Date.parse(`${challenge.end_date}T00:00:00+09:00`)
+        : Number.NaN;
+    const endBoundaryAt = endDateStartAt + DAY_MS;
+    const hasValidSchedule = Number.isFinite(now)
+        && Number.isFinite(startAt)
+        && Number.isFinite(endBoundaryAt)
+        && startAt < endBoundaryAt;
+    const hasStarted = hasValidSchedule && now >= startAt;
+    const isExpired = !hasValidSchedule || now >= endBoundaryAt;
+    const daysLeft = hasValidSchedule
+        ? Math.max(0, Math.ceil((endBoundaryAt - now) / DAY_MS))
+        : 0;
+    const millisecondsUntilStart = hasValidSchedule && !hasStarted
+        ? startAt - now
         : null;
+    const millisecondsUntilNextBoundary = !hasValidSchedule || isExpired
+        ? null
+        : hasStarted
+            ? endBoundaryAt - now
+            : startAt - now;
     const progressUnavailable = challenge.is_joined
         && (progress === null || progress === undefined || !Number.isFinite(progress));
     const remainingSteps = challenge.is_joined && typeof progress === 'number'
@@ -55,6 +69,7 @@ export function getChallengePriorityMetrics(
         progressUnavailable,
         hasStarted,
         millisecondsUntilStart,
+        millisecondsUntilNextBoundary,
         isExpired,
         isCompleted,
         nextStepTarget,

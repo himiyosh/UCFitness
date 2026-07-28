@@ -79,11 +79,64 @@ describe('getChallengePriorityMetrics', () => {
             .toMatchObject({
                 hasStarted: false,
                 millisecondsUntilStart: 1,
+                millisecondsUntilNextBoundary: 1,
             });
         expect(getChallengePriorityMetrics(futureChallenge, null, startAt))
             .toMatchObject({
                 hasStarted: true,
                 millisecondsUntilStart: null,
+                millisecondsUntilNextBoundary: 6 * 24 * 60 * 60 * 1000,
+            });
+    });
+
+    it('JST終了日の直後までは開催中、翌日0時と等しい時点から終了済みと判定する', () => {
+        const endBoundaryAt = Date.parse('2026-07-21T00:00:00+09:00');
+        const endingChallenge = challenge('ending', {
+            startDate: '2026-07-10',
+            endDate: '2026-07-20',
+        });
+
+        expect(getChallengePriorityMetrics(endingChallenge, null, endBoundaryAt - 1))
+            .toMatchObject({
+                daysLeft: 1,
+                isExpired: false,
+                millisecondsUntilNextBoundary: 1,
+            });
+        expect(getChallengePriorityMetrics(endingChallenge, null, endBoundaryAt))
+            .toMatchObject({
+                daysLeft: 0,
+                isExpired: true,
+                millisecondsUntilNextBoundary: null,
+            });
+    });
+
+    it('日付または現在時刻が不正な場合、次境界を作らず操作不可として扱う', () => {
+        const invalidSchedules = [
+            challenge('invalid-start', { startDate: '2026-02-30' }),
+            challenge('invalid-end', { endDate: 'not-a-date' }),
+            challenge('reversed', {
+                startDate: '2026-07-21',
+                endDate: '2026-07-20',
+            }),
+        ];
+
+        for (const invalidChallenge of invalidSchedules) {
+            expect(getChallengePriorityMetrics(invalidChallenge, null, NOW))
+                .toMatchObject({
+                    daysLeft: 0,
+                    hasStarted: false,
+                    millisecondsUntilStart: null,
+                    millisecondsUntilNextBoundary: null,
+                    isExpired: true,
+                });
+        }
+        expect(getChallengePriorityMetrics(challenge('invalid-now'), null, Number.NaN))
+            .toMatchObject({
+                daysLeft: 0,
+                hasStarted: false,
+                millisecondsUntilStart: null,
+                millisecondsUntilNextBoundary: null,
+                isExpired: true,
             });
     });
 
@@ -102,6 +155,7 @@ describe('getChallengePriorityMetrics', () => {
             progressUnavailable: false,
             hasStarted: true,
             millisecondsUntilStart: null,
+            millisecondsUntilNextBoundary: 2 * 24 * 60 * 60 * 1000,
             isExpired: false,
             isCompleted: false,
             nextStepTarget: 500,
