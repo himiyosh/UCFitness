@@ -6,11 +6,12 @@ import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 
 import { useDialogFocus } from '@/hooks/useDialogFocus';
-import { getChallengePriorityMetrics } from '@/lib/services/challenge-utils';
+import {
+    getChallengeBoundaryTimerDelay,
+    getChallengePriorityMetrics,
+} from '@/lib/services/challenge-utils';
 
 const ChallengeDetailModal = dynamic(() => import('@/components/challenge/ChallengeDetailModal'));
-const MAX_TIMER_DELAY_MS = 2_147_483_647;
-const BOUNDARY_TIMER_BUFFER_MS = 50;
 
 // ============================================
 // チャレンジカード コンポーネント
@@ -100,18 +101,17 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
         initialFocusRef: leaveCancelRef,
     });
     useEffect(() => {
-        const millisecondsUntilNextBoundary = priorityMetrics.millisecondsUntilNextBoundary;
-        if (millisecondsUntilNextBoundary === null) return;
+        const timerDelay = getChallengeBoundaryTimerDelay(
+            priorityMetrics.millisecondsUntilNextBoundary,
+        );
+        if (timerDelay === null) return;
 
         const refreshTimeBoundary = () => {
             setTimeRevision((revision) => revision + 1);
         };
         const timerId = window.setTimeout(
             refreshTimeBoundary,
-            Math.min(
-                millisecondsUntilNextBoundary + BOUNDARY_TIMER_BUFFER_MS,
-                MAX_TIMER_DELAY_MS,
-            ),
+            timerDelay,
         );
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') refreshTimeBoundary();

@@ -1,11 +1,15 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { useTranslations } from 'next-intl';
 
 import { useDialogFocus } from '@/hooks/useDialogFocus';
+import {
+    getChallengeBoundaryTimerDelay,
+    getChallengePriorityMetrics,
+} from '@/lib/services/challenge-utils';
 
 // ============================================
 // チャレンジ編集モーダル コンポーネント
@@ -42,11 +46,19 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
     const [isActive, setIsActive] = useState(challenge.is_active);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [expiryBlocked, setExpiryBlocked] = useState(false);
+    const [, setTimeRevision] = useState(0);
     const dialogRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
+    const getCurrentScheduleMetrics = useCallback(() => getChallengePriorityMetrics(
+        { ...challenge, is_joined: false },
+        null,
+        Date.now(),
+    ), [challenge]);
     const handleClose = useCallback(() => {
         if (!submitting) onClose();
     }, [onClose, submitting]);
+    const scheduleMetrics = getCurrentScheduleMetrics();
 
     useDialogFocus({
         isOpen,
@@ -54,10 +66,51 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
         dialogRef,
         initialFocusRef: titleInputRef,
     });
+    useEffect(() => {
+        if (!isOpen || expiryBlocked) return;
+        if (scheduleMetrics.isExpired) {
+            onClose();
+            return;
+        }
+        const timerDelay = getChallengeBoundaryTimerDelay(
+            scheduleMetrics.millisecondsUntilNextBoundary,
+        );
+        if (timerDelay === null) return;
+
+        const refreshTimeBoundary = () => {
+            const latestMetrics = getCurrentScheduleMetrics();
+            if (latestMetrics.isExpired) {
+                onClose();
+                return;
+            }
+            setTimeRevision((revision) => revision + 1);
+        };
+        const timerId = window.setTimeout(refreshTimeBoundary, timerDelay);
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') refreshTimeBoundary();
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            window.clearTimeout(timerId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [
+        expiryBlocked,
+        getCurrentScheduleMetrics,
+        isOpen,
+        onClose,
+        scheduleMetrics.isExpired,
+        scheduleMetrics.millisecondsUntilNextBoundary,
+    ]);
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         if (submitting) return;
+        if (getCurrentScheduleMetrics().isExpired) {
+            setExpiryBlocked(true);
+            setError(t('editExpired'));
+            return;
+        }
 
         if (!title.trim()) {
             setError(t('titleRequired'));
@@ -105,7 +158,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
         } finally {
             setSubmitting(false);
         }
-    }, [title, description, targetSteps, rewardUC, startDate, endDate, isActive, submitting, challenge.id, onUpdated, onClose, t]);
+    }, [title, description, targetSteps, rewardUC, startDate, endDate, isActive, submitting, challenge.id, onUpdated, onClose, t, getCurrentScheduleMetrics]);
 
     if (!isOpen || typeof document === 'undefined') return null;
 
@@ -144,6 +197,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                             type="text"
                             value={title}
                             onChange={e => setTitle(e.target.value)}
+                            disabled={expiryBlocked}
                             maxLength={100}
                             className="min-h-[44px] w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]" aria-invalid={error === t('titleRequired')} aria-describedby={error === t('titleRequired') ? 'edit-challenge-error' : undefined}
                             required
@@ -157,6 +211,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                             id="edit-challenge-desc"
                             value={description}
                             onChange={e => setDescription(e.target.value)}
+                            disabled={expiryBlocked}
                             rows={2}
                             className="min-h-[72px] w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]"
                         />
@@ -170,6 +225,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                             type="number"
                             value={targetSteps}
                             onChange={e => setTargetSteps(Number(e.target.value))}
+                            disabled={expiryBlocked}
                             min={1000}
                             step={1000}
                             className="min-h-[44px] w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]"
@@ -186,6 +242,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                                 type="date"
                                 value={startDate}
                                 onChange={e => setStartDate(e.target.value)}
+                                disabled={expiryBlocked}
                                 className="min-h-[44px] w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]"
                                 required
                             />
@@ -197,6 +254,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                                 type="date"
                                 value={endDate}
                                 onChange={e => setEndDate(e.target.value)}
+                                disabled={expiryBlocked}
                                 className="min-h-[44px] w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]" aria-invalid={error === t('endDateAfterStart')} aria-describedby={error === t('endDateAfterStart') ? 'edit-challenge-error' : undefined}
                                 required
                             />
@@ -212,6 +270,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                                 type="number"
                                 value={rewardUC}
                                 onChange={e => setRewardUC(Number(e.target.value))}
+                                disabled={expiryBlocked}
                                 min={100}
                                 max={10000}
                                 className="min-h-[44px] flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]"
@@ -228,6 +287,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                                 type="checkbox"
                                 checked={isActive}
                                 onChange={e => setIsActive(e.target.checked)}
+                                disabled={expiryBlocked}
                                 className="sr-only peer" aria-label={t('activeToggle')}
                             />
                             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--theme-primary)]/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--theme-primary)]" />
@@ -254,7 +314,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                         </button>
                         <button
                             type="submit"
-                            disabled={submitting}
+                            disabled={submitting || expiryBlocked}
                             className="flex-1 px-4 py-2.5 text-sm font-bold rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-all disabled:opacity-50 min-h-[44px] flex items-center justify-center gap-2"
                         >
                             {submitting ? (

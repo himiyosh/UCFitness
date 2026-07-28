@@ -23,6 +23,24 @@ export interface ChallengePriorityMetrics {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+export const MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS = 2_147_483_647;
+const CHALLENGE_BOUNDARY_TIMER_BUFFER_MS = 50;
+
+export function getChallengeBoundaryTimerDelay(
+    millisecondsUntilNextBoundary: number | null,
+): number | null {
+    if (
+        millisecondsUntilNextBoundary === null
+        || !Number.isFinite(millisecondsUntilNextBoundary)
+        || millisecondsUntilNextBoundary < 0
+    ) {
+        return null;
+    }
+    return Math.min(
+        millisecondsUntilNextBoundary + CHALLENGE_BOUNDARY_TIMER_BUFFER_MS,
+        MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS,
+    );
+}
 
 export function getChallengePriorityMetrics(
     challenge: ChallengePriorityItem,

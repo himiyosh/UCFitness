@@ -1494,6 +1494,7 @@
     "titleRequired": "Title is required",
     "targetStepsPositive": "Target steps must be greater than 0",
     "endDateAfterStart": "End date must be after start date",
+    "editExpired": "Ended challenges cannot be updated. Close this dialog and review the challenge history.",
     "createFailed": "Failed to create challenge",
     "updateFailed": "Failed to update challenge",
     "unknownError": "An unexpected error occurred",

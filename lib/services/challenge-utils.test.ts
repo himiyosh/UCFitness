@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    getChallengeBoundaryTimerDelay,
     getChallengePriorityMetrics,
     isActionableChallenge,
+    MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS,
     sortChallengesForAction,
 } from '@/lib/services/challenge-utils';
 
@@ -184,5 +186,20 @@ describe('getChallengePriorityMetrics', () => {
             0,
             NOW,
         )).toBe(false);
+    });
+});
+
+describe('getChallengeBoundaryTimerDelay', () => {
+    it('長期境界はsetTimeout上限へ制限し、短期境界には境界bufferを加える', () => {
+        expect(getChallengeBoundaryTimerDelay(MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS + 1))
+            .toBe(MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS);
+        expect(getChallengeBoundaryTimerDelay(1)).toBe(51);
+    });
+
+    it('境界なし・負数・非有限値はtimerを作らない', () => {
+        expect(getChallengeBoundaryTimerDelay(null)).toBeNull();
+        expect(getChallengeBoundaryTimerDelay(-1)).toBeNull();
+        expect(getChallengeBoundaryTimerDelay(Number.NaN)).toBeNull();
+        expect(getChallengeBoundaryTimerDelay(Number.POSITIVE_INFINITY)).toBeNull();
     });
 });

@@ -1494,6 +1494,7 @@
     "titleRequired": "タイトルを入力してください",
     "targetStepsPositive": "目標歩数は1以上にしてください",
     "endDateAfterStart": "終了日は開始日より後にしてください",
+    "editExpired": "終了したチャレンジは更新できません。ダイアログを閉じて開催履歴を確認してください。",
     "createFailed": "チャレンジの作成に失敗しました",
     "updateFailed": "チャレンジを更新できませんでした",
     "unknownError": "予期しないエラーが発生しました",
