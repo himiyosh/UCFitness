@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { CHALLENGE_NOT_EDITABLE_CODE } from '@/lib/services/challenge-utils';
+
 const mocks = vi.hoisted(() => ({
     auth: vi.fn(), from: vi.fn(), getJSTDateString: vi.fn(), reportError: vi.fn(), rpc: vi.fn(),
 }));
@@ -26,11 +28,23 @@ interface Query extends PromiseLike<Result> {
     maybeSingle(): Promise<Result>; single(): Promise<Result>;
 }
 let results: Record<string, Result[]>, inCalls: unknown[][], updates: unknown[];
+let updateEndDateFilters: unknown[][];
 function query(result: Result): Query {
+    let isUpdateQuery = false;
     const chain: Query = {
-        select: () => chain, eq: () => chain, gte: () => chain, lte: () => chain,
+        select: () => chain,
+        eq: () => chain,
+        gte: (...args) => {
+            if (isUpdateQuery) updateEndDateFilters.push(args);
+            return chain;
+        },
+        lte: () => chain,
         in: (...args) => { inCalls.push(args); return chain; }, insert: () => chain, delete: () => chain,
-        update: (value) => { updates.push(value); return chain; },
+        update: (value) => {
+            isUpdateQuery = true;
+            updates.push(value);
+            return chain;
+        },
         maybeSingle: () => Promise.resolve(result), single: () => Promise.resolve(result),
         then: (resolve, reject) => Promise.resolve(result).then(resolve, reject),
     };
@@ -51,7 +65,7 @@ function authorize(isPublic: boolean, member: unknown): void {
 beforeEach(() => {
     vi.clearAllMocks(); mocks.auth.mockResolvedValue({ user: { id: UID } });
     mocks.getJSTDateString.mockReturnValue('2026-07-15');
-    results = {}; inCalls = []; updates = [];
+    results = {}; inCalls = []; updates = []; updateEndDateFilters = [];
     mocks.rpc.mockResolvedValue({
         data: [{
             status: 'ok', total_steps: 1000, participant_count: 2,
@@ -180,16 +194,134 @@ describe('GROUP challenge操作認可', () => {
         const response = await PUT(new NextRequest(`http://localhost/api/challenge/${CID}`, { method: 'PUT', body: '{' }), context);
         expect(response.status).toBe(400); expect(mocks.from).not.toHaveBeenCalled();
     });
-    it.each([[false, null, UID, 404], [true, null, UID, 403], [true, { role: 'ADMIN' }, 'other', 403]])(
-        'PUTは公開=%s role=%o creator=%sでAND認可する',
-        async (isPublic, member, creator, status) => {
-            results.challenges = [{ data: challenge({ created_by: creator }), error: null }];
-            authorize(isPublic, member); expect((await PUT(request('PUT'), context)).status).toBe(status);
+    it.each([
+        [false, null, UID, 404, 'Challenge not found'],
+        [true, null, UID, 403, 'Forbidden'],
+        [true, { role: 'ADMIN' }, 'other', 403, 'Only the creator can edit this challenge'],
+    ])(
+        'PUTは終了済みでも公開=%s role=%o creator=%sの認可結果を先に返す',
+        async (isPublic, member, creator, status, expectedError) => {
+            results.challenges = [{
+                data: challenge({ created_by: creator, end_date: '2026-07-14' }),
+                error: null,
+            }];
+            authorize(isPublic, member);
+
+            const response = await PUT(request('PUT'), context);
+
+            expect(response.status).toBe(status);
+            expect(await response.json()).toEqual({ error: expectedError });
+            expect(mocks.getJSTDateString).not.toHaveBeenCalled();
+            expect(updates).toEqual([]);
         },
     );
-    it('PUTはcreatorかつOWNERの更新だけを許可する', async () => {
-        results.challenges = [{ data: challenge(), error: null }, { data: challenge({ title: 'Updated' }), error: null }];
-        authorize(false, { role: 'OWNER' }); expect((await PUT(request('PUT'), context)).status).toBe(200);
+    it('PUTはcreatorかつOWNERの有効な更新を1回だけ実行する', async () => {
+        const updatedChallenge = challenge({ title: 'Updated' });
+        results.challenges = [
+            { data: challenge(), error: null },
+            { data: updatedChallenge, error: null },
+        ];
+        authorize(false, { role: 'OWNER' });
+
+        const response = await PUT(request('PUT'), context);
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ challenge: updatedChallenge });
+        expect(updates).toEqual([{ title: 'Updated' }]);
+        expect(updateEndDateFilters).toEqual([['end_date', '2026-07-15']]);
+    });
+    it('PUTはINDIVIDUAL creatorのJST終了日当日を編集可能に保つ', async () => {
+        mocks.getJSTDateString.mockReturnValue('2026-07-31');
+        const existingChallenge = challenge({
+            type: 'INDIVIDUAL',
+            group_id: null,
+            end_date: '2026-07-31',
+        });
+        const updatedChallenge = { ...existingChallenge, title: 'Updated' };
+        results.challenges = [
+            { data: existingChallenge, error: null },
+            { data: updatedChallenge, error: null },
+        ];
+
+        const response = await PUT(request('PUT'), context);
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ challenge: updatedChallenge });
+        expect(mocks.from.mock.calls.map(([table]) => table)).toEqual([
+            'challenges',
+            'challenges',
+        ]);
+        expect(updateEndDateFilters).toEqual([['end_date', '2026-07-31']]);
+    });
+    it('PUTは認可済みcreatorの終了済みチャレンジを409で拒否する', async () => {
+        results.challenges = [{
+            data: challenge({ end_date: '2026-07-14' }),
+            error: null,
+        }];
+        authorize(false, { role: 'OWNER' });
+
+        const response = await PUT(request('PUT'), context);
+
+        expect(response.status).toBe(409);
+        expect(await response.json()).toEqual({
+            error: 'Challenge is no longer editable',
+            code: CHALLENGE_NOT_EDITABLE_CODE,
+        });
+        expect(updates).toEqual([]);
+    });
+    it('PUTは終了済みチャレンジへ将来の終了日を送っても復活させない', async () => {
+        results.challenges = [{
+            data: challenge({ end_date: '2026-07-14' }),
+            error: null,
+        }];
+        authorize(false, { role: 'OWNER' });
+
+        const response = await PUT(
+            request('PUT', { title: 'Revive', end_date: '2026-08-31' }),
+            context,
+        );
+
+        expect(response.status).toBe(409);
+        expect(await response.json()).toMatchObject({
+            code: CHALLENGE_NOT_EDITABLE_CODE,
+        });
+        expect(updates).toEqual([]);
+    });
+    it('PUTは事前読取後に更新対象が消えた場合も409で拒否する', async () => {
+        results.challenges = [
+            { data: challenge(), error: null },
+            { data: null, error: null },
+        ];
+        authorize(false, { role: 'OWNER' });
+
+        const response = await PUT(request('PUT'), context);
+
+        expect(response.status).toBe(409);
+        expect(await response.json()).toEqual({
+            error: 'Challenge is no longer editable',
+            code: CHALLENGE_NOT_EDITABLE_CODE,
+        });
+        expect(updates).toEqual([{ title: 'Updated' }]);
+        expect(updateEndDateFilters).toEqual([['end_date', '2026-07-15']]);
+    });
+    it('PUTは更新DB障害を500として報告する', async () => {
+        const updateError = new Error('update failed');
+        results.challenges = [
+            { data: challenge(), error: null },
+            { data: null, error: updateError },
+        ];
+        authorize(false, { role: 'OWNER' });
+
+        const response = await PUT(request('PUT'), context);
+
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({ error: 'Failed to update challenge' });
+        expect(mocks.reportError).toHaveBeenCalledWith(
+            'challenge:update',
+            updateError,
+            { userId: UID, challengeId: CID },
+        );
+        expect(updateEndDateFilters).toEqual([['end_date', '2026-07-15']]);
     });
     it('progressはGROUP集計RPCを1回だけ呼び、アプリ側配列やin filterを使わない', async () => {
         results.challenges = [{ data: challenge(), error: null }]; authorize(false, { user_id: UID });

@@ -698,10 +698,18 @@ if grep -Eq 'T23:59:59|new Date\([^)]*(start_date|end_date)' \
    ! grep -q 'getChallengeScheduleMetrics(challenge, Date.now())' components/challenge/EditChallengeModal.tsx || \
    ! grep -q 'getChallengeScheduleMetrics(challenge, Date.now())' components/challenge/ChallengeDetailModal.tsx || \
    ! grep -q 'getChallengeScheduleMetrics(challenge, scheduleNow)' components/dashboard/DashboardChallenges.tsx || \
+   ! grep -Fq 'CHALLENGE_NOT_EDITABLE_CODE' lib/services/challenge-utils.ts || \
+   ! grep -Fq 'getJSTDateString' 'app/api/challenge/[challengeId]/route.ts' || \
+   ! grep -Fq ".gte('end_date', today)" 'app/api/challenge/[challengeId]/route.ts' || \
+   ! grep -Fq 'CHALLENGE_NOT_EDITABLE_CODE' components/challenge/EditChallengeModal.tsx || \
+   ! grep -Fq "t('editNotEditable')" components/challenge/EditChallengeModal.tsx || \
+   ! grep -Fq "t('closeAfterConflict')" components/challenge/EditChallengeModal.tsx || \
+   ! grep -Fq 'text-red-700' components/challenge/EditChallengeModal.tsx || \
+   ! grep -Fq "outcome === 'delayed-conflict'" components/challenge/ChallengeList.test.ts || \
    ! grep -q 'reduce<number | null>' components/dashboard/DashboardChallenges.tsx || \
    [ "$(grep -c 'window.setTimeout' components/challenge/ChallengeDetailModal.tsx)" -ne 1 ] || \
    [ "$(grep -c 'window.setTimeout' components/dashboard/DashboardChallenges.tsx)" -ne 1 ]; then
-  record "Challenge詳細/Home期限の共有JST正本・surface単位timer契約欠落" "challenge-utils / ChallengeDetailModal / DashboardChallenges"
+  record "Challenge期限の共有JST正本・更新文内終了遮断・surface単位timer契約欠落" "challenge-utils / Challenge API / EditChallengeModal / ChallengeDetailModal / DashboardChallenges"
 fi
 if grep -Eq '>[^<{]*(Retry|Save|Cancel|Edit)[^<{]*<' components/StepGoalForm.tsx components/StepCalendar.tsx components/profile/AchievementProgress.tsx; then
   record "変更対象の条件付きUIに英語固定文言" "StepGoalForm / StepCalendar / AchievementProgress"
