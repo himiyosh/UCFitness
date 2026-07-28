@@ -3,6 +3,7 @@ export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
+import { parseTimestampMillis } from '@/lib/date-utils';
 import { reportError } from '@/lib/errors';
 import {
     countUnreadNotificationFeed,
@@ -73,10 +74,16 @@ export async function GET(): Promise<NextResponse> {
 
         const snapshot = new Date().toISOString();
         const feedWindow = getNotificationFeedWindow(snapshot);
-        const lastReadTime = userData?.feed_last_read_at
-            ? Date.parse(userData.feed_last_read_at)
-            : 0;
-        const sinceDate = lastReadTime > Date.parse(feedWindow.sinceIso)
+        const lastReadAt = userData?.feed_last_read_at ?? null;
+        const lastReadTime = lastReadAt === null ? 0 : parseTimestampMillis(lastReadAt);
+        if (lastReadTime === null) {
+            throw new RangeError('Invalid notification read timestamp');
+        }
+        const feedWindowStart = parseTimestampMillis(feedWindow.sinceIso);
+        if (feedWindowStart === null) {
+            throw new RangeError('Invalid notification feed window');
+        }
+        const sinceDate = lastReadTime > feedWindowStart
             ? userData?.feed_last_read_at ?? feedWindow.sinceIso
             : feedWindow.sinceIso;
 

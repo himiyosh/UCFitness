@@ -99,9 +99,8 @@ const excludedDirectories = new Set([
   "tests",
 ]);
 const testFilePattern = /\.(?:fixture|spec|test)\.tsx?$/;
-const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
-const completeTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?$/i;
-const explicitOffsetPattern = /(?:Z|[+-]\d{2}:?\d{2})$/i;
+const completeTimestampPattern = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)$/i;
+const explicitOffsetTimestampConstructionPattern = /^\{expression\}T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)$/i;
 const files = [];
 const violations = [];
 
@@ -165,6 +164,21 @@ const isTimestampName = (name) => {
     || name.endsWith("At")
     || name.endsWith("Iso")
     || name.endsWith("Timestamp");
+};
+
+const isDateOnlyName = (name) => {
+  const lowerName = name.toLowerCase();
+  return lowerName === "date"
+    || lowerName === "today"
+    || lowerName === "todaystr"
+    || lowerName === "weekstart"
+    || lowerName === "occurredon"
+    || lowerName.endsWith("_date")
+    || lowerName.endsWith("date")
+    || lowerName.endsWith("datestr")
+    || lowerName.endsWith("startstr")
+    || lowerName === "fromstr"
+    || lowerName === "tostr";
 };
 
 const getPropertyName = (node) => {
@@ -238,8 +252,8 @@ const flattenStringConstruction = (node) => {
 
 const isSafeStaticString = (text) => {
   const normalized = text.trim();
-  if (dateOnlyPattern.test(normalized)) return false;
-  return completeTimestampPattern.test(normalized) || !dateOnlyPattern.test(normalized);
+  if (normalized !== text) return false;
+  return completeTimestampPattern.test(normalized);
 };
 
 const isSafeTimestampReference = (node) => {
@@ -247,6 +261,37 @@ const isSafeTimestampReference = (node) => {
   if (ts.isIdentifier(expression)) return isTimestampName(expression.text);
   const propertyName = getPropertyName(expression);
   return propertyName !== null && isTimestampName(propertyName);
+};
+
+const getContainingFunctionName = (node) => {
+  let current = node.parent;
+  while (current) {
+    if (ts.isFunctionLike(current)) {
+      if (current.name && ts.isIdentifier(current.name)) return current.name.text;
+      if (
+        ts.isVariableDeclaration(current.parent)
+        && ts.isIdentifier(current.parent.name)
+      ) {
+        return current.parent.name.text;
+      }
+      return null;
+    }
+    current = current.parent;
+  }
+  return null;
+};
+
+const isSafeDateOnlyReference = (node) => {
+  const expression = unwrapExpression(node);
+  const name = ts.isIdentifier(expression)
+    ? expression.text
+    : getPropertyName(expression);
+  if (name === null) return false;
+  if (isDateOnlyName(name)) return true;
+  const functionName = getContainingFunctionName(expression);
+  return name === "value"
+    && functionName !== null
+    && functionName.toLowerCase().includes("date");
 };
 
 const isSafeDateArgument = (node) => {
@@ -300,7 +345,13 @@ const isSafeDateArgument = (node) => {
     )
   ) {
     const flattened = flattenStringConstruction(expression);
-    if (explicitOffsetPattern.test(flattened.text)) return true;
+    if (
+      flattened.dynamicExpressions.length === 1
+      && explicitOffsetTimestampConstructionPattern.test(flattened.text)
+      && flattened.dynamicExpressions.every(isSafeDateOnlyReference)
+    ) {
+      return true;
+    }
     if (flattened.dynamicExpressions.length === 0) {
       return isSafeStaticString(flattened.text);
     }

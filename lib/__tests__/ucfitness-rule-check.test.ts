@@ -199,6 +199,11 @@ const unsafeDateParseCases: UnsafeDateParseCase[] = [
         callKind: 'new Date',
     },
     {
+        label: '未検証変数へfull timestamp suffixを付けるtemplate',
+        source: 'export function parseUnvalidatedDate(unvalidatedVar: string) { return new Date(`${unvalidatedVar}T00:00:00Z`); }',
+        callKind: 'new Date',
+    },
+    {
         label: 'full timestamp構造を持たないZ付きbinary',
         source: 'export function parseOffsetOnlyBinary(value: string) { return Date.parse(value + "Z"); }',
         callKind: 'Date.parse',

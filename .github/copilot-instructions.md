@@ -1763,3 +1763,10 @@ export const runtime = "edge";
 - **根本原因**: date-onlyの危険性を1つの文字列markerとして扱い、constructor / parser、入力source、AST型、明示offset、epoch、完全timestampを分類していなかった。非同期stdoutのflush前にprocessを強制終了しても全違反を受け取れると仮定していた。
 - **対策**: `app` / `components` / `contexts` / `hooks` / `lib` / `types`のproduction TS/TSXをTypeScript Programで走査し、`new Date` / `Date.parse`の引数をDate型、number、timestamp名、完全timestamp、明示offset、date-only source、未知動的構築へ分類する。ISO date-only literal、`start_date` / `end_date`、offsetなしtemplate/binary、証明不能な動的文字列はfail closedとし、コメント・docs・test/spec・fixtureを除外する。違反出力は`process.exitCode`でflushを待ち、current treeのdate-only比較を検証済み文字列順、演算・表示を明示UTC/JST、timestamp cursorをdate-only拒否の共有parserへ置換した。
 - **教訓**: calendar dateをinstantへ暗黙変換しない。AST guardは危険文字列のgrepではなく入力の意味と型を分類し、許可するDate/epoch/完全timestamp/offsetと拒否するliteral/property/template/binary/未知動的入力をpositive/negative fixtureで固定する。複数違反を返すCLIは終了codeだけでなく全stdoutのflushも回帰検証する。リファレンス: `scripts/check-ucfitness-rules.sh`, `lib/__tests__/ucfitness-rule-check.test.ts`, `lib/date-utils.ts`
+
+### LL-108: full timestampのoffsetを任意にすると共有parserがruntime timezoneへ依存する
+
+- **事象**: AST guardのstatic判定が`completeTimestampPattern.test(...) || !dateOnlyPattern.test(...)`となり、date-only以外をすべて許可してcomplete patternが実質dead codeだった。共有`parseTimestampMillis`もoffsetを任意にしていたため、同じoffsetなし日時がTokyoとNew Yorkで異なるinstantになり得た。
+- **根本原因**: calendar dateの拒否だけを契約化し、specific instantを表すfull timestampにはoffsetが必須という境界をguard・runtime parser・callerで共有していなかった。不正通知時刻もepoch 0へ変換して並び順と未読数を成功形へ偽装していた。
+- **対策**: static full timestampと動的なdate+time構築の両方で`Z` / `±HH:mm` / `±HHmm`を必須にし、calendar validityも共有parserで検証する。notification feed、message cursor、GroupChat、group inviteの各callerは不正値を400/500・利用不能表示へ分離し、`toISOString()`とPostgreSQL `timestamptz`由来の明示offset値だけを継続受理する。
+- **教訓**: date-onlyはcalendar helperへ、instant文字列は明示offset付きparserへ分離し、offsetなしfull timestampをUTC/JSTへ推測補完しない。機械guardの正例・負例はstatic offset有無、date-only、dynamic timestamp field、constructor/parserを含め、runtime parserは複数TZで同じepochになることを固定する。リファレンス: `lib/date-utils.ts`, `lib/services/notification-feed.ts`, `components/group/GroupChat.tsx`, `scripts/check-ucfitness-rules.sh`

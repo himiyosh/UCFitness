@@ -1284,6 +1284,7 @@
     "createSuccess": "Invite link created.",
     "linkLabel": "Invite link valid for 7 days",
     "expiresAt": "Valid until {date}. Only people with this link can join.",
+    "expiresUnavailable": "The expiration time is unavailable. Create a new invite link.",
     "copy": "Copy link",
     "copySuccess": "Invite link copied.",
     "copyFailed": "The link could not be copied. Copy the selected link manually.",
@@ -1747,6 +1748,7 @@
     "minutesAgo": "{count}m ago",
     "hoursAgo": "{count}h ago",
     "daysAgo": "{count}d ago",
+    "timeUnavailable": "Time unavailable",
     "viewProfile": "View Profile",
     "sendError": "Failed to send message. Please try again."
   },

@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { useDialogFocus } from '@/hooks/useDialogFocus';
+import { parseTimestampMillis } from '@/lib/date-utils';
 import { createGroupInviteUrl } from '@/lib/group-invite';
 
 import Spinner from '@/components/ui/Spinner';
@@ -103,7 +104,7 @@ export default function GroupHeaderActions({
                 setInviteFeedback({ kind: 'error', message: inviteT(key) });
                 return;
             }
-            if (Number.isNaN(new Date(expiresAt).getTime())) {
+            if (parseTimestampMillis(expiresAt) === null) {
                 setInviteFeedback({ kind: 'error', message: inviteT('createUnavailable') });
                 return;
             }
@@ -170,6 +171,10 @@ export default function GroupHeaderActions({
         initialFocusRef: membersCloseButtonRef,
     });
 
+    const inviteExpirationMillis = inviteExpiresAt === null
+        ? null
+        : parseTimestampMillis(inviteExpiresAt);
+
     return (
         <>
             {/* メンバー管理ボタン — 全メンバーに表示 */}
@@ -219,10 +224,14 @@ export default function GroupHeaderActions({
                         className="mt-2 min-h-[44px] w-full min-w-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 text-sm text-[var(--color-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary-strong)]"
                     />
                     <p className="mt-2 text-xs leading-5 text-[var(--color-text-muted)]">
-                        {inviteT('expiresAt', {
-                            date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' })
-                                .format(new Date(inviteExpiresAt ?? '')),
-                        })}
+                        {inviteExpirationMillis === null
+                            ? inviteT('expiresUnavailable')
+                            : inviteT('expiresAt', {
+                                date: new Intl.DateTimeFormat(locale, {
+                                    dateStyle: 'medium',
+                                    timeStyle: 'short',
+                                }).format(inviteExpirationMillis),
+                            })}
                     </p>
                     <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                         <button

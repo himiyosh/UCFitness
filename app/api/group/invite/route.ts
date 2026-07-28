@@ -3,6 +3,7 @@ export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
+import { parseTimestampMillis } from '@/lib/date-utils';
 import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from '@/lib/supabase';
 
@@ -81,7 +82,11 @@ export async function POST(request: Request): Promise<NextResponse> {
         const result = parseRpcResult(data);
         if (result?.status === 'forbidden') return json({ code: 'FORBIDDEN' }, 403);
         if (result?.status === 'rate_limited') return json({ code: 'INVITE_LIMIT_REACHED' }, 429);
-        if (result?.status !== 'created' || !result.expiresAt) {
+        if (
+            result?.status !== 'created'
+            || !result.expiresAt
+            || parseTimestampMillis(result.expiresAt) === null
+        ) {
             return json({ code: 'INVITE_CREATE_FAILED' }, 500);
         }
         return json({ token, expiresAt: result.expiresAt });
