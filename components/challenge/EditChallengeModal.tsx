@@ -151,7 +151,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
             setError(t('targetStepsPositive'));
             return;
         }
-        if (new Date(endDate) <= new Date(startDate)) {
+        if (startDate && endDate && endDate <= startDate) {
             setError(endDateAfterStartMessage);
             endDateInputRef.current?.focus();
             return;

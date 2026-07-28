@@ -1,7 +1,9 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
+
 import { auth } from '@/lib/auth';
+import { parseTimestampMillis } from '@/lib/date-utils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
 import { isValidUUID } from '@/lib/validation';
@@ -59,7 +61,7 @@ export async function GET(
             .order('created_at', { ascending: false })
             .limit(MAX_MESSAGES);
 
-        if (before && !isNaN(Date.parse(before))) {
+        if (before && parseTimestampMillis(before) !== null) {
             query = query.lt('created_at', before);
         }
 

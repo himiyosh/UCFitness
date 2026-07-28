@@ -305,7 +305,7 @@ export async function PUT(
             }
             const nextStart = typeof start_date === 'string' ? start_date : existing.start_date;
             const nextEnd = typeof end_date === 'string' ? end_date : existing.end_date;
-            if (new Date(nextEnd) <= new Date(nextStart)) {
+            if (nextEnd <= nextStart) {
                 return NextResponse.json({ error: 'End date must be after start date' }, { status: 400 });
             }
         }

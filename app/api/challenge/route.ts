@@ -359,7 +359,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             return NextResponse.json({ error: 'Target steps must be a positive integer' }, { status: 400 });
         }
 
-        if (new Date(end_date) <= new Date(start_date)) {
+        if (end_date <= start_date) {
             return NextResponse.json({ error: 'End date must be after start date' }, { status: 400 });
         }
 

@@ -446,19 +446,19 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
         const map = new Map<string, ComparisonDataPoint>();
         const weekStartByDate = new Map<string, string>();
 
-        const current = new Date(startStr);
+        const current = new Date(`${startStr}T00:00:00+09:00`);
         // Ensure end comparison handles string correctly or use dates loop
         // The previous string comparison loop `formatter.format(current) <= endStr` works for YYYY-MM-DD
 
         if (aggregation === 'day') {
             while (formatter.format(current) <= endStr) {
                 const dStr = formatter.format(current);
-                const dateObj = new Date(dStr);
                 // Label: MM/DD
-                const label = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+                const [, month, day] = dStr.split('-');
+                const label = `${Number(month)}/${Number(day)}`;
 
                 map.set(dStr, { date: dStr, label, values: {} });
-                current.setDate(current.getDate() + 1);
+                current.setUTCDate(current.getUTCDate() + 1);
             }
         } else if (aggregation === 'week') {
             // Align start to start of week?
@@ -468,11 +468,11 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
 
                 // Determine Week End for range check
                 const weekEnd = new Date(current);
-                weekEnd.setDate(weekEnd.getDate() + 6);
+                weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
                 // const weekEndStr = formatter.format(weekEnd); // Not used directly for map key
 
-                const dateObj = new Date(weekStartStr);
-                const label = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+                const [, month, day] = weekStartStr.split('-');
+                const label = `${Number(month)}/${Number(day)}`;
 
                 // Use weekStartStr as key
                 map.set(weekStartStr, { date: weekStartStr, label, values: {} });
@@ -486,7 +486,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
                     }
                 }
 
-                current.setDate(current.getDate() + 7);
+                current.setUTCDate(current.getUTCDate() + 7);
             }
         } else {
             // Monthly

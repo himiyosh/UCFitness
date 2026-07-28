@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
     getJSTDateString,
     getJSTHour,
     getWeekStartDate,
     getMonthStartDate,
+    parseTimestampMillis,
     getYearStartDate,
 } from '../date-utils';
 
@@ -29,6 +30,25 @@ describe('getJSTDateString', () => {
     it('年末年始の境界: UTC 12/31 15:00 → JST 1/1', () => {
         const result = getJSTDateString(new Date('2025-12-31T15:00:00Z'));
         expect(result).toBe('2026-01-01');
+    });
+});
+
+describe('parseTimestampMillis', () => {
+    it.each([
+        '2026-07-28T12:34:56',
+        '2026-07-28T12:34:56Z',
+        '2026-07-28T12:34:56+09:00',
+        '2026-07-28T12:34:56+0900',
+    ])('完全timestamp %sをepochへ変換する', (timestamp) => {
+        expect(parseTimestampMillis(timestamp)).toBe(Date.parse(timestamp));
+    });
+
+    it.each([
+        '2026-07-28',
+        '2026-07-28T25:00:00Z',
+        'not-a-timestamp',
+    ])('date-onlyまたは不正値 %sを拒否する', (timestamp) => {
+        expect(parseTimestampMillis(timestamp)).toBeNull();
     });
 });
 
