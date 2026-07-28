@@ -173,6 +173,7 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
             await fetchChallenges(tabRef.current);
         }
     }, [fetchChallenges]);
+    const handleEditClose = useCallback(() => setEditingChallenge(null), []);
 
     const handleTabKeyDown = useCallback((
         event: KeyboardEvent<HTMLButtonElement>,
@@ -401,7 +402,7 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
                 <EditChallengeModal
                     isOpen={true}
                     challenge={editingChallenge}
-                    onClose={() => setEditingChallenge(null)}
+                    onClose={handleEditClose}
                     onUpdated={() => {
                         setEditingChallenge(null);
                         fetchChallenges(tab);

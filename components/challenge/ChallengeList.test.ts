@@ -8,11 +8,13 @@ import { describe, expect, it } from 'vitest';
 
 import enMessages from '../../messages/en.json';
 import jaMessages from '../../messages/ja.json';
+import { MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS } from '../../lib/services/challenge-utils';
 
 const challengeMessages = {
     en: enMessages.Challenge,
     ja: jaMessages.Challenge,
 };
+const ACTIVE_CHALLENGE_COUNT = 9;
 
 describe('ChallengeList Hall of Fame', () => {
     it('終了イベント全体と個人達成をja/enで区別する', () => {
@@ -35,14 +37,18 @@ describe('ChallengeList Hall of Fame', () => {
                 '@import "tailwindcss" source(none);',
                 '@source "./components/challenge/ChallengeList.tsx";',
                 '@source "./components/challenge/ChallengeCard.tsx";',
+                '@source "./components/challenge/EditChallengeModal.tsx";',
             ].join(' '),
             { from: `${process.cwd()}/challenge-list-test.css` },
         );
         const bundle = await build({
             stdin: {
                 contents: `
+                    import {StrictMode, useState} from 'react';
                     import {createRoot} from 'react-dom/client';
                     import ChallengeList from './components/challenge/ChallengeList';
+                    import ChallengeCard from './components/challenge/ChallengeCard';
+                    import EditChallengeModal from './components/challenge/EditChallengeModal';
                     import enMessages from './messages/en.json';
                     import jaMessages from './messages/ja.json';
 
@@ -62,6 +68,11 @@ describe('ChallengeList Hall of Fame', () => {
                         {...baseChallenge, id: 'active-more', title: 'Active more remaining', end_date: '2099-01-04', is_joined: true},
                         {...baseChallenge, id: 'active-less', title: 'Active less remaining', end_date: '2099-01-03', is_joined: true},
                         {...baseChallenge, id: 'active-upcoming', title: 'Upcoming preview', start_date: '2099-01-02', end_date: '2099-01-06', is_joined: false},
+                        {...baseChallenge, id: 'ending-unjoined', title: 'Ending unjoined', end_date: '2099-01-01', is_joined: false},
+                        {...baseChallenge, id: 'ending-joined', title: 'Ending joined', end_date: '2099-01-01', is_joined: true},
+                        {...baseChallenge, id: 'ending-creator', title: 'Ending creator', end_date: '2099-01-01', is_joined: true, created_by: 'viewer'},
+                        {...baseChallenge, id: 'visibility-ending', title: 'Visibility ending', end_date: '2099-01-02', is_joined: false},
+                        {...baseChallenge, id: 'long-upcoming', title: 'Long upcoming', start_date: '2099-02-20', end_date: '2099-02-25', is_joined: false},
                     ];
                     const endedChallenges = [
                         {...baseChallenge, id: 'history-unjoined', title: 'History unjoined', end_date: '2020-01-02', is_joined: false},
@@ -71,11 +82,35 @@ describe('ChallengeList Hall of Fame', () => {
                     const progressById = {
                         'active-more': 1000,
                         'active-less': 9000,
+                        'ending-joined': 5000,
+                        'ending-creator': 5000,
                         'history-achieved': 12000,
                         'history-incomplete': 5000,
                     };
-                    globalThis.fetch = async (input) => {
+                    let resolveDelayedEditPut = null;
+                    globalThis.fetch = async (input, init = {}) => {
                         const url = new URL(String(input), 'https://ucfitness.test');
+                        if (init.method === 'PUT' && url.pathname === '/api/challenge/edit-boundary') {
+                            const count = Number(document.body.dataset.challengeEditPutCount ?? '0');
+                            document.body.dataset.challengeEditPutCount = String(count + 1);
+                            const outcome = document.body.dataset.challengeEditPutOutcome;
+                            if (outcome === 'delayed-failure' || outcome === 'delayed-success') {
+                                return new Promise((resolve) => {
+                                    resolveDelayedEditPut = () => {
+                                        resolveDelayedEditPut = null;
+                                        resolve({
+                                            ok: outcome === 'delayed-success',
+                                            json: async () => ({
+                                                error: globalThis.challengeMessages[
+                                                    document.documentElement.lang
+                                                ]?.Challenge?.updateFailed,
+                                            }),
+                                        });
+                                    };
+                                });
+                            }
+                            return {ok: true, json: async () => ({})};
+                        }
                         if (url.pathname === '/api/challenge') {
                             const status = url.searchParams.get('status');
                             const previous = document.body.dataset.challengeRequests;
@@ -105,9 +140,68 @@ describe('ChallengeList Hall of Fame', () => {
                     };
 
                     const root = createRoot(document.querySelector('#root'));
+                    const strictCardRoot = createRoot(document.querySelector('#strict-card-root'));
+                    const editModalRoot = createRoot(document.querySelector('#edit-modal-root'));
+                    let editModalRevision = 0;
+                    function EditModalHarness({endDate}) {
+                        const [isOpen, setIsOpen] = useState(true);
+                        return (
+                            <EditChallengeModal
+                                isOpen={isOpen}
+                                challenge={{
+                                    ...baseChallenge,
+                                    id: 'edit-boundary',
+                                    title: 'Edit boundary',
+                                    start_date: '2099-02-01',
+                                    end_date: endDate,
+                                }}
+                                onClose={() => {
+                                    const count = Number(document.body.dataset.challengeEditCloseCount ?? '0');
+                                    document.body.dataset.challengeEditCloseCount = String(count + 1);
+                                    setIsOpen(false);
+                                }}
+                                onUpdated={() => {
+                                    const count = Number(document.body.dataset.challengeEditUpdatedCount ?? '0');
+                                    document.body.dataset.challengeEditUpdatedCount = String(count + 1);
+                                }}
+                            />
+                        );
+                    }
                     globalThis.renderChallengeList = (locale) => {
                         document.documentElement.lang = locale;
                         root.render(<ChallengeList key={locale} currentUserId="viewer" />);
+                    };
+                    globalThis.clearChallengeList = () => root.render(null);
+                    globalThis.renderStrictChallengeCard = (startDate, endDate) => {
+                        strictCardRoot.render(
+                            <StrictMode>
+                                <ChallengeCard
+                                    key="strict-boundary-card"
+                                    challenge={{
+                                        ...baseChallenge,
+                                        id: 'strict-boundary-card',
+                                        title: 'Strict boundary card',
+                                        start_date: startDate,
+                                        end_date: endDate,
+                                        is_joined: false,
+                                    }}
+                                />
+                            </StrictMode>,
+                        );
+                    };
+                    globalThis.clearStrictChallengeCard = () => strictCardRoot.render(null);
+                    globalThis.renderEditChallengeModal = (endDate) => {
+                        editModalRevision += 1;
+                        editModalRoot.render(
+                            <EditModalHarness key={editModalRevision} endDate={endDate} />,
+                        );
+                    };
+                    globalThis.clearEditChallengeModal = () => editModalRoot.render(null);
+                    globalThis.resolveDelayedEditChallengePut = () => {
+                        if (typeof resolveDelayedEditPut !== 'function') {
+                            throw new Error('Delayed edit PUT resolver missing');
+                        }
+                        resolveDelayedEditPut();
                     };
                 `,
                 loader: 'tsx',
@@ -123,7 +217,7 @@ describe('ChallengeList Hall of Fame', () => {
                 setup(context) {
                     context.onResolve(
                         {
-                            filter: /^@\/components\/challenge\/(?:ChallengeGearBanner|ChallengeDetailModal|EditChallengeModal)$/,
+                            filter: /^@\/components\/challenge\/(?:ChallengeGearBanner|ChallengeDetailModal)$/,
                         },
                         ({ path }) => ({ path, namespace: 'component-stub' }),
                     );
@@ -193,10 +287,74 @@ describe('ChallengeList Hall of Fame', () => {
                 if (message.type() === 'error') consoleErrors.push(message.text());
             });
             await page.setContent(
-                '<main style="padding-inline: 16px"><div id="root"></div></main>',
+                '<button id="edit-modal-trigger" type="button" style="min-height:44px">Edit trigger</button><main style="padding-inline: 16px"><div id="root"></div><div id="strict-card-root"></div><div id="edit-modal-root"></div></main>',
             );
             await page.addStyleTag({ content: styles.css });
             await page.addScriptTag({ content: bundle.outputFiles[0].text });
+            await page.evaluate(() => {
+                const pendingTimers = new Map<number, number>();
+                const timerDelays: number[] = [];
+                const visibilityListeners = new Set<EventListenerOrEventListenerObject>();
+                const nativeSetTimeout = window.setTimeout.bind(window);
+                const nativeClearTimeout = window.clearTimeout.bind(window);
+                const nativeAddEventListener = document.addEventListener.bind(document);
+                const nativeRemoveEventListener = document.removeEventListener.bind(document);
+                let simulatedVisibilityState = document.visibilityState;
+
+                window.setTimeout = ((
+                    handler: TimerHandler,
+                    timeout = 0,
+                    ...args: unknown[]
+                ): number => {
+                    let timerId = 0;
+                    const trackedHandler = (...callbackArgs: unknown[]) => {
+                        pendingTimers.delete(timerId);
+                        if (typeof handler === 'function') {
+                            handler(...callbackArgs);
+                        }
+                    };
+                    timerId = nativeSetTimeout(trackedHandler, timeout, ...args);
+                    pendingTimers.set(timerId, timeout);
+                    timerDelays.push(timeout);
+                    return timerId;
+                }) as typeof window.setTimeout;
+                window.clearTimeout = ((timerId?: number): void => {
+                    if (typeof timerId === 'number') pendingTimers.delete(timerId);
+                    nativeClearTimeout(timerId);
+                }) as typeof window.clearTimeout;
+                document.addEventListener = ((
+                    type: string,
+                    listener: EventListenerOrEventListenerObject,
+                    options?: boolean | AddEventListenerOptions,
+                ): void => {
+                    if (type === 'visibilitychange') visibilityListeners.add(listener);
+                    nativeAddEventListener(type, listener, options);
+                }) as typeof document.addEventListener;
+                document.removeEventListener = ((
+                    type: string,
+                    listener: EventListenerOrEventListenerObject,
+                    options?: boolean | EventListenerOptions,
+                ): void => {
+                    if (type === 'visibilitychange') visibilityListeners.delete(listener);
+                    nativeRemoveEventListener(type, listener, options);
+                }) as typeof document.removeEventListener;
+                Object.defineProperty(document, 'visibilityState', {
+                    configurable: true,
+                    get: () => simulatedVisibilityState,
+                });
+                Reflect.set(globalThis, 'getChallengeLifecycleMetrics', () => ({
+                    pendingTimerDelays: [...pendingTimers.values()],
+                    timerDelays: [...timerDelays],
+                    visibilityListenerCount: visibilityListeners.size,
+                }));
+                Reflect.set(globalThis, 'resetChallengeTimerDelays', () => {
+                    timerDelays.length = 0;
+                });
+                Reflect.set(globalThis, 'setChallengeVisibility', (state: DocumentVisibilityState) => {
+                    simulatedVisibilityState = state;
+                    document.dispatchEvent(new Event('visibilitychange'));
+                });
+            });
             await page.clock.pauseAt(beforeUpcomingStart);
 
             for (const locale of ['ja', 'en'] as const) {
@@ -211,21 +369,128 @@ describe('ChallengeList Hall of Fame', () => {
                 await page.waitForFunction(() => (
                     document.querySelector('[role="tabpanel"]')?.getAttribute('aria-busy') === 'false'
                 ));
+                await page.waitForFunction((expectedCount) => {
+                    const getMetrics = Reflect.get(globalThis, 'getChallengeLifecycleMetrics');
+                    if (typeof getMetrics !== 'function') return false;
+                    const metrics = getMetrics();
+                    return metrics.pendingTimerDelays.length === expectedCount
+                        && metrics.visibilityListenerCount === expectedCount;
+                }, ACTIVE_CHALLENGE_COUNT);
+                await page.evaluate(() => {
+                    const clear = Reflect.get(globalThis, 'clearChallengeList');
+                    if (typeof clear !== 'function') throw new Error('ChallengeList cleanup missing');
+                    clear();
+                });
+                await page.waitForFunction(() => {
+                    const getMetrics = Reflect.get(globalThis, 'getChallengeLifecycleMetrics');
+                    if (typeof getMetrics !== 'function') return false;
+                    const metrics = getMetrics();
+                    return metrics.pendingTimerDelays.length === 0
+                        && metrics.visibilityListenerCount === 0;
+                });
+                await page.evaluate(() => {
+                    const render = Reflect.get(globalThis, 'renderStrictChallengeCard');
+                    if (typeof render !== 'function') {
+                        throw new Error('Strict challenge card renderer missing');
+                    }
+                    render('2099-02-20', '2099-02-25');
+                });
+                await page.waitForFunction((expectedDelay) => {
+                    const getMetrics = Reflect.get(globalThis, 'getChallengeLifecycleMetrics');
+                    if (typeof getMetrics !== 'function') return false;
+                    const metrics = getMetrics();
+                    return metrics.pendingTimerDelays.length === 1
+                        && metrics.pendingTimerDelays[0] === expectedDelay
+                        && metrics.visibilityListenerCount === 1;
+                }, MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS);
+                await page.evaluate(() => {
+                    const render = Reflect.get(globalThis, 'renderStrictChallengeCard');
+                    if (typeof render !== 'function') {
+                        throw new Error('Strict challenge card renderer missing');
+                    }
+                    render('2099-01-01', '2099-01-10');
+                });
+                const replacementLifecycle = await page.waitForFunction((maximumDelay) => {
+                    const getMetrics = Reflect.get(globalThis, 'getChallengeLifecycleMetrics');
+                    if (typeof getMetrics !== 'function') return false;
+                    const metrics = getMetrics();
+                    return metrics.pendingTimerDelays.length === 1
+                        && metrics.pendingTimerDelays[0] > 0
+                        && metrics.pendingTimerDelays[0] < maximumDelay
+                        && metrics.visibilityListenerCount === 1
+                        ? metrics
+                        : false;
+                }, MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS);
+                expect((await replacementLifecycle.jsonValue()).pendingTimerDelays)
+                    .toHaveLength(1);
+                await page.evaluate(() => {
+                    const clear = Reflect.get(globalThis, 'clearStrictChallengeCard');
+                    if (typeof clear !== 'function') {
+                        throw new Error('Strict challenge card cleanup missing');
+                    }
+                    clear();
+                });
+                await page.waitForFunction(() => {
+                    const getMetrics = Reflect.get(globalThis, 'getChallengeLifecycleMetrics');
+                    if (typeof getMetrics !== 'function') return false;
+                    const metrics = getMetrics();
+                    return metrics.pendingTimerDelays.length === 0
+                        && metrics.visibilityListenerCount === 0;
+                });
+                await page.evaluate((nextLocale) => {
+                    const resetDelays = Reflect.get(globalThis, 'resetChallengeTimerDelays');
+                    const render = Reflect.get(globalThis, 'renderChallengeList');
+                    if (typeof resetDelays !== 'function' || typeof render !== 'function') {
+                        throw new Error('ChallengeList rerender missing');
+                    }
+                    resetDelays();
+                    render(nextLocale);
+                }, locale);
+                await page.waitForFunction(() => (
+                    document.querySelector('[role="tabpanel"]')?.getAttribute('aria-busy') === 'false'
+                ));
+                await page.waitForFunction((expectedCount) => {
+                    const getMetrics = Reflect.get(globalThis, 'getChallengeLifecycleMetrics');
+                    if (typeof getMetrics !== 'function') return false;
+                    const metrics = getMetrics();
+                    return metrics.pendingTimerDelays.length === expectedCount
+                        && metrics.visibilityListenerCount === expectedCount;
+                }, ACTIVE_CHALLENGE_COUNT);
                 expect(pageErrors).toEqual([]);
                 expect(await page.locator('body').innerText()).not.toContain(messages.loadError);
                 const activeHeading = page.locator('h3', { hasText: 'Active less remaining' });
                 await activeHeading.waitFor();
                 expect(await page.locator('[role="tabpanel"] h3').allTextContents()).toEqual([
                     'Active less remaining',
+                    'Ending creator',
+                    'Ending joined',
                     'Active more remaining',
+                    'Ending unjoined',
+                    'Visibility ending',
                     'Active unjoined',
                     'Upcoming preview',
+                    'Long upcoming',
                 ]);
                 const startedCard = page.getByRole('button', {
                     name: `Active unjoined - ${messages.detailViewDetail}`,
                 });
                 const upcomingCard = page.getByRole('button', {
                     name: `Upcoming preview - ${messages.detailViewDetail}`,
+                });
+                const endingUnjoinedCard = page.getByRole('button', {
+                    name: `Ending unjoined - ${messages.detailViewDetail}`,
+                });
+                const endingJoinedCard = page.getByRole('button', {
+                    name: `Ending joined - ${messages.detailViewDetail}`,
+                });
+                const endingCreatorCard = page.getByRole('button', {
+                    name: `Ending creator - ${messages.detailViewDetail}`,
+                });
+                const visibilityEndingCard = page.getByRole('button', {
+                    name: `Visibility ending - ${messages.detailViewDetail}`,
+                });
+                const longUpcomingCard = page.getByRole('button', {
+                    name: `Long upcoming - ${messages.detailViewDetail}`,
                 });
                 const startedJoin = startedCard.getByRole('button', {
                     name: messages.join,
@@ -242,6 +507,27 @@ describe('ChallengeList Hall of Fame', () => {
                 }).count())
                     .toBe(0);
                 expect(await upcomingCard.innerText()).toContain(upcomingStatus);
+                expect(await endingUnjoinedCard.getByRole('button', {
+                    name: messages.join,
+                    exact: true,
+                }).count()).toBe(1);
+                expect(await endingJoinedCard.getByRole('button', {
+                    name: messages.leave,
+                    exact: true,
+                }).count()).toBe(1);
+                expect(await endingCreatorCard.getByRole('button', {
+                    name: messages.edit,
+                    exact: true,
+                }).count()).toBe(1);
+                const lifecycleBeforeBoundary = await page.evaluate(() => {
+                    const getMetrics = Reflect.get(globalThis, 'getChallengeLifecycleMetrics');
+                    if (typeof getMetrics !== 'function') {
+                        throw new Error('Challenge lifecycle metrics missing');
+                    }
+                    return getMetrics();
+                });
+                expect(lifecycleBeforeBoundary.timerDelays)
+                    .toContain(MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS);
 
                 for (const width of [320, 375, 1280]) {
                     await page.setViewportSize({ width, height: 800 });
@@ -310,6 +596,90 @@ describe('ChallengeList Hall of Fame', () => {
                     name: messages.join,
                     exact: true,
                 }).count()).toBe(1);
+                for (const endedCard of [
+                    endingUnjoinedCard,
+                    endingJoinedCard,
+                    endingCreatorCard,
+                ]) {
+                    expect(await endedCard.innerText()).toContain(messages.ended);
+                }
+                expect(await endingUnjoinedCard.getByRole('button', {
+                    name: messages.join,
+                    exact: true,
+                }).count()).toBe(0);
+                expect(await endingJoinedCard.getByRole('button', {
+                    name: messages.leave,
+                    exact: true,
+                }).count()).toBe(0);
+                expect(await endingCreatorCard.getByRole('button', {
+                    name: messages.edit,
+                    exact: true,
+                }).count()).toBe(0);
+
+                await page.evaluate(() => {
+                    const setVisibility = Reflect.get(globalThis, 'setChallengeVisibility');
+                    if (typeof setVisibility !== 'function') {
+                        throw new Error('Challenge visibility control missing');
+                    }
+                    setVisibility('hidden');
+                });
+                await page.clock.setSystemTime(new Date('2099-01-02T15:00:00.100Z'));
+                expect(await visibilityEndingCard.getByRole('button', {
+                    name: messages.join,
+                    exact: true,
+                }).count()).toBe(1);
+                await page.evaluate(() => {
+                    const setVisibility = Reflect.get(globalThis, 'setChallengeVisibility');
+                    if (typeof setVisibility !== 'function') {
+                        throw new Error('Challenge visibility control missing');
+                    }
+                    setVisibility('visible');
+                });
+                await page.waitForFunction(({ cardLabel, endedText, joinLabel }) => {
+                    const card = [...document.querySelectorAll<HTMLElement>('[role="button"]')]
+                        .find((element) => element.getAttribute('aria-label') === cardLabel);
+                    const hasJoinButton = [
+                        ...(card?.querySelectorAll<HTMLButtonElement>('button') ?? []),
+                    ].some((button) => button.getAttribute('aria-label') === joinLabel);
+                    return card?.textContent?.includes(endedText) && !hasJoinButton;
+                }, {
+                    cardLabel: `Visibility ending - ${messages.detailViewDetail}`,
+                    endedText: messages.ended,
+                    joinLabel: messages.join,
+                });
+
+                await page.clock.fastForward(MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS - 1);
+                expect(await longUpcomingCard.getByRole('button', {
+                    name: messages.join,
+                    exact: true,
+                }).count()).toBe(0);
+                await page.clock.fastForward(101);
+                expect(await longUpcomingCard.getByRole('button', {
+                    name: messages.join,
+                    exact: true,
+                }).count()).toBe(0);
+                const lifecycleAfterLongTimerCap = await page.evaluate(() => {
+                    const getMetrics = Reflect.get(globalThis, 'getChallengeLifecycleMetrics');
+                    if (typeof getMetrics !== 'function') {
+                        throw new Error('Challenge lifecycle metrics missing');
+                    }
+                    return getMetrics();
+                });
+                expect(lifecycleAfterLongTimerCap.pendingTimerDelays).toHaveLength(1);
+                expect(lifecycleAfterLongTimerCap.pendingTimerDelays[0])
+                    .toBeGreaterThan(0);
+                expect(lifecycleAfterLongTimerCap.pendingTimerDelays[0])
+                    .toBeLessThan(MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS);
+                expect(lifecycleAfterLongTimerCap.visibilityListenerCount).toBe(1);
+                const millisecondsUntilLongStart = await page.evaluate(() => (
+                    Date.parse('2099-02-20T00:00:00+09:00') - Date.now()
+                ));
+                expect(millisecondsUntilLongStart).toBeGreaterThan(0);
+                await page.clock.fastForward(millisecondsUntilLongStart + 100);
+                expect(await longUpcomingCard.getByRole('button', {
+                    name: messages.join,
+                    exact: true,
+                }).count()).toBe(1);
 
                 const activeTab = page.getByRole('tab', { name: messages.active });
                 const historyTab = page.getByRole('tab', { name: messages.completed });
@@ -322,6 +692,13 @@ describe('ChallengeList Hall of Fame', () => {
                 const historyPanel = page.getByRole('tabpanel', { name: messages.completed });
                 await page.locator('#challenge-history-title').waitFor();
                 await page.locator('h3', { hasText: 'History incomplete' }).waitFor();
+                await page.waitForFunction(() => {
+                    const getMetrics = Reflect.get(globalThis, 'getChallengeLifecycleMetrics');
+                    if (typeof getMetrics !== 'function') return false;
+                    const metrics = getMetrics();
+                    return metrics.pendingTimerDelays.length === 0
+                        && metrics.visibilityListenerCount === 0;
+                });
                 const historyText = await historyPanel.innerText();
                 expect(historyText).toContain(messages.historyTitle);
                 expect(historyText).toContain(messages.historyDescription);
@@ -394,10 +771,203 @@ describe('ChallengeList Hall of Fame', () => {
                     document.querySelector('[role="tabpanel"]')?.getAttribute('aria-busy') === 'false'
                 ));
                 expect(await myPanel.innerText()).toContain(messages.listEmptyMy);
+
+                await page.clock.setSystemTime(new Date('2099-03-01T14:59:59.800Z'));
+                await page.evaluate(() => {
+                    delete document.body.dataset.challengeEditCloseCount;
+                    delete document.body.dataset.challengeEditPutCount;
+                    delete document.body.dataset.challengeEditUpdatedCount;
+                    document.getElementById('edit-modal-trigger')?.focus();
+                    const render = Reflect.get(globalThis, 'renderEditChallengeModal');
+                    if (typeof render !== 'function') {
+                        throw new Error('Edit challenge modal renderer missing');
+                    }
+                    render('2099-03-01');
+                });
+                const editDialog = page.getByRole('dialog', { name: messages.edit });
+                await editDialog.waitFor();
+                await page.clock.setSystemTime(new Date('2099-03-01T15:00:00.001Z'));
+                await editDialog.getByRole('button', { name: messages.save, exact: true }).click();
+                await page.getByRole('alert').waitFor();
+                expect(await page.getByRole('alert').innerText()).toBe(messages.editExpired);
+                expect(await editDialog.getByRole('button', {
+                    name: messages.save,
+                    exact: true,
+                }).isDisabled()).toBe(true);
+                expect(await editDialog.getByLabel(messages.titleLabel).isDisabled()).toBe(true);
+                expect(await page.locator('body').getAttribute('data-challenge-edit-put-count'))
+                    .toBeNull();
+                expect(await page.locator('body').getAttribute('data-challenge-edit-updated-count'))
+                    .toBeNull();
+                for (const width of [320, 375, 1280]) {
+                    await page.setViewportSize({ width, height: 800 });
+                    const geometry = await editDialog.evaluate((dialog) => {
+                        const dialogRect = dialog.getBoundingClientRect();
+                        const controls = [
+                            ...dialog.querySelectorAll<HTMLElement>(
+                                'button, input:not([type="checkbox"]), textarea',
+                            ),
+                        ];
+                        return {
+                            horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
+                            dialogLeft: dialogRect.left,
+                            dialogRight: dialogRect.right,
+                            minimumControlHeight: Math.min(
+                                ...controls.map((control) => control.getBoundingClientRect().height),
+                            ),
+                            viewportWidth: window.innerWidth,
+                        };
+                    });
+                    expect(geometry.horizontalOverflow).toBe(false);
+                    expect(geometry.dialogLeft).toBeGreaterThanOrEqual(0);
+                    expect(geometry.dialogRight).toBeLessThanOrEqual(geometry.viewportWidth);
+                    expect(geometry.minimumControlHeight).toBeGreaterThanOrEqual(44);
+                }
+                await editDialog.getByRole('button', {
+                    name: messages.cancelEdit,
+                    exact: true,
+                }).click();
+                await editDialog.waitFor({ state: 'detached' });
+                expect(await page.locator('#edit-modal-trigger').evaluate(
+                    (element) => document.activeElement === element,
+                )).toBe(true);
+
+                await page.clock.setSystemTime(new Date('2099-03-02T14:59:59.800Z'));
+                await page.locator('#edit-modal-trigger').focus();
+                await page.evaluate(() => {
+                    const render = Reflect.get(globalThis, 'renderEditChallengeModal');
+                    if (typeof render !== 'function') {
+                        throw new Error('Edit challenge modal renderer missing');
+                    }
+                    render('2099-03-02');
+                });
+                await editDialog.waitFor();
+                await page.clock.fastForward(300);
+                await editDialog.waitFor({ state: 'detached' });
+                expect(await page.locator('#edit-modal-trigger').evaluate(
+                    (element) => document.activeElement === element,
+                )).toBe(true);
+                expect(await page.locator('body').getAttribute('data-challenge-edit-close-count'))
+                    .toBe('2');
+                await page.waitForFunction(() => {
+                    const getMetrics = Reflect.get(globalThis, 'getChallengeLifecycleMetrics');
+                    if (typeof getMetrics !== 'function') return false;
+                    const metrics = getMetrics();
+                    return metrics.pendingTimerDelays.length === 0
+                        && metrics.visibilityListenerCount === 0;
+                });
+
+                await page.clock.setSystemTime(new Date('2099-03-03T14:59:59.800Z'));
+                await page.locator('#edit-modal-trigger').focus();
+                await page.evaluate(() => {
+                    document.body.dataset.challengeEditPutOutcome = 'delayed-failure';
+                    const render = Reflect.get(globalThis, 'renderEditChallengeModal');
+                    if (typeof render !== 'function') {
+                        throw new Error('Edit challenge modal renderer missing');
+                    }
+                    render('2099-03-03');
+                });
+                await editDialog.waitFor();
+                const delayedFailureTitle = editDialog.getByLabel(messages.titleLabel);
+                await editDialog.getByRole('button', {
+                    name: messages.save,
+                    exact: true,
+                }).click();
+                await page.waitForFunction(() => (
+                    document.body.dataset.challengeEditPutCount === '1'
+                ));
+                expect(await editDialog.getByRole('button', {
+                    name: messages.saving,
+                    exact: true,
+                }).isDisabled()).toBe(true);
+                await delayedFailureTitle.press('Enter');
+                expect(await page.locator('body').getAttribute('data-challenge-edit-put-count'))
+                    .toBe('1');
+                await page.keyboard.press('Escape');
+                expect(await editDialog.count()).toBe(1);
+                await page.clock.fastForward(300);
+                await editDialog.getByRole('alert').waitFor();
+                expect(await editDialog.getByRole('alert').innerText())
+                    .toBe(messages.editExpiredPending);
+                expect(await delayedFailureTitle.isDisabled()).toBe(true);
+                expect(await page.locator('body').getAttribute('data-challenge-edit-close-count'))
+                    .toBe('2');
+                await page.evaluate(() => {
+                    const resolve = Reflect.get(globalThis, 'resolveDelayedEditChallengePut');
+                    if (typeof resolve !== 'function') {
+                        throw new Error('Delayed edit PUT resolver missing');
+                    }
+                    resolve();
+                });
+                await page.waitForFunction((failureMessage) => (
+                    document.querySelector('[role="dialog"] [role="alert"]')?.textContent
+                        === failureMessage
+                ), messages.updateFailed);
+                expect(await delayedFailureTitle.inputValue()).toBe('Edit boundary');
+                expect(await delayedFailureTitle.isDisabled()).toBe(true);
+                expect(await editDialog.getByRole('button', {
+                    name: messages.cancelEdit,
+                    exact: true,
+                }).isEnabled()).toBe(true);
+                expect(await page.locator('body').getAttribute('data-challenge-edit-updated-count'))
+                    .toBeNull();
+                await page.keyboard.press('Escape');
+                await editDialog.waitFor({ state: 'detached' });
+                expect(await page.locator('#edit-modal-trigger').evaluate(
+                    (element) => document.activeElement === element,
+                )).toBe(true);
+
+                await page.clock.setSystemTime(new Date('2099-03-04T14:59:59.800Z'));
+                await page.locator('#edit-modal-trigger').focus();
+                await page.evaluate(() => {
+                    document.body.dataset.challengeEditPutOutcome = 'delayed-success';
+                    const render = Reflect.get(globalThis, 'renderEditChallengeModal');
+                    if (typeof render !== 'function') {
+                        throw new Error('Edit challenge modal renderer missing');
+                    }
+                    render('2099-03-04');
+                });
+                await editDialog.waitFor();
+                await editDialog.getByRole('button', {
+                    name: messages.save,
+                    exact: true,
+                }).click();
+                await page.waitForFunction(() => (
+                    document.body.dataset.challengeEditPutCount === '2'
+                ));
+                await page.clock.fastForward(300);
+                await editDialog.getByRole('alert').waitFor();
+                expect(await editDialog.getByRole('alert').innerText())
+                    .toBe(messages.editExpiredPending);
+                expect(await editDialog.count()).toBe(1);
+                await page.evaluate(() => {
+                    const resolve = Reflect.get(globalThis, 'resolveDelayedEditChallengePut');
+                    if (typeof resolve !== 'function') {
+                        throw new Error('Delayed edit PUT resolver missing');
+                    }
+                    resolve();
+                });
+                await editDialog.waitFor({ state: 'detached' });
+                expect(await page.locator('body').getAttribute('data-challenge-edit-updated-count'))
+                    .toBe('1');
+                expect(await page.locator('body').getAttribute('data-challenge-edit-close-count'))
+                    .toBe('4');
+                expect(await page.locator('body').getAttribute('data-challenge-edit-put-count'))
+                    .toBe('2');
+                expect(await page.locator('#edit-modal-trigger').evaluate(
+                    (element) => document.activeElement === element,
+                )).toBe(true);
+                await page.waitForFunction(() => {
+                    const getMetrics = Reflect.get(globalThis, 'getChallengeLifecycleMetrics');
+                    if (typeof getMetrics !== 'function') return false;
+                    const metrics = getMetrics();
+                    return metrics.pendingTimerDelays.length === 0
+                        && metrics.visibilityListenerCount === 0;
+                });
             }
 
             expect(await page.locator('body').getAttribute('data-challenge-requests'))
-                .toBe('active,completed,my,active,completed,my');
+                .toBe('active,active,completed,my,active,active,completed,my');
             expect(pageErrors).toEqual([]);
             expect(consoleErrors).toEqual([]);
         } finally {
