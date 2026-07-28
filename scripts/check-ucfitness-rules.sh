@@ -14,6 +14,75 @@ record() {
   REPORT+="\n❌ [${label}]\n${body}\n"
 }
 
+finish_rule_check() {
+  if [ "$VIOLATIONS" -eq 0 ]; then
+    echo "OK: UCFitness rule-check passed (0 violations)"
+    exit 0
+  fi
+
+  printf "NG: %d rule violation(s) detected\n" "$VIOLATIONS"
+  printf "%b\n" "$REPORT"
+  exit 1
+}
+
+check_challenge_progress_auth_log_boundary() {
+  local single_route='app/api/challenge/[challengeId]/progress/route.ts'
+  local batch_route='app/api/challenge/progress/route.ts'
+  local route compact_route pattern
+
+  for route in "$single_route" "$batch_route"; do
+    compact_route="$(tr '\n' ' ' < "$route")"
+    if ! printf '%s' "$compact_route" | grep -Eq 'Promise<NextResponse>[[:space:]]*\{[[:space:]]*let authenticationComplete = false;[[:space:]]*try[[:space:]]*\{[[:space:]]*const session = await auth\(\);[[:space:]]*authenticationComplete = true;'; then
+      record "challenge progressのauthが固定catch境界外へ回帰" "$route"
+    fi
+    if [ "$(grep -Fc 'const session = await auth();' "$route")" -ne 1 ] || \
+       [ "$(grep -Fc 'reportError(' "$route")" -ne 1 ]; then
+      record "challenge progressの認証/固定ログ単一境界欠落" "$route"
+    fi
+  done
+  if ! grep -Fq "const normalized = authenticationComplete" "$single_route" || \
+     ! grep -Fq "CHALLENGE_PROGRESS_UNAVAILABLE_CODE" "$single_route" || \
+     ! grep -Eq "reportError\\(['\"]challenge:progress['\"][[:space:]]*,[[:space:]]*normalized[[:space:]]*\\);" "$single_route" || \
+     ! grep -Fq "const stage = authenticationComplete" "$batch_route" || \
+     ! grep -Eq "['\"]Challenge progress batch request failed['\"]" "$batch_route" || \
+     ! grep -Eq "['\"]CHALLENGE_PROGRESS_BATCH_UNAVAILABLE['\"]" "$batch_route" || \
+     ! grep -Eq "reportError\\(['\"]challenge:progress:batch['\"][[:space:]]*,[[:space:]]*normalized[[:space:]]*\\);" "$batch_route"; then
+    record "challenge progressの固定AppError正規化欠落" "single/batch progress routes"
+  fi
+
+  local error_sink_test='app/api/challenge/error-sink.test.ts'
+  for pattern in \
+    "GET as GET_CHALLENGE_PROGRESS" \
+    "POST as POST_CHALLENGE_PROGRESS_BATCH" \
+    "singleProgress:" \
+    "batchProgress:" \
+    "matching-code AppError" \
+    "\$labelの\$failureLabel auth障害を固定JSONへ変換し、生情報を除外する" \
+    "expect(mocks.from).not.toHaveBeenCalled()" \
+    "expect(mocks.rpc).not.toHaveBeenCalled()"; do
+    if ! grep -Fq "$pattern" "$error_sink_test"; then
+      record "challenge progress authの実reportError sink回帰欠落" "${error_sink_test}: ${pattern}"
+    fi
+  done
+  if ! grep -Fq "同一codeのAppErrorも固定fieldだけの新しいErrorへ再構築する" \
+       'lib/services/challenge-progress-service.test.ts' || \
+     ! grep -Fq "return progressFailure(stage);" \
+       'lib/services/challenge-progress-service.ts'; then
+    record "challenge progressのmatching-code AppError再固定化回帰欠落" "progress service/test"
+  fi
+  if ! grep -Fq "progressは未認証の場合、DB処理前に401を返す" \
+       'app/api/challenge/[challengeId]/operation-authorization.test.ts' || \
+     ! grep -Fq "未認証の場合、batch処理前に401を返す" \
+       'app/api/challenge/progress/route.test.ts'; then
+    record "challenge progressの未認証401回帰欠落" "single/batch progress route tests"
+  fi
+}
+
+if [ "${1:-}" = "--challenge-progress-auth-log-boundary-only" ]; then
+  check_challenge_progress_auth_log_boundary
+  finish_rule_check
+fi
+
 # ---------- 1. leaderboard-row に transition-all を使っていないか ----------
 # copilot-instructions: ランキング系は transition-colors のみ許可
 HITS=$(grep -rEn "leaderboard-row[^\"']*transition-all|transition-all[^\"']*leaderboard-row" \
@@ -1164,61 +1233,7 @@ if ! grep -Fq "GROUP作成成功時、正規化済み入力でRPCを1回だけ�
 fi
 
 # ---------- 40. challenge progress認証の固定ログ境界 ----------
-CHALLENGE_PROGRESS_SINGLE_ROUTE='app/api/challenge/[challengeId]/progress/route.ts'
-CHALLENGE_PROGRESS_BATCH_ROUTE='app/api/challenge/progress/route.ts'
-for route in "$CHALLENGE_PROGRESS_SINGLE_ROUTE" "$CHALLENGE_PROGRESS_BATCH_ROUTE"; do
-  compact_route="$(tr '\n' ' ' < "$route")"
-  if ! printf '%s' "$compact_route" | grep -Eq 'Promise<NextResponse>[[:space:]]*\{[[:space:]]*let authenticationComplete = false;[[:space:]]*try[[:space:]]*\{[[:space:]]*const session = await auth\(\);[[:space:]]*authenticationComplete = true;'; then
-    record "challenge progressのauthが固定catch境界外へ回帰" "$route"
-  fi
-  if [ "$(grep -Fc 'const session = await auth();' "$route")" -ne 1 ] || \
-     [ "$(grep -Fc 'reportError(' "$route")" -ne 1 ]; then
-    record "challenge progressの認証/固定ログ単一境界欠落" "$route"
-  fi
-done
-if ! grep -Fq "const normalized = authenticationComplete" "$CHALLENGE_PROGRESS_SINGLE_ROUTE" || \
-   ! grep -Fq "CHALLENGE_PROGRESS_UNAVAILABLE_CODE" "$CHALLENGE_PROGRESS_SINGLE_ROUTE" || \
-   ! grep -Fq "reportError('challenge:progress', normalized);" "$CHALLENGE_PROGRESS_SINGLE_ROUTE" || \
-   ! grep -Fq "const stage = authenticationComplete" "$CHALLENGE_PROGRESS_BATCH_ROUTE" || \
-   ! grep -Fq "'Challenge progress batch request failed'" "$CHALLENGE_PROGRESS_BATCH_ROUTE" || \
-   ! grep -Fq "'CHALLENGE_PROGRESS_BATCH_UNAVAILABLE'" "$CHALLENGE_PROGRESS_BATCH_ROUTE" || \
-   ! grep -Fq "reportError('challenge:progress:batch', normalized);" "$CHALLENGE_PROGRESS_BATCH_ROUTE"; then
-  record "challenge progressの固定AppError正規化欠落" "single/batch progress routes"
-fi
-
-CHALLENGE_PROGRESS_ERROR_SINK_TEST='app/api/challenge/error-sink.test.ts'
-for pattern in \
-  "GET as GET_CHALLENGE_PROGRESS" \
-  "POST as POST_CHALLENGE_PROGRESS_BATCH" \
-  "singleProgress:" \
-  "batchProgress:" \
-  "matching-code AppError" \
-  "\$labelの\$failureLabel auth障害を固定JSONへ変換し、生情報を除外する" \
-  "expect(mocks.from).not.toHaveBeenCalled()" \
-  "expect(mocks.rpc).not.toHaveBeenCalled()"; do
-  if ! grep -Fq "$pattern" "$CHALLENGE_PROGRESS_ERROR_SINK_TEST"; then
-    record "challenge progress authの実reportError sink回帰欠落" "${CHALLENGE_PROGRESS_ERROR_SINK_TEST}: ${pattern}"
-  fi
-done
-if ! grep -Fq "同一codeのAppErrorも固定fieldだけの新しいErrorへ再構築する" \
-     'lib/services/challenge-progress-service.test.ts' || \
-   ! grep -Fq "return progressFailure(stage);" \
-     'lib/services/challenge-progress-service.ts'; then
-  record "challenge progressのmatching-code AppError再固定化回帰欠落" "progress service/test"
-fi
-if ! grep -Fq "progressは未認証の場合、DB処理前に401を返す" \
-     'app/api/challenge/[challengeId]/operation-authorization.test.ts' || \
-   ! grep -Fq "未認証の場合、batch処理前に401を返す" \
-     'app/api/challenge/progress/route.test.ts'; then
-  record "challenge progressの未認証401回帰欠落" "single/batch progress route tests"
-fi
+check_challenge_progress_auth_log_boundary
 
 # ---------- 結果出力 ----------
-if [ "$VIOLATIONS" -eq 0 ]; then
-  echo "OK: UCFitness rule-check passed (0 violations)"
-  exit 0
-else
-  printf "NG: %d rule violation(s) detected\n" "$VIOLATIONS"
-  printf "%b\n" "$REPORT"
-  exit 1
-fi
+finish_rule_check

@@ -1742,3 +1742,10 @@ export const runtime = "edge";
 - **根本原因**: セッション不在を返す401分岐と、外部依存である`auth()`自身がthrowする障害を同じ認証前処理として扱い、後者をservice・DB障害と同じ最終ログ境界へ含めていなかった。
 - **対策**: 両Route Handlerの最初の`try`内で`auth()`を実行し、セッション不在はログなし401、throwは既存の固定operation・`unexpected` stage・codeへ変換する。共有正規化も同一codeの`AppError`を固定message・allowlist済みstageだけの新しい`AppError`へ再構築する。実`reportError`から`console.error`へ出るJSONを単件・一括のraw Error・matching-code AppErrorで解析し、identity、message、stack、cause、context、user/group/challenge UUIDの非露出を固定した。`check:rules`は`auth()`がhandler先頭の`try`直下にあり、正規化・最終sink回帰が存在することを検査する。
 - **教訓**: `auth()`は認証判定だけでなく失敗し得る非同期依存である。Route Handlerでは「戻り値なし=401」と「throw=固定5xx」を分離し、throw経路を必ず固定ログ境界内へ置く。logger mockだけで完了せず、最終構造化ログをparseして生値と識別子がないことを確認する。リファレンス: `app/api/challenge/progress/route.ts`, `app/api/challenge/[challengeId]/progress/route.ts`, `app/api/challenge/error-sink.test.ts`, `scripts/check-ucfitness-rules.sh`
+
+### LL-105: ソースguardを引用符の表記へ固定すると等価な変更を誤検出する
+
+- **事象**: Challenge進捗の固定ログ境界は維持されていても、`check:rules`がsingle quoteを含む完全一致文字列へ依存していたため、機能的に等価なdouble quoteへ変更すると違反として誤検出した。
+- **根本原因**: operation・message・codeという意味的な契約ではなく、特定の引用符を含むソース表記だけを検査し、guard自身の正例・負例を独立したfixtureで実行していなかった。
+- **対策**: 対象4箇所を`['"]`の引用符非依存パターンへ統一し、単件・batch routeをdouble quoteへ変換した一時fixtureが通ること、境界欠落と異なるoperation/message/code、route stage帰属、service再固定化境界の欠落が失敗することをVitestで固定した。
+- **教訓**: ソース機械guardはフォーマッタや等価な表記差を許容しつつ、守る値と構造は厳密に照合する。guard追加時は現行treeの成功だけでなく、許容する同値変換と拒否すべき最小変異を一時fixtureで実行する。リファレンス: `scripts/check-ucfitness-rules.sh`, `lib/__tests__/ucfitness-rule-check.test.ts`
