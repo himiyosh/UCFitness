@@ -109,8 +109,33 @@ const unsafeDateParseCases: UnsafeDateParseCase[] = [
         callKind: 'Date.parse',
     },
     {
+        label: 'slash区切りのlocal midnight literal',
+        source: 'export const slashDateConstructor = new Date("2026/07/28");',
+        callKind: 'new Date',
+    },
+    {
+        label: '英語月名のlocal midnight literal',
+        source: 'export const namedDateConstructor = new Date("July 28, 2026");',
+        callKind: 'new Date',
+    },
+    {
+        label: 'new Dateのoffsetなし完全timestamp literal',
+        source: 'export const localTimestampConstructor = new Date("2026-07-28T12:34:56");',
+        callKind: 'new Date',
+    },
+    {
+        label: 'Date.parseのoffsetなし小数秒timestamp literal',
+        source: 'export const localTimestampParser = Date.parse("2026-07-28T12:34:56.123");',
+        callKind: 'Date.parse',
+    },
+    {
         label: '空白付きISO date-only literal',
         source: 'export const paddedDateOnly = new Date(" 2026-07-28 ");',
+        callKind: 'new Date',
+    },
+    {
+        label: '空白付きoffset timestamp literal',
+        source: 'export const paddedTimestamp = new Date(" 2026-07-28T12:34:56Z ");',
         callKind: 'new Date',
     },
     {
@@ -162,6 +187,21 @@ const unsafeDateParseCases: UnsafeDateParseCase[] = [
         label: 'date-only安全を証明できないtemplate',
         source: 'export function parseUnknownTemplate(value: string) { return new Date(`${value}`); }',
         callKind: 'new Date',
+    },
+    {
+        label: 'full timestamp構造を持たないoffset付きtemplate',
+        source: 'export function parseOffsetOnlyTemplate(value: string) { return new Date(`${value}+09:00`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: '未検証変数へZだけを付けるtemplate',
+        source: 'export function parseUnvalidatedZulu(unvalidatedVar: string) { return new Date(`${unvalidatedVar}Z`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: 'full timestamp構造を持たないZ付きbinary',
+        source: 'export function parseOffsetOnlyBinary(value: string) { return Date.parse(value + "Z"); }',
+        callKind: 'Date.parse',
     },
 ];
 
@@ -221,8 +261,8 @@ function writeSafeDateBoundaryFixtures(): void {
             '    new Date(epoch),',
             '    new Date(Date.now()),',
             '    new Date(2026, 6, 28),',
-            '    new Date("2026-07-28T12:34:56"),',
             '    new Date("2026-07-28T12:34:56Z"),',
+            '    new Date("2026-07-28T12:34:56.123456789Z"),',
             '    Date.parse("2026-07-28T12:34:56+09:00"),',
             '    Date.parse("2026-07-28T12:34:56+0900"),',
             '    new Date(timestamp),',
@@ -338,7 +378,7 @@ describe('check-ucfitness-rules timezone依存date-only parse', () => {
         rmSync(dateBoundaryFixtureRoot, { recursive: true, force: true });
     });
 
-    it('明示offset・epoch・Date・完全timestamp・共有helperを受理し、除外対象を走査しない', () => {
+    it('明示offset付きtimestamp・epoch・Date・dynamic timestamp field・共有helperを受理し、除外対象を走査しない', () => {
         const result = runDateBoundaryRule();
 
         expect(result.status, result.output).toBe(0);
