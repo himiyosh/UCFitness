@@ -32,6 +32,7 @@ const originalSources = new Map(
 );
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'ucfitness-rule-check-'));
 const dateBoundaryFixtureRoot = mkdtempSync(join(tmpdir(), 'ucfitness-date-boundary-rule-'));
+const DATE_RULE_CHECK_TIMEOUT_MS = 15_000;
 
 interface RuleCheckResult {
     status: number | null;
@@ -43,6 +44,12 @@ interface InvalidBoundary {
     path: (typeof fixturePaths)[number];
     expected: string;
     replacement: string;
+}
+
+interface UnsafeDateParseCase {
+    label: string;
+    source: string;
+    callKind: 'new Date' | 'Date.parse';
 }
 
 const invalidBoundaries: InvalidBoundary[] = [
@@ -87,6 +94,74 @@ const invalidBoundaries: InvalidBoundary[] = [
         path: 'lib/services/challenge-progress-service.ts',
         expected: 'return progressFailure(stage);',
         replacement: 'return error as AppError;',
+    },
+];
+
+const unsafeDateParseCases: UnsafeDateParseCase[] = [
+    {
+        label: 'new DateのISO date-only literal',
+        source: 'export const dateOnlyConstructor = new Date("2026-07-28");',
+        callKind: 'new Date',
+    },
+    {
+        label: 'Date.parseのISO date-only literal',
+        source: 'export const dateOnlyParser = Date.parse("2026-07-28");',
+        callKind: 'Date.parse',
+    },
+    {
+        label: '空白付きISO date-only literal',
+        source: 'export const paddedDateOnly = new Date(" 2026-07-28 ");',
+        callKind: 'new Date',
+    },
+    {
+        label: 'no-substitution templateのISO date-only literal',
+        source: 'export const templateDateOnly = Date.parse(`2026-07-28`);',
+        callKind: 'Date.parse',
+    },
+    {
+        label: 'new Dateのend_date property',
+        source: 'export function parseEndProperty(event: { end_date: string }) { return new Date(event.end_date); }',
+        callKind: 'new Date',
+    },
+    {
+        label: 'Date.parseのstart_date element access',
+        source: 'export function parseStartElement(event: { start_date: string }) { return Date.parse(event["start_date"]); }',
+        callKind: 'Date.parse',
+    },
+    {
+        label: 'date-only identifier',
+        source: 'export function parseDateIdentifier(dateStr: string) { return new Date(dateStr); }',
+        callKind: 'new Date',
+    },
+    {
+        label: '未知のDate.parse identifier',
+        source: 'export function parseUnknownIdentifier(value: string) { return Date.parse(value); }',
+        callKind: 'Date.parse',
+    },
+    {
+        label: 'offsetなしT00:00:00 template',
+        source: 'export function parseStartTemplate(event: { start_date: string }) { return new Date(`${event.start_date}T00:00:00`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: 'offsetなしT23:59:59 template',
+        source: 'export function parseEndTemplate(endDate: string) { return Date.parse(`${endDate}T23:59:59`); }',
+        callKind: 'Date.parse',
+    },
+    {
+        label: 'offsetなしT00:00:00 binary',
+        source: 'export function parseEndBinary(event: { end_date: string }) { return new Date(event.end_date + "T00:00:00"); }',
+        callKind: 'new Date',
+    },
+    {
+        label: 'offsetなしT23:59:59 binary',
+        source: 'export function parseStartBinary(startDate: string) { return Date.parse(startDate + "T23:59:59"); }',
+        callKind: 'Date.parse',
+    },
+    {
+        label: 'date-only安全を証明できないtemplate',
+        source: 'export function parseUnknownTemplate(value: string) { return new Date(`${value}`); }',
+        callKind: 'new Date',
     },
 ];
 
@@ -136,30 +211,63 @@ function writeDateBoundaryFixtureFile(path: string, source: string): void {
 function writeSafeDateBoundaryFixtures(): void {
     writeDateBoundaryFixtureFile(
         'components/group/SafeBoundary.ts',
-        'export function parseEnd(endDate: string) { return new Date(`${endDate}T23:59:59+09:00`); }\n',
+        [
+            'interface Schedule { start_date: string; end_date: string; created_at: string }',
+            'declare function getChallengeScheduleMetrics(schedule: Schedule, now: number): unknown;',
+            'export function parseSafeValues(existingDate: Date, timestamp: string, epoch: number, schedule: Schedule) {',
+            '  return [',
+            '    new Date(),',
+            '    new Date(existingDate),',
+            '    new Date(epoch),',
+            '    new Date(Date.now()),',
+            '    new Date(2026, 6, 28),',
+            '    new Date("2026-07-28T12:34:56"),',
+            '    new Date("2026-07-28T12:34:56Z"),',
+            '    Date.parse("2026-07-28T12:34:56+09:00"),',
+            '    Date.parse("2026-07-28T12:34:56+0900"),',
+            '    new Date(timestamp),',
+            '    Date.parse(schedule.created_at),',
+            '    new Date(`${schedule.end_date}T00:00:00+09:00`),',
+            '    Date.parse(schedule.start_date + "T00:00:00Z"),',
+            '    new Date(schedule.end_date + "T00:00:00+0900"),',
+            '    getChallengeScheduleMetrics(schedule, Date.now()),',
+            '  ];',
+            '}',
+            '',
+        ].join('\n'),
     );
     writeDateBoundaryFixtureFile(
         'components/group/CommentOnly.ts',
-        '// new Date(`${event.end_date}T23:59:59`)\nexport const safe = true;\n',
+        '// new Date(event.end_date)\n// Date.parse(`${event.start_date}T00:00:00`)\nexport const safe = true;\n',
     );
     writeDateBoundaryFixtureFile(
         'components/group/UnsafeBoundary.test.ts',
-        'export function parseEnd(endDate: string) { return new Date(`${endDate}T23:59:59`); }\n',
+        'export function parseEnd(event: { end_date: string }) { return new Date(event.end_date); }\n',
+    );
+    writeDateBoundaryFixtureFile(
+        'components/group/UnsafeBoundary.spec.tsx',
+        'export function parseStart(event: { start_date: string }) { return Date.parse(event.start_date); }\n',
     );
     writeDateBoundaryFixtureFile(
         'components/group/__fixtures__/UnsafeBoundary.ts',
-        'export function parseEnd(endDate: string) { return new Date(endDate + "T23:59:59"); }\n',
+        'export function parseEnd(endDate: string) { return new Date(endDate); }\n',
+    );
+    writeDateBoundaryFixtureFile(
+        'components/group/fixture/UnsafeBoundary.tsx',
+        'export function parseEnd(endDate: string) { return Date.parse(endDate); }\n',
     );
     writeDateBoundaryFixtureFile(
         'docs/date-boundary.md',
-        '```ts\nnew Date(`${event.end_date}T23:59:59`)\n```\n',
+        '```ts\nnew Date(event.end_date)\nDate.parse(`${event.start_date}T00:00:00`)\n```\n',
     );
 }
 
-function runDateBoundaryRule(): RuleCheckResult {
+function runDateBoundaryRule(
+    option = '--date-only-parse-only',
+): RuleCheckResult {
     const result = spawnSync(
         'bash',
-        [ruleChecker, '--date-only-jst-end-boundary-only', dateBoundaryFixtureRoot],
+        [ruleChecker, option, dateBoundaryFixtureRoot],
         {
             cwd: repositoryRoot,
             encoding: 'utf8',
@@ -219,7 +327,7 @@ describe('check-ucfitness-rules challenge progress認証ログ境界', () => {
     });
 });
 
-describe('check-ucfitness-rules date-only JST終了境界', () => {
+describe('check-ucfitness-rules timezone依存date-only parse', () => {
     beforeEach(() => {
         rmSync(dateBoundaryFixtureRoot, { recursive: true, force: true });
         mkdirSync(dateBoundaryFixtureRoot, { recursive: true });
@@ -230,31 +338,62 @@ describe('check-ucfitness-rules date-only JST終了境界', () => {
         rmSync(dateBoundaryFixtureRoot, { recursive: true, force: true });
     });
 
-    it('明示JST offsetを受理し、コメント・docs・test・fixtureを検査対象外にする', () => {
+    it('明示offset・epoch・Date・完全timestamp・共有helperを受理し、除外対象を走査しない', () => {
         const result = runDateBoundaryRule();
 
         expect(result.status, result.output).toBe(0);
         expect(result.output).toContain('OK: UCFitness rule-check passed');
-    });
+    }, DATE_RULE_CHECK_TIMEOUT_MS);
 
-    it.each([
-        [
-            'template literal',
-            'export function parseEnd(endDate: string) { return new Date(`${endDate}T23:59:59`); }\n',
-        ],
-        [
-            '文字列連結',
-            'export function parseEnd(endDate: string) { return new Date(endDate + "T23:59:59"); }\n',
-        ],
-    ])('%sでoffsetを省略した場合、production違反として拒否する', (_label, source) => {
-        writeDateBoundaryFixtureFile('components/group/UnsafeBoundary.ts', source);
+    it('旧date-only JST終了境界オプションを互換aliasとして維持する', () => {
+        const result = runDateBoundaryRule('--date-only-jst-end-boundary-only');
+
+        expect(result.status, result.output).toBe(0);
+        expect(result.output).toContain('OK: UCFitness rule-check passed');
+    }, DATE_RULE_CHECK_TIMEOUT_MS);
+
+    it('literal・property・identifier・template・binaryの違反をすべて報告する', () => {
+        writeDateBoundaryFixtureFile(
+            'components/group/UnsafeBoundary.ts',
+            `${unsafeDateParseCases.map(({ source }) => source).join('\n')}\n`,
+        );
 
         const result = runDateBoundaryRule();
 
         expect(result.status, result.output).toBe(1);
         expect(result.output).toContain(
-            'date-only終了日時をoffsetなしT23:59:59でDate化',
+            'timezone依存のdate-only parse (new Date / Date.parse)',
         );
-        expect(result.output).toContain('components/group/UnsafeBoundary.ts:1');
-    });
+        unsafeDateParseCases.forEach((testCase, index) => {
+            expect(result.output, testCase.label).toContain(
+                `components/group/UnsafeBoundary.ts:${index + 1} ${testCase.callKind}`,
+            );
+        });
+    }, DATE_RULE_CHECK_TIMEOUT_MS);
+
+    it('app・components・contexts・hooks・lib・typesのproduction違反を走査する', () => {
+        const directories = [
+            'app',
+            'components',
+            'contexts',
+            'hooks',
+            'lib',
+            'types',
+        ];
+        directories.forEach((directory) => {
+            writeDateBoundaryFixtureFile(
+                `${directory}/UnsafeBoundary.ts`,
+                'export function parse(event: { end_date: string }) { return new Date(event.end_date); }\n',
+            );
+        });
+
+        const result = runDateBoundaryRule();
+
+        expect(result.status, result.output).toBe(1);
+        directories.forEach((directory) => {
+            expect(result.output).toContain(
+                `${directory}/UnsafeBoundary.ts:1 new Date`,
+            );
+        });
+    }, DATE_RULE_CHECK_TIMEOUT_MS);
 });

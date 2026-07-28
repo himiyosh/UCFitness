@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
-import { isValidUUID } from '@/lib/validation';
+import { isValidISODate, isValidUUID } from '@/lib/validation';
 
 interface RouteParams {
     params: Promise<{ groupId: string }>;
@@ -111,10 +111,10 @@ export async function POST(
         if (!target_steps || typeof target_steps !== 'number' || target_steps <= 0) {
             return NextResponse.json({ error: 'Target steps must be a positive number' }, { status: 400 });
         }
-        if (!start_date || !end_date) {
+        if (!isValidISODate(start_date) || !isValidISODate(end_date)) {
             return NextResponse.json({ error: 'Start date and end date are required' }, { status: 400 });
         }
-        if (new Date(end_date) < new Date(start_date)) {
+        if (end_date < start_date) {
             return NextResponse.json({ error: 'End date must be on or after start date' }, { status: 400 });
         }
 

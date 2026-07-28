@@ -1,3 +1,5 @@
+import { parseTimestampMillis } from '@/lib/date-utils';
+
 const JST_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit',
 });
@@ -23,8 +25,8 @@ function isDateOnly(value: unknown): value is string {
 function toJstDate(value: unknown): string | null {
     if (isDateOnly(value)) return value;
     if (typeof value !== 'string') return null;
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : JST_DATE_FORMATTER.format(date);
+    const timestamp = parseTimestampMillis(value);
+    return timestamp === null ? null : JST_DATE_FORMATTER.format(timestamp);
 }
 function normalizeRelation(value: unknown): Record<string, unknown> | null {
     const relation = Array.isArray(value) ? value[0] : value;

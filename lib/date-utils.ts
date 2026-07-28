@@ -20,6 +20,7 @@ const JST_HOUR_FORMATTER = new Intl.DateTimeFormat('en-GB', {
 
 /** YYYY-MM-DD 形式の検証パターン */
 const DATE_STR_REGEX = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
+const ISO_TIMESTAMP_REGEX = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,9})?)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)?$/i;
 
 /** 日付文字列のフォーマットを検証（内部ヘルパー） */
 function assertDateString(dateStr: string): void {
@@ -38,6 +39,12 @@ export function getJSTDateString(date: Date = new Date()): string {
 export function resolveStepCalendarYear(yearParam: string | null, now: Date = new Date()): number | null {
     const value = yearParam ?? getJSTDateString(now).slice(0, 4);
     return parseStrictInteger(value);
+}
+
+export function parseTimestampMillis(timestamp: string): number | null {
+    if (!ISO_TIMESTAMP_REGEX.test(timestamp)) return null;
+    const parsed = Date.parse(timestamp);
+    return Number.isFinite(parsed) ? parsed : null;
 }
 
 /**

@@ -116,7 +116,7 @@ export default function CreateChallengeModal({
             setError(t('targetStepsPositive'));
             return;
         }
-        if (new Date(endDate) <= new Date(startDate)) {
+        if (startDate && endDate && endDate <= startDate) {
             setError(t('endDateAfterStart'));
             return;
         }
@@ -398,7 +398,9 @@ export default function CreateChallengeModal({
                                 value={endDate}
                                 onChange={e => setEndDate(e.target.value)}
                                 disabled={submitting}
-                                aria-invalid={Boolean(error && new Date(endDate) <= new Date(startDate))}
+                                aria-invalid={Boolean(
+                                    error && startDate && endDate && endDate <= startDate,
+                                )}
                                 aria-describedby={error ? errorId : undefined}
                                 className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-gray-200 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent disabled:cursor-not-allowed disabled:opacity-60"
                                 required

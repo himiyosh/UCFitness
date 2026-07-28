@@ -93,8 +93,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         }
 
         // 期間上限チェック
-        const fromDate = new Date(fromStr);
-        const toDate = new Date(toStr);
+        const fromDate = new Date(`${fromStr}T00:00:00Z`);
+        const toDate = new Date(`${toStr}T00:00:00Z`);
         if (fromDate > toDate) {
             return NextResponse.json(
                 { error: '"from" must be before or equal to "to".' },

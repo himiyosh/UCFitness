@@ -1,3 +1,5 @@
+import { parseTimestampMillis } from '@/lib/date-utils';
+
 export type FeedItemType =
     | 'BADGE_EARNED'
     | 'STEP_MILESTONE'
@@ -52,8 +54,7 @@ function uniqueStrings(values: string[]): string[] {
 }
 
 function timestampValue(timestamp: string): number {
-    const value = Date.parse(timestamp);
-    return Number.isFinite(value) ? value : 0;
+    return parseTimestampMillis(timestamp) ?? 0;
 }
 
 function compareFeedItems(left: FeedItem, right: FeedItem): number {
@@ -228,7 +229,7 @@ export function parseNotificationFeedCursor(
         return { snapshot: fallbackSnapshot, offset: 0 };
     }
     if (value.length > MAX_CURSOR_LENGTH) return null;
-    if (Number.isFinite(Date.parse(value))) {
+    if (parseTimestampMillis(value) !== null) {
         return { snapshot: value, offset: 0 };
     }
 
@@ -240,7 +241,7 @@ export function parseNotificationFeedCursor(
         const parsed: unknown = JSON.parse(decoded);
         if (!isRecord(parsed)
             || typeof parsed.snapshot !== 'string'
-            || !Number.isFinite(Date.parse(parsed.snapshot))
+            || parseTimestampMillis(parsed.snapshot) === null
             || typeof parsed.offset !== 'number'
             || !Number.isInteger(parsed.offset)
             || parsed.offset < 0

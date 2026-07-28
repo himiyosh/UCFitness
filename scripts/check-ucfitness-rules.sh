@@ -99,8 +99,9 @@ const excludedDirectories = new Set([
   "tests",
 ]);
 const testFilePattern = /\.(?:fixture|spec|test)\.tsx?$/;
-const endOfDayMarker = "T23:59:59";
-const explicitOffsetPattern = /^(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})/;
+const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
+const completeTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?$/i;
+const explicitOffsetPattern = /(?:Z|[+-]\d{2}:?\d{2})$/i;
 const files = [];
 const violations = [];
 
@@ -132,49 +133,217 @@ for (const file of productionRootFiles) {
   collectFiles(path.join(root, file));
 }
 
-const flattenDateArgument = (node) => {
-  if (ts.isStringLiteralLike(node)) return node.text;
-  if (ts.isTemplateExpression(node)) {
-    return node.head.text
-      + node.templateSpans.map((span) => `{expression}${span.literal.text}`).join("");
+const program = ts.createProgram(files, {
+  jsx: ts.JsxEmit.Preserve,
+  module: ts.ModuleKind.ESNext,
+  moduleResolution: ts.ModuleResolutionKind.Bundler,
+  noEmit: true,
+  skipLibCheck: true,
+  target: ts.ScriptTarget.Latest,
+});
+const checker = program.getTypeChecker();
+
+const unwrapExpression = (node) => {
+  if (
+    ts.isParenthesizedExpression(node)
+    || ts.isAsExpression(node)
+    || ts.isTypeAssertionExpression(node)
+    || ts.isNonNullExpression(node)
+    || ts.isSatisfiesExpression(node)
+  ) {
+    return unwrapExpression(node.expression);
   }
-  if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
-    return flattenDateArgument(node.left) + flattenDateArgument(node.right);
-  }
-  if (ts.isParenthesizedExpression(node)) return flattenDateArgument(node.expression);
-  return "{expression}";
+  return node;
 };
 
-const hasOffsetlessEndOfDay = (text) => {
-  let markerIndex = text.indexOf(endOfDayMarker);
-  while (markerIndex >= 0) {
-    const suffix = text.slice(markerIndex + endOfDayMarker.length);
-    if (!explicitOffsetPattern.test(suffix)) return true;
-    markerIndex = text.indexOf(endOfDayMarker, markerIndex + endOfDayMarker.length);
+const isTimestampName = (name) => {
+  const lowerName = name.toLowerCase();
+  return lowerName === "timestamp"
+    || lowerName === "snapshot"
+    || lowerName.endsWith("_at")
+    || lowerName.endsWith("_timestamp")
+    || name.endsWith("At")
+    || name.endsWith("Iso")
+    || name.endsWith("Timestamp");
+};
+
+const getPropertyName = (node) => {
+  if (ts.isPropertyAccessExpression(node)) return node.name.text;
+  if (
+    ts.isElementAccessExpression(node)
+    && node.argumentExpression
+    && ts.isStringLiteralLike(node.argumentExpression)
+  ) {
+    return node.argumentExpression.text;
+  }
+  return null;
+};
+
+const isNullishType = (type) => (
+  (type.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void)) !== 0
+);
+
+const everyNonNullishTypePart = (type, predicate) => {
+  const parts = type.isUnion() ? type.types : [type];
+  const nonNullishParts = parts.filter((part) => !isNullishType(part));
+  return nonNullishParts.length > 0 && nonNullishParts.every(predicate);
+};
+
+const isNumberType = (node) => {
+  const type = checker.getTypeAtLocation(node);
+  return everyNonNullishTypePart(
+    type,
+    (part) => (part.flags & ts.TypeFlags.NumberLike) !== 0,
+  );
+};
+
+const isDateType = (node) => {
+  const type = checker.getTypeAtLocation(node);
+  return everyNonNullishTypePart(type, (part) => {
+    const symbol = part.getSymbol() ?? part.aliasSymbol;
+    return symbol?.getName() === "Date";
+  });
+};
+
+const flattenStringConstruction = (node) => {
+  const expression = unwrapExpression(node);
+  if (ts.isStringLiteralLike(expression)) {
+    return { text: expression.text, dynamicExpressions: [] };
+  }
+  if (ts.isTemplateExpression(expression)) {
+    const dynamicExpressions = [];
+    let text = expression.head.text;
+    for (const span of expression.templateSpans) {
+      dynamicExpressions.push(span.expression);
+      text += `{expression}${span.literal.text}`;
+    }
+    return { text, dynamicExpressions };
+  }
+  if (
+    ts.isBinaryExpression(expression)
+    && expression.operatorToken.kind === ts.SyntaxKind.PlusToken
+  ) {
+    const left = flattenStringConstruction(expression.left);
+    const right = flattenStringConstruction(expression.right);
+    return {
+      text: left.text + right.text,
+      dynamicExpressions: [
+        ...left.dynamicExpressions,
+        ...right.dynamicExpressions,
+      ],
+    };
+  }
+  return { text: "{expression}", dynamicExpressions: [expression] };
+};
+
+const isSafeStaticString = (text) => {
+  const normalized = text.trim();
+  if (dateOnlyPattern.test(normalized)) return false;
+  return completeTimestampPattern.test(normalized) || !dateOnlyPattern.test(normalized);
+};
+
+const isSafeTimestampReference = (node) => {
+  const expression = unwrapExpression(node);
+  if (ts.isIdentifier(expression)) return isTimestampName(expression.text);
+  const propertyName = getPropertyName(expression);
+  return propertyName !== null && isTimestampName(propertyName);
+};
+
+const isSafeDateArgument = (node) => {
+  const expression = unwrapExpression(node);
+
+  if (ts.isStringLiteralLike(expression)) {
+    return isSafeStaticString(expression.text);
+  }
+  if (ts.isNumericLiteral(expression) || isNumberType(expression) || isDateType(expression)) {
+    return true;
+  }
+  if (
+    ts.isNewExpression(expression)
+    && ts.isIdentifier(expression.expression)
+    && expression.expression.text === "Date"
+  ) {
+    return true;
+  }
+  if (
+    ts.isCallExpression(expression)
+    && ts.isPropertyAccessExpression(expression.expression)
+    && ts.isIdentifier(expression.expression.expression)
+    && expression.expression.expression.text === "Date"
+    && (expression.expression.name.text === "now" || expression.expression.name.text === "UTC")
+  ) {
+    return true;
+  }
+  if (
+    ts.isConditionalExpression(expression)
+    && isSafeDateArgument(expression.whenTrue)
+    && isSafeDateArgument(expression.whenFalse)
+  ) {
+    return true;
+  }
+  if (
+    ts.isBinaryExpression(expression)
+    && expression.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
+    && isSafeDateArgument(expression.left)
+    && isSafeDateArgument(expression.right)
+  ) {
+    return true;
+  }
+  if (ts.isIdentifier(expression) || getPropertyName(expression) !== null) {
+    return isSafeTimestampReference(expression);
+  }
+  if (
+    ts.isTemplateExpression(expression)
+    || (
+      ts.isBinaryExpression(expression)
+      && expression.operatorToken.kind === ts.SyntaxKind.PlusToken
+    )
+  ) {
+    const flattened = flattenStringConstruction(expression);
+    if (explicitOffsetPattern.test(flattened.text)) return true;
+    if (flattened.dynamicExpressions.length === 0) {
+      return isSafeStaticString(flattened.text);
+    }
+    const dynamicOnlyText = flattened.text
+      .replaceAll("{expression}", "")
+      .length === 0;
+    return dynamicOnlyText
+      && flattened.dynamicExpressions.every(isSafeTimestampReference);
   }
   return false;
 };
 
+const getDateParseKind = (node) => {
+  if (
+    ts.isNewExpression(node)
+    && ts.isIdentifier(node.expression)
+    && node.expression.text === "Date"
+  ) {
+    return "new Date";
+  }
+  if (
+    ts.isCallExpression(node)
+    && ts.isPropertyAccessExpression(node.expression)
+    && ts.isIdentifier(node.expression.expression)
+    && node.expression.expression.text === "Date"
+    && node.expression.name.text === "parse"
+  ) {
+    return "Date.parse";
+  }
+  return null;
+};
+
 for (const file of files) {
-  const source = fs.readFileSync(file, "utf8");
-  const sourceFile = ts.createSourceFile(
-    file,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
-  );
+  const sourceFile = program.getSourceFile(file);
+  if (!sourceFile) continue;
   const visit = (node) => {
-    if (
-      ts.isNewExpression(node)
-      && ts.isIdentifier(node.expression)
-      && node.expression.text === "Date"
-      && node.arguments?.[0]
-      && hasOffsetlessEndOfDay(flattenDateArgument(node.arguments[0]))
-    ) {
+    const parseKind = getDateParseKind(node);
+    const firstArgument = node.arguments?.[0];
+    const hasSafeArity = parseKind === "new Date" && (node.arguments?.length ?? 0) !== 1;
+    if (parseKind !== null && firstArgument && !hasSafeArity && !isSafeDateArgument(firstArgument)) {
       const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
       violations.push(
-        `${path.relative(root, file).split(path.sep).join("/")}:${position.line + 1}`,
+        `${path.relative(root, file).split(path.sep).join("/")}:${position.line + 1} ${parseKind}`,
       );
     }
     ts.forEachChild(node, visit);
@@ -184,10 +353,10 @@ for (const file of files) {
 
 if (violations.length > 0) {
   process.stdout.write(violations.join("\n"));
-  process.exit(1);
+  process.exitCode = 1;
 }
 ' "$scan_root" 2>&1)"; then
-    record "date-only終了日時をoffsetなしT23:59:59でDate化" "$hits"
+    record "timezone依存のdate-only parse (new Date / Date.parse)" "$hits"
   fi
 }
 
@@ -196,7 +365,8 @@ if [ "${1:-}" = "--challenge-progress-auth-log-boundary-only" ]; then
   finish_rule_check
 fi
 
-if [ "${1:-}" = "--date-only-jst-end-boundary-only" ]; then
+if [ "${1:-}" = "--date-only-parse-only" ] || \
+   [ "${1:-}" = "--date-only-jst-end-boundary-only" ]; then
   check_date_only_jst_end_boundary "${2:-.}"
   finish_rule_check
 fi

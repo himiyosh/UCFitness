@@ -141,11 +141,16 @@ describe('notification feed cursor', () => {
         )).toEqual(cursor);
     });
 
-    it('旧ISO cursorをoffset 0として受け入れ、不正cursorを拒否する', () => {
+    it('旧ISO timestamp cursorをoffset 0として受け入れ、date-onlyと不正cursorを拒否する', () => {
         expect(parseNotificationFeedCursor('2026-07-14T15:00:00.000Z')).toEqual({
             snapshot: '2026-07-14T15:00:00.000Z',
             offset: 0,
         });
+        expect(parseNotificationFeedCursor('2026-07-14')).toBeNull();
+        expect(parseNotificationFeedCursor(encodeNotificationFeedCursor({
+            snapshot: '2026-07-14',
+            offset: 0,
+        }))).toBeNull();
         expect(parseNotificationFeedCursor('not-a-cursor')).toBeNull();
     });
 });

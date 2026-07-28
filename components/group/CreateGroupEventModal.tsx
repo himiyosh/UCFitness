@@ -77,7 +77,7 @@ export default function CreateGroupEventModal({
             (startDate ? endDateInputRef : startDateInputRef).current?.focus();
             return;
         }
-        if (new Date(endDate) < new Date(startDate)) {
+        if (endDate < startDate) {
             setError(t('dateInvalid'));
             endDateInputRef.current?.focus();
             return;

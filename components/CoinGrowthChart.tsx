@@ -27,8 +27,8 @@ export interface CoinGrowthChartProps {
 
 /** 日付フォーマット（コンポーネント外に定数化） */
 function formatDate(dateStr: string): string {
-    const d = new Date(dateStr + 'T00:00:00');
-    return `${d.getMonth() + 1}/${d.getDate()}`;
+    const parts = dateStr.split('-');
+    return `${Number(parts[1])}/${Number(parts[2])}`;
 }
 
 /** 数値フォーマット（コンポーネント外に定数化） */

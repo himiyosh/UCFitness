@@ -379,7 +379,7 @@ function computeDateRange(period: Period, dateStr: string): { startDate: string;
     let endDate = dateStr;
 
     if (period === 'WEEKLY') {
-        const d = new Date(dateStr);
+        const d = new Date(`${dateStr}T00:00:00Z`);
         const end = new Date(d);
         end.setUTCDate(end.getUTCDate() + 6);
         endDate = end.toISOString().split('T')[0];
@@ -480,7 +480,7 @@ const assignPersonalBadges = async (dateStr: string): Promise<UserBadgeAwards> =
             badgeAssignmentFailure('usersData', dateStr, batchOffset);
         }
         const goalMap = new Map(usersData.map((user) => [user.id, user.step_goal]));
-        const thirtyDaysAgo = new Date(dateStr);
+        const thirtyDaysAgo = new Date(`${dateStr}T00:00:00Z`);
         thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
         const historyStartDate = thirtyDaysAgo.toISOString().slice(0, 10);
 
@@ -574,7 +574,7 @@ const assignStreakBadges = async (
         .slice(0, 3);
     if (steps.length < 3) return [];
 
-    const today = new Date(dateStr);
+    const today = new Date(`${dateStr}T00:00:00Z`);
     for (let i = 0; i < 3; i++) {
         const expected = new Date(today);
         expected.setUTCDate(today.getUTCDate() - i);
@@ -614,7 +614,7 @@ const assignTitleBadges = async (userId: string, dateStr: string, totalSteps: nu
 
 const assignLifestyleBadges = async (userId: string, dateStr: string, steps: number): Promise<(string | null)[]> => {
     // Weekend Warrior: High steps on Sat/Sun
-    const d = new Date(dateStr);
+    const d = new Date(`${dateStr}T00:00:00Z`);
     const day = d.getUTCDay(); // 0=Sun, 6=Sat
     const results: (string | null)[] = [];
 

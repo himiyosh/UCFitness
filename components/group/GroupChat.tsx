@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
+
 import { useTranslations } from 'next-intl';
+
+import { parseTimestampMillis } from '@/lib/date-utils';
+
 import UserAvatar from '@/components/UserAvatar';
 
 // ============================================
@@ -125,7 +129,7 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
     const formatTime = useCallback(
         (dateStr: string): string => {
             const now = Date.now();
-            const date = new Date(dateStr).getTime();
+            const date = parseTimestampMillis(dateStr) ?? Number.NaN;
             const diffMs = now - date;
             const diffMin = Math.floor(diffMs / 60000);
 
