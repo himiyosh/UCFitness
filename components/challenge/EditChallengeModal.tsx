@@ -50,14 +50,15 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
     const [, setTimeRevision] = useState(0);
     const dialogRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
+    const submittingRef = useRef(false);
     const getCurrentScheduleMetrics = useCallback(() => getChallengePriorityMetrics(
         { ...challenge, is_joined: false },
         null,
         Date.now(),
     ), [challenge]);
     const handleClose = useCallback(() => {
-        if (!submitting) onClose();
-    }, [onClose, submitting]);
+        if (!submittingRef.current) onClose();
+    }, [onClose]);
     const scheduleMetrics = getCurrentScheduleMetrics();
 
     useDialogFocus({
@@ -68,8 +69,16 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
     });
     useEffect(() => {
         if (!isOpen || expiryBlocked) return;
-        if (scheduleMetrics.isExpired) {
+        const handleExpiry = () => {
+            setExpiryBlocked(true);
+            if (submittingRef.current) {
+                setError(t('editExpiredPending'));
+                return;
+            }
             onClose();
+        };
+        if (scheduleMetrics.isExpired) {
+            handleExpiry();
             return;
         }
         const timerDelay = getChallengeBoundaryTimerDelay(
@@ -80,7 +89,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
         const refreshTimeBoundary = () => {
             const latestMetrics = getCurrentScheduleMetrics();
             if (latestMetrics.isExpired) {
-                onClose();
+                handleExpiry();
                 return;
             }
             setTimeRevision((revision) => revision + 1);
@@ -101,11 +110,12 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
         onClose,
         scheduleMetrics.isExpired,
         scheduleMetrics.millisecondsUntilNextBoundary,
+        t,
     ]);
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
-        if (submitting) return;
+        if (submittingRef.current || expiryBlocked) return;
         if (getCurrentScheduleMetrics().isExpired) {
             setExpiryBlocked(true);
             setError(t('editExpired'));
@@ -127,6 +137,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
             return;
         }
 
+        submittingRef.current = true;
         setSubmitting(true);
         setError(null);
 
@@ -156,9 +167,10 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : t('unknownError'));
         } finally {
+            submittingRef.current = false;
             setSubmitting(false);
         }
-    }, [title, description, targetSteps, rewardUC, startDate, endDate, isActive, submitting, challenge.id, onUpdated, onClose, t, getCurrentScheduleMetrics]);
+    }, [title, description, targetSteps, rewardUC, startDate, endDate, isActive, expiryBlocked, challenge.id, onUpdated, onClose, t, getCurrentScheduleMetrics]);
 
     if (!isOpen || typeof document === 'undefined') return null;
 

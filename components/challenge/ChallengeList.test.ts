@@ -87,11 +87,28 @@ describe('ChallengeList Hall of Fame', () => {
                         'history-achieved': 12000,
                         'history-incomplete': 5000,
                     };
+                    let resolveDelayedEditPut = null;
                     globalThis.fetch = async (input, init = {}) => {
                         const url = new URL(String(input), 'https://ucfitness.test');
                         if (init.method === 'PUT' && url.pathname === '/api/challenge/edit-boundary') {
                             const count = Number(document.body.dataset.challengeEditPutCount ?? '0');
                             document.body.dataset.challengeEditPutCount = String(count + 1);
+                            const outcome = document.body.dataset.challengeEditPutOutcome;
+                            if (outcome === 'delayed-failure' || outcome === 'delayed-success') {
+                                return new Promise((resolve) => {
+                                    resolveDelayedEditPut = () => {
+                                        resolveDelayedEditPut = null;
+                                        resolve({
+                                            ok: outcome === 'delayed-success',
+                                            json: async () => ({
+                                                error: globalThis.challengeMessages[
+                                                    document.documentElement.lang
+                                                ]?.Challenge?.updateFailed,
+                                            }),
+                                        });
+                                    };
+                                });
+                            }
                             return {ok: true, json: async () => ({})};
                         }
                         if (url.pathname === '/api/challenge') {
@@ -180,6 +197,12 @@ describe('ChallengeList Hall of Fame', () => {
                         );
                     };
                     globalThis.clearEditChallengeModal = () => editModalRoot.render(null);
+                    globalThis.resolveDelayedEditChallengePut = () => {
+                        if (typeof resolveDelayedEditPut !== 'function') {
+                            throw new Error('Delayed edit PUT resolver missing');
+                        }
+                        resolveDelayedEditPut();
+                    };
                 `,
                 loader: 'tsx',
                 resolveDir: process.cwd(),
@@ -826,6 +849,114 @@ describe('ChallengeList Hall of Fame', () => {
                 )).toBe(true);
                 expect(await page.locator('body').getAttribute('data-challenge-edit-close-count'))
                     .toBe('2');
+                await page.waitForFunction(() => {
+                    const getMetrics = Reflect.get(globalThis, 'getChallengeLifecycleMetrics');
+                    if (typeof getMetrics !== 'function') return false;
+                    const metrics = getMetrics();
+                    return metrics.pendingTimerDelays.length === 0
+                        && metrics.visibilityListenerCount === 0;
+                });
+
+                await page.clock.setSystemTime(new Date('2099-03-03T14:59:59.800Z'));
+                await page.locator('#edit-modal-trigger').focus();
+                await page.evaluate(() => {
+                    document.body.dataset.challengeEditPutOutcome = 'delayed-failure';
+                    const render = Reflect.get(globalThis, 'renderEditChallengeModal');
+                    if (typeof render !== 'function') {
+                        throw new Error('Edit challenge modal renderer missing');
+                    }
+                    render('2099-03-03');
+                });
+                await editDialog.waitFor();
+                const delayedFailureTitle = editDialog.getByLabel(messages.titleLabel);
+                await editDialog.getByRole('button', {
+                    name: messages.save,
+                    exact: true,
+                }).click();
+                await page.waitForFunction(() => (
+                    document.body.dataset.challengeEditPutCount === '1'
+                ));
+                expect(await editDialog.getByRole('button', {
+                    name: messages.saving,
+                    exact: true,
+                }).isDisabled()).toBe(true);
+                await delayedFailureTitle.press('Enter');
+                expect(await page.locator('body').getAttribute('data-challenge-edit-put-count'))
+                    .toBe('1');
+                await page.keyboard.press('Escape');
+                expect(await editDialog.count()).toBe(1);
+                await page.clock.fastForward(300);
+                await editDialog.getByRole('alert').waitFor();
+                expect(await editDialog.getByRole('alert').innerText())
+                    .toBe(messages.editExpiredPending);
+                expect(await delayedFailureTitle.isDisabled()).toBe(true);
+                expect(await page.locator('body').getAttribute('data-challenge-edit-close-count'))
+                    .toBe('2');
+                await page.evaluate(() => {
+                    const resolve = Reflect.get(globalThis, 'resolveDelayedEditChallengePut');
+                    if (typeof resolve !== 'function') {
+                        throw new Error('Delayed edit PUT resolver missing');
+                    }
+                    resolve();
+                });
+                await page.waitForFunction((failureMessage) => (
+                    document.querySelector('[role="dialog"] [role="alert"]')?.textContent
+                        === failureMessage
+                ), messages.updateFailed);
+                expect(await delayedFailureTitle.inputValue()).toBe('Edit boundary');
+                expect(await delayedFailureTitle.isDisabled()).toBe(true);
+                expect(await editDialog.getByRole('button', {
+                    name: messages.cancelEdit,
+                    exact: true,
+                }).isEnabled()).toBe(true);
+                expect(await page.locator('body').getAttribute('data-challenge-edit-updated-count'))
+                    .toBeNull();
+                await page.keyboard.press('Escape');
+                await editDialog.waitFor({ state: 'detached' });
+                expect(await page.locator('#edit-modal-trigger').evaluate(
+                    (element) => document.activeElement === element,
+                )).toBe(true);
+
+                await page.clock.setSystemTime(new Date('2099-03-04T14:59:59.800Z'));
+                await page.locator('#edit-modal-trigger').focus();
+                await page.evaluate(() => {
+                    document.body.dataset.challengeEditPutOutcome = 'delayed-success';
+                    const render = Reflect.get(globalThis, 'renderEditChallengeModal');
+                    if (typeof render !== 'function') {
+                        throw new Error('Edit challenge modal renderer missing');
+                    }
+                    render('2099-03-04');
+                });
+                await editDialog.waitFor();
+                await editDialog.getByRole('button', {
+                    name: messages.save,
+                    exact: true,
+                }).click();
+                await page.waitForFunction(() => (
+                    document.body.dataset.challengeEditPutCount === '2'
+                ));
+                await page.clock.fastForward(300);
+                await editDialog.getByRole('alert').waitFor();
+                expect(await editDialog.getByRole('alert').innerText())
+                    .toBe(messages.editExpiredPending);
+                expect(await editDialog.count()).toBe(1);
+                await page.evaluate(() => {
+                    const resolve = Reflect.get(globalThis, 'resolveDelayedEditChallengePut');
+                    if (typeof resolve !== 'function') {
+                        throw new Error('Delayed edit PUT resolver missing');
+                    }
+                    resolve();
+                });
+                await editDialog.waitFor({ state: 'detached' });
+                expect(await page.locator('body').getAttribute('data-challenge-edit-updated-count'))
+                    .toBe('1');
+                expect(await page.locator('body').getAttribute('data-challenge-edit-close-count'))
+                    .toBe('4');
+                expect(await page.locator('body').getAttribute('data-challenge-edit-put-count'))
+                    .toBe('2');
+                expect(await page.locator('#edit-modal-trigger').evaluate(
+                    (element) => document.activeElement === element,
+                )).toBe(true);
                 await page.waitForFunction(() => {
                     const getMetrics = Reflect.get(globalThis, 'getChallengeLifecycleMetrics');
                     if (typeof getMetrics !== 'function') return false;
