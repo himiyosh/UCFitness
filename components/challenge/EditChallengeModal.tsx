@@ -7,9 +7,11 @@ import { useTranslations } from 'next-intl';
 
 import { useDialogFocus } from '@/hooks/useDialogFocus';
 import {
+    CHALLENGE_NOT_EDITABLE_CODE,
     getChallengeBoundaryTimerDelay,
     getChallengeScheduleMetrics,
 } from '@/lib/services/challenge-utils';
+import { isRecord } from '@/lib/validation';
 
 // ============================================
 // チャレンジ編集モーダル コンポーネント
@@ -50,6 +52,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
     const [, setTimeRevision] = useState(0);
     const dialogRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
+    const cancelButtonRef = useRef<HTMLButtonElement>(null);
     const submittingRef = useRef(false);
     const getCurrentScheduleMetrics = useCallback(
         () => getChallengeScheduleMetrics(challenge, Date.now()),
@@ -59,6 +62,8 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
         if (!submittingRef.current) onClose();
     }, [onClose]);
     const scheduleMetrics = getCurrentScheduleMetrics();
+    const notEditableMessage = t('editNotEditable');
+    const hasNotEditableConflict = expiryBlocked && error === notEditableMessage;
 
     useDialogFocus({
         isOpen,
@@ -111,6 +116,11 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
         scheduleMetrics.millisecondsUntilNextBoundary,
         t,
     ]);
+    useEffect(() => {
+        if (isOpen && !submitting && hasNotEditableConflict) {
+            cancelButtonRef.current?.focus();
+        }
+    }, [hasNotEditableConflict, isOpen, submitting]);
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
@@ -157,19 +167,35 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
             });
 
             if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || t('updateFailed'));
+                let responseBody: unknown;
+                try {
+                    responseBody = await res.json();
+                } catch {
+                    setError(t('updateFailed'));
+                    return;
+                }
+                if (
+                    res.status === 409
+                    && isRecord(responseBody)
+                    && responseBody.code === CHALLENGE_NOT_EDITABLE_CODE
+                ) {
+                    setExpiryBlocked(true);
+                    setError(notEditableMessage);
+                    return;
+                }
+                setError(t('updateFailed'));
+                return;
             }
 
             onUpdated?.();
             onClose();
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : t('unknownError'));
+        } catch {
+            setError(t('updateFailed'));
         } finally {
             submittingRef.current = false;
             setSubmitting(false);
         }
-    }, [title, description, targetSteps, rewardUC, startDate, endDate, isActive, expiryBlocked, challenge.id, onUpdated, onClose, t, getCurrentScheduleMetrics]);
+    }, [title, description, targetSteps, rewardUC, startDate, endDate, isActive, expiryBlocked, challenge.id, onUpdated, onClose, t, getCurrentScheduleMetrics, notEditableMessage]);
 
     if (!isOpen || typeof document === 'undefined') return null;
 
@@ -308,7 +334,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
 
                     {/* エラー */}
                     {error && (
-                        <div id="edit-challenge-error" role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                        <div id="edit-challenge-error" role="alert" aria-atomic="true" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
                             {error}
                         </div>
                     )}
@@ -316,12 +342,13 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                     {/* ボタン */}
                     <div className="flex items-center gap-3 pt-2">
                         <button
+                            ref={cancelButtonRef}
                             type="button"
                             onClick={handleClose}
                             disabled={submitting}
                             className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors min-h-[44px]"
                         >
-                            {t('cancelEdit')}
+                            {hasNotEditableConflict ? t('closeAfterConflict') : t('cancelEdit')}
                         </button>
                         <button
                             type="submit"

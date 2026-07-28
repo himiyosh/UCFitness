@@ -1496,6 +1496,8 @@
     "endDateAfterStart": "End date must be after start date",
     "editExpired": "Ended challenges cannot be updated. Close this dialog and review the challenge history.",
     "editExpiredPending": "This challenge ended while saving. Wait for the result; no additional changes can be submitted.",
+    "editNotEditable": "This challenge can no longer be updated. Your unsaved entries remain visible. Close the dialog to return to the challenge list.",
+    "closeAfterConflict": "Close and return to list",
     "createFailed": "Failed to create challenge",
     "updateFailed": "Failed to update challenge",
     "unknownError": "An unexpected error occurred",

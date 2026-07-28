@@ -31,6 +31,7 @@ export interface ChallengePriorityMetrics extends ChallengeScheduleMetrics {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+export const CHALLENGE_NOT_EDITABLE_CODE = 'CHALLENGE_NOT_EDITABLE';
 export const MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS = 2_147_483_647;
 const CHALLENGE_BOUNDARY_TIMER_BUFFER_MS = 50;
 

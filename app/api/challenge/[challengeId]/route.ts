@@ -3,14 +3,26 @@ export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
+import { getJSTDateString } from '@/lib/date-utils';
 import { reportError } from '@/lib/errors';
 import { authorizeChallengeGroup, authorizeGroupView } from '@/lib/services/challenge-access';
+import { CHALLENGE_NOT_EDITABLE_CODE } from '@/lib/services/challenge-utils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isRecord, isValidISODate, isValidUUID } from '@/lib/validation';
 
 // ============================================
 // チャレンジ詳細取得・編集 API
 // ============================================
+
+function challengeNotEditableResponse(): NextResponse {
+    return NextResponse.json(
+        {
+            error: 'Challenge is no longer editable',
+            code: CHALLENGE_NOT_EDITABLE_CODE,
+        },
+        { status: 409 },
+    );
+}
 
 /** GET: チャレンジ詳細と参加者一覧を取得 */
 export async function GET(
@@ -198,7 +210,7 @@ export async function PUT(
         // チャレンジの存在確認と作成者チェック
         const { data: existing, error: fetchError } = await supabaseAdmin
             .from('challenges')
-            .select('id, type, group_id, created_by, is_active, start_date, end_date')
+            .select('type, group_id, created_by, start_date, end_date')
             .eq('id', challengeId)
             .maybeSingle();
 
@@ -219,6 +231,11 @@ export async function PUT(
         }
         if (existing.created_by !== session.user.id) {
             return NextResponse.json({ error: 'Only the creator can edit this challenge' }, { status: 403 });
+        }
+
+        const today = getJSTDateString();
+        if (existing.end_date < today) {
+            return challengeNotEditableResponse();
         }
 
         if (body.type !== undefined) {
@@ -299,12 +316,16 @@ export async function PUT(
             .from('challenges')
             .update(updates)
             .eq('id', challengeId)
+            .gte('end_date', today)
             .select('id, title, description, type, target_steps, start_date, end_date, reward_uc, is_active, created_by, group_id, created_at')
-            .single();
+            .maybeSingle();
 
         if (error) {
             reportError('challenge:update', error, { userId: session.user.id, challengeId });
             return NextResponse.json({ error: 'Failed to update challenge' }, { status: 500 });
+        }
+        if (!data) {
+            return challengeNotEditableResponse();
         }
 
         return NextResponse.json({ challenge: data });
