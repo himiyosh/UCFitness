@@ -28,6 +28,7 @@ import { GET } from './progress/route';
 const CID = '11111111-1111-4111-8111-111111111111', GID = '22222222-2222-4222-8222-222222222222';
 const UID = '33333333-3333-4333-8333-333333333333';
 const PID = '44444444-4444-4444-8444-444444444444';
+const HEX_CID = 'abcdefab-cdef-4abc-8def-abcdefabcdef';
 const context = { params: Promise.resolve({ challengeId: CID }) };
 interface Result { data?: unknown; error: unknown; count?: number | null }
 interface Query extends PromiseLike<Result> {
@@ -417,6 +418,28 @@ describe('GROUP challenge操作認可', () => {
         });
         expect(mocks.rpc).toHaveBeenCalledOnce(); expect(inCalls).toEqual([]);
         expect(updates[0]).toMatchObject({ progress_steps: 1000, is_completed: true });
+    });
+
+    it('progressは大文字UUIDをlowercaseへ正規化して単件取得する', async () => {
+        results.challenges = [{
+            data: challenge({ id: HEX_CID }),
+            error: null,
+        }];
+        authorize(false, { user_id: UID });
+        results.challenge_participants = [
+            { data: { id: PID, is_completed: false, completed_at: null }, error: null },
+            { error: null },
+        ];
+
+        const response = await GET(request(), {
+            params: Promise.resolve({ challengeId: HEX_CID.toUpperCase() }),
+        });
+
+        expect(response.status).toBe(200);
+        expect(mocks.rpc).toHaveBeenCalledWith('get_group_challenge_progress', {
+            p_challenge_id: HEX_CID,
+            p_viewer_id: UID,
+        });
     });
 
     it('1000件超相当のRPC集計値を切り捨てず返す', async () => {

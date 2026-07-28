@@ -19,6 +19,21 @@ const challengeMessages = {
     ja: jaMessages.Challenge,
 };
 const ACTIVE_CHALLENGE_COUNT = 9;
+const CHALLENGE_IDS = {
+    activeUnjoined: 'a0000000-0000-4000-8000-000000000001',
+    activeMore: 'a0000000-0000-4000-8000-000000000002',
+    activeLess: 'a0000000-0000-4000-8000-000000000003',
+    activeUpcoming: 'a0000000-0000-4000-8000-000000000004',
+    endingUnjoined: 'a0000000-0000-4000-8000-000000000005',
+    endingJoined: 'a0000000-0000-4000-8000-000000000006',
+    endingCreator: 'a0000000-0000-4000-8000-000000000007',
+    visibilityEnding: 'a0000000-0000-4000-8000-000000000008',
+    longUpcoming: 'a0000000-0000-4000-8000-000000000009',
+    historyUnjoined: 'b0000000-0000-4000-8000-000000000001',
+    historyAchieved: 'b0000000-0000-4000-8000-000000000002',
+    historyIncomplete: 'b0000000-0000-4000-8000-000000000003',
+    historyUnavailable: 'b0000000-0000-4000-8000-000000000004',
+} as const;
 
 interface SurfaceTimezoneSnapshot {
     detailText: string;
@@ -94,33 +109,38 @@ describe('ChallengeList Hall of Fame', () => {
                         participant_avatars: [],
                     };
                     const activeChallenges = [
-                        {...baseChallenge, id: 'active-unjoined', title: 'Active unjoined', end_date: '2099-01-05', is_joined: false},
-                        {...baseChallenge, id: 'active-more', title: 'Active more remaining', end_date: '2099-01-04', is_joined: true},
-                        {...baseChallenge, id: 'active-less', title: 'Active less remaining', end_date: '2099-01-03', is_joined: true},
-                        {...baseChallenge, id: 'active-upcoming', title: 'Upcoming preview', start_date: '2099-01-02', end_date: '2099-01-06', is_joined: false},
-                        {...baseChallenge, id: 'ending-unjoined', title: 'Ending unjoined', end_date: '2099-01-01', is_joined: false},
-                        {...baseChallenge, id: 'ending-joined', title: 'Ending joined', end_date: '2099-01-01', is_joined: true},
-                        {...baseChallenge, id: 'ending-creator', title: 'Ending creator', end_date: '2099-01-01', is_joined: true, created_by: 'viewer'},
-                        {...baseChallenge, id: 'visibility-ending', title: 'Visibility ending', end_date: '2099-01-02', is_joined: false},
-                        {...baseChallenge, id: 'long-upcoming', title: 'Long upcoming', start_date: '2099-02-20', end_date: '2099-02-25', is_joined: false},
+                        {...baseChallenge, id: '${CHALLENGE_IDS.activeUnjoined}', title: 'Active unjoined', end_date: '2099-01-05', is_joined: false},
+                        {...baseChallenge, id: '${CHALLENGE_IDS.activeMore}', title: 'Active more remaining', end_date: '2099-01-04', is_joined: true},
+                        {...baseChallenge, id: '${CHALLENGE_IDS.activeLess}', title: 'Active less remaining', end_date: '2099-01-03', is_joined: true},
+                        {...baseChallenge, id: '${CHALLENGE_IDS.activeUpcoming}', title: 'Upcoming preview', start_date: '2099-01-02', end_date: '2099-01-06', is_joined: false},
+                        {...baseChallenge, id: '${CHALLENGE_IDS.endingUnjoined}', title: 'Ending unjoined', end_date: '2099-01-01', is_joined: false},
+                        {...baseChallenge, id: '${CHALLENGE_IDS.endingJoined}', title: 'Ending joined', end_date: '2099-01-01', is_joined: true},
+                        {...baseChallenge, id: '${CHALLENGE_IDS.endingCreator}', title: 'Ending creator', end_date: '2099-01-01', is_joined: true, created_by: 'viewer'},
+                        {...baseChallenge, id: '${CHALLENGE_IDS.visibilityEnding}', title: 'Visibility ending', end_date: '2099-01-02', is_joined: false},
+                        {...baseChallenge, id: '${CHALLENGE_IDS.longUpcoming}', title: 'Long upcoming', start_date: '2099-02-20', end_date: '2099-02-25', is_joined: false},
                     ];
                     const endedChallenges = [
-                        {...baseChallenge, id: 'history-unjoined', title: 'History unjoined', end_date: '2020-01-02', is_joined: false},
-                        {...baseChallenge, id: 'history-achieved', title: 'History achieved', end_date: '2020-01-02', is_joined: true},
-                        {...baseChallenge, id: 'history-incomplete', title: 'History incomplete', end_date: '2020-01-02', is_joined: true},
-                        {...baseChallenge, id: 'history-unavailable', title: 'History unavailable', end_date: '2020-01-02', is_joined: true},
+                        {...baseChallenge, id: '${CHALLENGE_IDS.historyUnjoined}', title: 'History unjoined', end_date: '2020-01-02', is_joined: false},
+                        {...baseChallenge, id: '${CHALLENGE_IDS.historyAchieved}', title: 'History achieved', end_date: '2020-01-02', is_joined: true},
+                        {...baseChallenge, id: '${CHALLENGE_IDS.historyIncomplete}', title: 'History incomplete', end_date: '2020-01-02', is_joined: true},
+                        {...baseChallenge, id: '${CHALLENGE_IDS.historyUnavailable}', title: 'History unavailable', end_date: '2020-01-02', is_joined: true},
                     ];
                     const progressById = {
-                        'active-more': 1000,
-                        'active-less': 9000,
-                        'ending-joined': 5000,
-                        'ending-creator': 0,
-                        'history-achieved': 12000,
-                        'history-incomplete': 0,
+                        '${CHALLENGE_IDS.activeMore}': 1000,
+                        '${CHALLENGE_IDS.activeLess}': 9000,
+                        '${CHALLENGE_IDS.endingJoined}': 5000,
+                        '${CHALLENGE_IDS.endingCreator}': 0,
+                        '${CHALLENGE_IDS.historyAchieved}': 12000,
+                        '${CHALLENGE_IDS.historyIncomplete}': 0,
                     };
                     const progressRecordStatusById = {
-                        'ending-creator': 'not_recorded',
+                        '${CHALLENGE_IDS.endingCreator}': 'not_recorded',
                     };
+                    const endedChallengeIds = new Set([
+                        '${CHALLENGE_IDS.historyAchieved}',
+                        '${CHALLENGE_IDS.historyIncomplete}',
+                        '${CHALLENGE_IDS.historyUnavailable}',
+                    ]);
                     const detailChallenges = new Map();
                     let dashboardChallenges = [];
                     let resolveDelayedEditPut = null;
@@ -232,7 +252,7 @@ describe('ChallengeList Hall of Fame', () => {
                                                 reward_uc: 500,
                                                 type: 'INDIVIDUAL',
                                                 record_status: recordStatus,
-                                                schedule_status: challengeId.startsWith('history-')
+                                                schedule_status: endedChallengeIds.has(challengeId)
                                                     ? 'ended'
                                                     : 'active',
                                             },
@@ -803,10 +823,10 @@ describe('ChallengeList Hall of Fame', () => {
                     document.body.dataset.challengeProgressBatchBodies ?? '[]',
                 ));
                 expect(initialBatchBodies.at(-1)).toEqual([
-                    'active-more',
-                    'active-less',
-                    'ending-joined',
-                    'ending-creator',
+                    CHALLENGE_IDS.activeMore,
+                    CHALLENGE_IDS.activeLess,
+                    CHALLENGE_IDS.endingJoined,
+                    CHALLENGE_IDS.endingCreator,
                 ]);
                 expect(await page.locator('body').getAttribute(
                     'data-challenge-progress-single-count',

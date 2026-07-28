@@ -26,6 +26,7 @@ import { POST } from './route';
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 const FIRST_ID = '22222222-2222-4222-8222-222222222222';
 const SECOND_ID = '33333333-3333-4333-8333-333333333333';
+const HEX_ID = 'abcdefab-cdef-4abc-8def-abcdefabcdef';
 
 function request(body: unknown): NextRequest {
     return new NextRequest('http://localhost/api/challenge/progress', {
@@ -87,6 +88,18 @@ describe('POST /api/challenge/progress', () => {
         );
     });
 
+    it('大文字UUIDをlowercaseへ正規化してbatch serviceへ渡す', async () => {
+        const response = await POST(request({
+            challengeIds: [HEX_ID.toUpperCase(), SECOND_ID],
+        }));
+
+        expect(response.status).toBe(200);
+        expect(mocks.getFreshChallengeProgressBatch).toHaveBeenCalledWith(
+            USER_ID,
+            [HEX_ID, SECOND_ID],
+        );
+    });
+
     it('不正JSONを400で拒否する', async () => {
         const response = await POST(new NextRequest(
             'http://localhost/api/challenge/progress',
@@ -108,6 +121,10 @@ describe('POST /api/challenge/progress', () => {
         {
             body: { challengeIds: [FIRST_ID, FIRST_ID] },
             label: 'duplicate',
+        },
+        {
+            body: { challengeIds: [HEX_ID, HEX_ID.toUpperCase()] },
+            label: 'case-only duplicate',
         },
         { body: { challengeIds: ['invalid'] }, label: 'invalid UUID' },
         {

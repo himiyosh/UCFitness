@@ -9,7 +9,7 @@ import {
     getFreshChallengeProgress,
     normalizeChallengeProgressFailure,
 } from '@/lib/services/challenge-progress-service';
-import { isValidUUID } from '@/lib/validation';
+import { parseCanonicalUUID } from '@/lib/validation';
 
 function getFailureMessage(stage: ReturnType<typeof getChallengeProgressFailureStage>): string {
     switch (stage) {
@@ -23,6 +23,8 @@ function getFailureMessage(stage: ReturnType<typeof getChallengeProgressFailureS
             return 'Failed to fetch challenge participation';
         case 'group-rpc':
         case 'group-rpc-result':
+        case 'group-record-query':
+        case 'group-record-result':
             return 'Failed to calculate progress';
         case 'steps-query':
         case 'steps-result':
@@ -46,11 +48,15 @@ export async function GET(
 
     try {
         const { challengeId } = await params;
-        if (!isValidUUID(challengeId)) {
+        const canonicalChallengeId = parseCanonicalUUID(challengeId);
+        if (canonicalChallengeId === null) {
             return NextResponse.json({ error: 'Invalid challenge ID' }, { status: 400 });
         }
 
-        const result = await getFreshChallengeProgress(session.user.id, challengeId);
+        const result = await getFreshChallengeProgress(
+            session.user.id,
+            canonicalChallengeId,
+        );
         if (result.status === 'ok') {
             return NextResponse.json({ progress: result.progress });
         }

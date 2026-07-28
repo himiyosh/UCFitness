@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { parseChallengeProgressBatchResponse } from '@/lib/challenge-progress';
 import type { ChallengeProgressResult } from '@/lib/challenge-progress';
 
 const mocks = vi.hoisted(() => ({
@@ -26,12 +27,19 @@ vi.mock('@/lib/supabase', () => ({
 import {
     getFreshChallengeProgress,
     getFreshChallengeProgressBatch,
+    getGroupProgressRecordStatuses,
+    MAX_GROUP_PROGRESS_RECORD_ROWS,
 } from '@/lib/services/challenge-progress-service';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 const CHALLENGE_ID = '22222222-2222-4222-8222-222222222222';
 const GROUP_ID = '33333333-3333-4333-8333-333333333333';
 const PARTICIPATION_ID = '44444444-4444-4444-8444-444444444444';
+const SECOND_CHALLENGE_ID = '22222222-2222-4222-8222-222222222223';
+const SECOND_GROUP_ID = '33333333-3333-4333-8333-333333333334';
+const SECOND_PARTICIPATION_ID = '44444444-4444-4444-8444-444444444445';
+const HEX_CHALLENGE_ID = 'abcdefab-cdef-4abc-8def-abcdefabcdef';
+const BATCH_HEX_ID = 'abcdefab-cdef-4abc-8def-abcdefabcdea';
 const BATCH_IDS = [
     '50000000-0000-4000-8000-000000000001',
     '50000000-0000-4000-8000-000000000002',
@@ -50,6 +58,8 @@ interface QueryResult {
 interface Query extends PromiseLike<QueryResult> {
     eq(...args: unknown[]): Query;
     gte(...args: unknown[]): Query;
+    in(...args: unknown[]): Query;
+    limit(...args: unknown[]): Query;
     lte(...args: unknown[]): Query;
     maybeSingle(): Promise<QueryResult>;
     select(...args: unknown[]): Query;
@@ -58,11 +68,22 @@ interface Query extends PromiseLike<QueryResult> {
 
 let results: Record<string, QueryResult[]>;
 let updates: unknown[];
+let fromCalls: string[];
+let inCalls: unknown[][];
+let limitCalls: unknown[][];
 
 function query(result: QueryResult): Query {
     const chain: Query = {
         eq: () => chain,
         gte: () => chain,
+        in: (...args) => {
+            inCalls.push(args);
+            return chain;
+        },
+        limit: (...args) => {
+            limitCalls.push(args);
+            return chain;
+        },
         lte: () => chain,
         maybeSingle: () => Promise.resolve(result),
         select: () => chain,
@@ -97,6 +118,21 @@ function participation(overrides: Record<string, unknown> = {}): Record<string, 
     };
 }
 
+function groupRecordRow(
+    challengeId = CHALLENGE_ID,
+    groupId = GROUP_ID,
+    date = '2026-07-15',
+): Record<string, unknown> {
+    return {
+        date,
+        steps: 0,
+        user: {
+            challenge_participants: [{ challenge_id: challengeId }],
+            group_members: [{ group_id: groupId }],
+        },
+    };
+}
+
 function progressSuccess(challengeId: string, totalSteps = 0): ChallengeProgressResult {
     return {
         challenge_id: challengeId,
@@ -115,8 +151,14 @@ function progressSuccess(challengeId: string, totalSteps = 0): ChallengeProgress
     };
 }
 
-function arrangeIndividualProgress(stepResult: QueryResult): void {
-    results.challenges = [{ data: challenge(), error: null }];
+function arrangeIndividualProgress(
+    stepResult: QueryResult,
+    challengeOverrides: Record<string, unknown> = {},
+): void {
+    results.challenges = [{
+        data: challenge(challengeOverrides),
+        error: null,
+    }];
     results.challenge_participants = [
         { data: participation(), error: null },
         { error: null },
@@ -124,10 +166,51 @@ function arrangeIndividualProgress(stepResult: QueryResult): void {
     results.daily_steps = [stepResult];
 }
 
+function arrangeZeroGroupBatch(stepResult: QueryResult): void {
+    results.challenges = [
+        {
+            data: challenge({
+                id: CHALLENGE_ID,
+                type: 'GROUP',
+                group_id: GROUP_ID,
+            }),
+            error: null,
+        },
+        {
+            data: challenge({
+                id: SECOND_CHALLENGE_ID,
+                type: 'GROUP',
+                group_id: SECOND_GROUP_ID,
+            }),
+            error: null,
+        },
+    ];
+    results.challenge_participants = [
+        { data: participation({ id: PARTICIPATION_ID }), error: null },
+        { data: participation({ id: SECOND_PARTICIPATION_ID }), error: null },
+        { error: null },
+        { error: null },
+    ];
+    results.daily_steps = [stepResult];
+    mocks.rpc.mockResolvedValue({
+        data: [{
+            status: 'ok',
+            total_steps: 0,
+            participant_count: 2,
+            target_steps: 1000,
+            is_completed: false,
+        }],
+        error: null,
+    });
+}
+
 beforeEach(() => {
     vi.clearAllMocks();
     results = {};
     updates = [];
+    fromCalls = [];
+    inCalls = [];
+    limitCalls = [];
     mocks.authorizeChallengeGroup.mockResolvedValue({ allowed: true });
     mocks.getJSTDateString.mockReturnValue('2026-07-15');
     mocks.rpc.mockResolvedValue({
@@ -141,6 +224,7 @@ beforeEach(() => {
         error: null,
     });
     mocks.from.mockImplementation((table: string) => {
+        fromCalls.push(table);
         const result = results[table]?.shift();
         if (!result) throw new Error(`Unexpected query: ${table}`);
         return query(result);
@@ -183,6 +267,24 @@ describe('getFreshChallengeProgress', () => {
                 total_steps: 0,
                 record_status: 'not_recorded',
             },
+        });
+    });
+
+    it('大文字UUIDをlowercaseへ正規化して単件進捗を取得する', async () => {
+        arrangeIndividualProgress({
+            data: [{ steps: 0 }],
+            error: null,
+            count: 1,
+        }, { id: HEX_CHALLENGE_ID });
+
+        const result = await getFreshChallengeProgress(
+            USER_ID.toUpperCase(),
+            HEX_CHALLENGE_ID.toUpperCase(),
+        );
+
+        expect(result).toMatchObject({
+            challenge_id: HEX_CHALLENGE_ID,
+            status: 'ok',
         });
     });
 
@@ -275,10 +377,197 @@ describe('getFreshChallengeProgress', () => {
             p_challenge_id: CHALLENGE_ID,
             p_viewer_id: USER_ID,
         });
+        expect(fromCalls).not.toContain('daily_steps');
+    });
+
+    it.each([
+        {
+            expectedRecordStatus: 'not_recorded',
+            label: '歩数行なし',
+            stepResult: { data: [], error: null, count: 0 },
+        },
+        {
+            expectedRecordStatus: 'recorded',
+            label: '記録済み0歩',
+            stepResult: {
+                data: [groupRecordRow()],
+                error: null,
+                count: 1,
+            },
+        },
+    ] as const)(
+        'GROUP合計0歩かつ$labelの場合、$expectedRecordStatusを返す',
+        async ({ expectedRecordStatus, stepResult }) => {
+            results.challenges = [{
+                data: challenge({ type: 'GROUP', group_id: GROUP_ID }),
+                error: null,
+            }];
+            results.challenge_participants = [
+                { data: participation(), error: null },
+                { error: null },
+            ];
+            results.daily_steps = [stepResult];
+            mocks.rpc.mockResolvedValue({
+                data: [{
+                    status: 'ok',
+                    total_steps: 0,
+                    participant_count: 2,
+                    target_steps: 1000,
+                    is_completed: false,
+                }],
+                error: null,
+            });
+
+            const result = await getFreshChallengeProgress(USER_ID, CHALLENGE_ID);
+
+            expect(result).toMatchObject({
+                status: 'ok',
+                progress: {
+                    total_steps: 0,
+                    record_status: expectedRecordStatus,
+                },
+            });
+            expect(fromCalls.filter((table) => table === 'daily_steps')).toHaveLength(1);
+            expect(limitCalls).toContainEqual([MAX_GROUP_PROGRESS_RECORD_ROWS]);
+        },
+    );
+});
+
+describe('getGroupProgressRecordStatuses', () => {
+    const scopes = [
+        {
+            challengeId: CHALLENGE_ID,
+            groupId: GROUP_ID,
+            startDate: '2026-07-01',
+            endDate: '2026-07-31',
+        },
+        {
+            challengeId: SECOND_CHALLENGE_ID,
+            groupId: SECOND_GROUP_ID,
+            startDate: '2026-07-10',
+            endDate: '2026-07-20',
+        },
+    ] as const;
+
+    it('全scopeを1回のbounded queryで取得し、relationと期間が一致する行だけrecordedにする', async () => {
+        results.daily_steps = [{
+            data: [
+                groupRecordRow(),
+                groupRecordRow(
+                    SECOND_CHALLENGE_ID,
+                    SECOND_GROUP_ID,
+                    '2026-07-09',
+                ),
+                groupRecordRow(
+                    SECOND_CHALLENGE_ID,
+                    GROUP_ID,
+                    '2026-07-15',
+                ),
+            ],
+            error: null,
+            count: 3,
+        }];
+
+        const statuses = await getGroupProgressRecordStatuses(scopes);
+
+        expect(Object.fromEntries(statuses)).toEqual({
+            [CHALLENGE_ID]: 'recorded',
+            [SECOND_CHALLENGE_ID]: 'not_recorded',
+        });
+        expect(fromCalls.filter((table) => table === 'daily_steps')).toHaveLength(1);
+        expect(inCalls).toEqual([
+            [
+                'user.challenge_participants.challenge_id',
+                [CHALLENGE_ID, SECOND_CHALLENGE_ID],
+            ],
+            [
+                'user.group_members.group_id',
+                [GROUP_ID, SECOND_GROUP_ID],
+            ],
+        ]);
+        expect(limitCalls).toEqual([[MAX_GROUP_PROGRESS_RECORD_ROWS]]);
+    });
+
+    it.each([
+        {
+            expectedStage: 'group-record-query',
+            label: 'DB error',
+            result: { data: null, error: new Error('raw query failure'), count: null },
+        },
+        {
+            expectedStage: 'group-record-result',
+            label: 'over limit',
+            result: {
+                data: [],
+                error: null,
+                count: MAX_GROUP_PROGRESS_RECORD_ROWS + 1,
+            },
+        },
+        {
+            expectedStage: 'group-record-result',
+            label: 'invalid relation shape',
+            result: {
+                data: [{ date: '2026-07-15', user: null }],
+                error: null,
+                count: 1,
+            },
+        },
+        {
+            expectedStage: 'group-record-result',
+            label: 'negative steps',
+            result: {
+                data: [{ ...groupRecordRow(), steps: -1 }],
+                error: null,
+                count: 1,
+            },
+        },
+    ])('$labelを成功状態へ変換しない', async ({ expectedStage, result }) => {
+        results.daily_steps = [result];
+
+        await expect(getGroupProgressRecordStatuses(scopes)).rejects.toMatchObject({
+            code: 'CHALLENGE_PROGRESS_UNAVAILABLE',
+            context: { stage: expectedStage },
+        });
     });
 });
 
 describe('getFreshChallengeProgressBatch', () => {
+    it('大文字UUIDをcanonicalizeしてloaderと結果へlowercaseだけを渡す', async () => {
+        const loader = vi.fn(async (_userId: string, challengeId: string) =>
+            progressSuccess(challengeId));
+
+        const batch = await getFreshChallengeProgressBatch(
+            USER_ID.toUpperCase(),
+            [BATCH_HEX_ID.toUpperCase()],
+            loader,
+        );
+
+        expect(loader).toHaveBeenCalledWith(USER_ID, BATCH_HEX_ID);
+        expect(batch[0].challenge_id).toBe(BATCH_HEX_ID);
+    });
+
+    it('大小文字だけが異なるUUID重複をloader前に拒否する', async () => {
+        const loader = vi.fn();
+
+        await expect(getFreshChallengeProgressBatch(
+            USER_ID,
+            [BATCH_HEX_ID, BATCH_HEX_ID.toUpperCase()],
+            loader,
+        )).rejects.toMatchObject({
+            code: 'CHALLENGE_PROGRESS_UNAVAILABLE',
+            context: { stage: 'batch-input' },
+        });
+        expect(loader).not.toHaveBeenCalled();
+    });
+
+    it('response parserも大小文字を同じcanonical UUIDとして照合する', () => {
+        const parsed = parseChallengeProgressBatchResponse(
+            { results: [progressSuccess(BATCH_HEX_ID)] },
+            [BATCH_HEX_ID.toUpperCase()],
+        );
+        expect(parsed?.results[0].challenge_id).toBe(BATCH_HEX_ID);
+    });
+
     it('一部の項目失敗をunavailableへ分離し、入力順を維持する', async () => {
         const rawFailure = new Error('raw item failure');
         const loader = vi.fn(async (_userId: string, challengeId: string) => {
@@ -340,9 +629,72 @@ describe('getFreshChallengeProgressBatch', () => {
         expect(batch.map((result) => result.challenge_id)).toEqual(BATCH_IDS);
     });
 
+    it('複数の0歩GROUPを1回の共有queryでrecordedとnot_recordedへ分けて永続化する', async () => {
+        arrangeZeroGroupBatch({
+            data: [groupRecordRow()],
+            error: null,
+            count: 1,
+        });
+
+        const batch = await getFreshChallengeProgressBatch(
+            USER_ID,
+            [CHALLENGE_ID, SECOND_CHALLENGE_ID],
+        );
+
+        expect(batch).toMatchObject([
+            {
+                challenge_id: CHALLENGE_ID,
+                status: 'ok',
+                progress: { total_steps: 0, record_status: 'recorded' },
+            },
+            {
+                challenge_id: SECOND_CHALLENGE_ID,
+                status: 'ok',
+                progress: { total_steps: 0, record_status: 'not_recorded' },
+            },
+        ]);
+        expect(fromCalls.filter((table) => table === 'daily_steps')).toHaveLength(1);
+        expect(updates).toHaveLength(2);
+    });
+
+    it('共有record query障害時は0歩GROUPだけをunavailableにして永続化しない', async () => {
+        arrangeZeroGroupBatch({
+            data: null,
+            error: new Error('raw group record query failure'),
+            count: null,
+        });
+
+        const batch = await getFreshChallengeProgressBatch(
+            USER_ID,
+            [CHALLENGE_ID, SECOND_CHALLENGE_ID],
+        );
+
+        expect(batch).toEqual([
+            {
+                challenge_id: CHALLENGE_ID,
+                status: 'unavailable',
+                progress: null,
+            },
+            {
+                challenge_id: SECOND_CHALLENGE_ID,
+                status: 'unavailable',
+                progress: null,
+            },
+        ]);
+        expect(updates).toEqual([]);
+        expect(mocks.reportError).toHaveBeenCalledWith(
+            'challenge:progress:batch-group-records',
+            expect.objectContaining({
+                code: 'CHALLENGE_PROGRESS_UNAVAILABLE',
+                context: { stage: 'group-record-query' },
+            }),
+        );
+    });
+
     it.each([
         [[], 'empty'],
         [[BATCH_IDS[0], BATCH_IDS[0]], 'duplicate'],
+        [[BATCH_HEX_ID, BATCH_HEX_ID.toUpperCase()], 'case-only duplicate'],
         [['invalid'], 'invalid UUID'],
     ])('不正なbatch入力をDB処理前に拒否する: %s', async (challengeIds) => {
         const loader = vi.fn();

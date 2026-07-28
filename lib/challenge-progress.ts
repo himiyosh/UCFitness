@@ -1,4 +1,4 @@
-import { isRecord, isValidUUID } from '@/lib/validation';
+import { isRecord, parseCanonicalUUID } from '@/lib/validation';
 
 export const MAX_CHALLENGE_PROGRESS_BATCH_SIZE = 50;
 export const CHALLENGE_PROGRESS_BATCH_CONCURRENCY = 4;
@@ -70,14 +70,15 @@ export function parseChallengeProgressBatchRequest(
     const challengeIds: string[] = [];
     const seen = new Set<string>();
     for (const challengeId of value.challengeIds) {
-        if (!isValidUUID(challengeId)) {
+        const canonicalChallengeId = parseCanonicalUUID(challengeId);
+        if (canonicalChallengeId === null) {
             return { ok: false, error: 'challengeIds must contain valid UUIDs' };
         }
-        if (seen.has(challengeId)) {
+        if (seen.has(canonicalChallengeId)) {
             return { ok: false, error: 'challengeIds must not contain duplicates' };
         }
-        seen.add(challengeId);
-        challengeIds.push(challengeId);
+        seen.add(canonicalChallengeId);
+        challengeIds.push(canonicalChallengeId);
     }
     return { ok: true, challengeIds };
 }
@@ -148,17 +149,19 @@ function parseChallengeProgressResult(
     value: unknown,
     expectedChallengeId: string,
 ): ChallengeProgressResult | null {
+    const canonicalExpectedId = parseCanonicalUUID(expectedChallengeId);
     if (
-        !isRecord(value)
+        canonicalExpectedId === null
+        || !isRecord(value)
         || !hasExactKeys(value, ['challenge_id', 'status', 'progress'])
-        || value.challenge_id !== expectedChallengeId
+        || parseCanonicalUUID(value.challenge_id) !== canonicalExpectedId
     ) {
         return null;
     }
     if (value.status === 'ok') {
         return isChallengeProgressPayload(value.progress)
             ? {
-                challenge_id: expectedChallengeId,
+                challenge_id: canonicalExpectedId,
                 status: 'ok',
                 progress: value.progress,
             }
@@ -174,7 +177,7 @@ function parseChallengeProgressResult(
     }
     return value.progress === null
         ? {
-            challenge_id: expectedChallengeId,
+            challenge_id: canonicalExpectedId,
             status: value.status,
             progress: null,
         }
