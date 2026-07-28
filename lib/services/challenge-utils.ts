@@ -1,6 +1,19 @@
 import { isValidISODate } from '@/lib/validation';
 
-export interface ChallengePriorityItem {
+export interface ChallengeSchedule {
+    start_date?: string | null;
+    end_date?: string | null;
+}
+
+export interface ChallengeScheduleMetrics {
+    daysLeft: number;
+    hasStarted: boolean;
+    millisecondsUntilStart: number | null;
+    millisecondsUntilNextBoundary: number | null;
+    isExpired: boolean;
+}
+
+export interface ChallengePriorityItem extends ChallengeSchedule {
     id: string;
     is_active: boolean;
     is_joined: boolean;
@@ -10,14 +23,9 @@ export interface ChallengePriorityItem {
     reward_uc: number;
 }
 
-export interface ChallengePriorityMetrics {
-    daysLeft: number;
+export interface ChallengePriorityMetrics extends ChallengeScheduleMetrics {
     remainingSteps: number | null;
     progressUnavailable: boolean;
-    hasStarted: boolean;
-    millisecondsUntilStart: number | null;
-    millisecondsUntilNextBoundary: number | null;
-    isExpired: boolean;
     isCompleted: boolean;
     nextStepTarget: number | null;
 }
@@ -25,6 +33,44 @@ export interface ChallengePriorityMetrics {
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS = 2_147_483_647;
 const CHALLENGE_BOUNDARY_TIMER_BUFFER_MS = 50;
+
+export function getChallengeScheduleMetrics(
+    schedule: ChallengeSchedule,
+    now = Date.now(),
+): ChallengeScheduleMetrics {
+    const startAt = isValidISODate(schedule.start_date)
+        ? Date.parse(`${schedule.start_date}T00:00:00+09:00`)
+        : Number.NaN;
+    const endDateStartAt = isValidISODate(schedule.end_date)
+        ? Date.parse(`${schedule.end_date}T00:00:00+09:00`)
+        : Number.NaN;
+    const endBoundaryAt = endDateStartAt + DAY_MS;
+    const hasValidSchedule = Number.isFinite(now)
+        && Number.isFinite(startAt)
+        && Number.isFinite(endBoundaryAt)
+        && startAt < endBoundaryAt;
+    const hasStarted = hasValidSchedule && now >= startAt;
+    const isExpired = !hasValidSchedule || now >= endBoundaryAt;
+    const daysLeft = hasValidSchedule
+        ? Math.max(0, Math.ceil((endBoundaryAt - now) / DAY_MS))
+        : 0;
+    const millisecondsUntilStart = hasValidSchedule && !hasStarted
+        ? startAt - now
+        : null;
+    const millisecondsUntilNextBoundary = !hasValidSchedule || isExpired
+        ? null
+        : hasStarted
+            ? endBoundaryAt - now
+            : startAt - now;
+
+    return {
+        daysLeft,
+        hasStarted,
+        millisecondsUntilStart,
+        millisecondsUntilNextBoundary,
+        isExpired,
+    };
+}
 
 export function getChallengeBoundaryTimerDelay(
     millisecondsUntilNextBoundary: number | null,
@@ -47,30 +93,7 @@ export function getChallengePriorityMetrics(
     progress: number | null | undefined,
     now = Date.now(),
 ): ChallengePriorityMetrics {
-    const startAt = isValidISODate(challenge.start_date)
-        ? Date.parse(`${challenge.start_date}T00:00:00+09:00`)
-        : Number.NaN;
-    const endDateStartAt = isValidISODate(challenge.end_date)
-        ? Date.parse(`${challenge.end_date}T00:00:00+09:00`)
-        : Number.NaN;
-    const endBoundaryAt = endDateStartAt + DAY_MS;
-    const hasValidSchedule = Number.isFinite(now)
-        && Number.isFinite(startAt)
-        && Number.isFinite(endBoundaryAt)
-        && startAt < endBoundaryAt;
-    const hasStarted = hasValidSchedule && now >= startAt;
-    const isExpired = !hasValidSchedule || now >= endBoundaryAt;
-    const daysLeft = hasValidSchedule
-        ? Math.max(0, Math.ceil((endBoundaryAt - now) / DAY_MS))
-        : 0;
-    const millisecondsUntilStart = hasValidSchedule && !hasStarted
-        ? startAt - now
-        : null;
-    const millisecondsUntilNextBoundary = !hasValidSchedule || isExpired
-        ? null
-        : hasStarted
-            ? endBoundaryAt - now
-            : startAt - now;
+    const scheduleMetrics = getChallengeScheduleMetrics(challenge, now);
     const progressUnavailable = challenge.is_joined
         && (progress === null || progress === undefined || !Number.isFinite(progress));
     const remainingSteps = challenge.is_joined && typeof progress === 'number'
@@ -82,13 +105,9 @@ export function getChallengePriorityMetrics(
         : Math.min(500, remainingSteps);
 
     return {
-        daysLeft,
+        ...scheduleMetrics,
         remainingSteps,
         progressUnavailable,
-        hasStarted,
-        millisecondsUntilStart,
-        millisecondsUntilNextBoundary,
-        isExpired,
         isCompleted,
         nextStepTarget,
     };

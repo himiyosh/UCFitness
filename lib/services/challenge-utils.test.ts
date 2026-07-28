@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     getChallengeBoundaryTimerDelay,
     getChallengePriorityMetrics,
+    getChallengeScheduleMetrics,
     isActionableChallenge,
     MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS,
     sortChallengesForAction,
@@ -66,6 +67,110 @@ describe('sortChallengesForAction', () => {
             { unavailable: null, available: 1_000 },
             NOW,
         ).map((item) => item.id)).toEqual(['available', 'unavailable']);
+    });
+});
+
+describe('getChallengeScheduleMetrics', () => {
+    it('viewer timezoneが異なっても開始・終了境界とpriority値を同じJST時刻で返す', () => {
+        const scheduledChallenge = challenge('timezone', {
+            joined: true,
+            startDate: '2026-07-20',
+            endDate: '2026-07-25',
+        });
+        const startAt = Date.parse('2026-07-20T00:00:00+09:00');
+        const endBoundaryAt = Date.parse('2026-07-26T00:00:00+09:00');
+        const checkpoints = [
+            startAt - 1,
+            startAt,
+            endBoundaryAt - 1,
+            endBoundaryAt,
+            endBoundaryAt + 1,
+        ];
+        const originalTimezone = process.env.TZ;
+
+        try {
+            const results = [
+                'Asia/Tokyo',
+                'UTC',
+                'America/New_York',
+            ].map((timezone) => {
+                process.env.TZ = timezone;
+                return checkpoints.map((now) => {
+                    const scheduleMetrics = getChallengeScheduleMetrics(
+                        scheduledChallenge,
+                        now,
+                    );
+                    expect(getChallengePriorityMetrics(scheduledChallenge, 1_000, now))
+                        .toMatchObject(scheduleMetrics);
+                    return scheduleMetrics;
+                });
+            });
+
+            expect(results[1]).toEqual(results[0]);
+            expect(results[2]).toEqual(results[0]);
+            expect(results[0]).toEqual([
+                {
+                    daysLeft: 7,
+                    hasStarted: false,
+                    millisecondsUntilStart: 1,
+                    millisecondsUntilNextBoundary: 1,
+                    isExpired: false,
+                },
+                {
+                    daysLeft: 6,
+                    hasStarted: true,
+                    millisecondsUntilStart: null,
+                    millisecondsUntilNextBoundary: 6 * 24 * 60 * 60 * 1000,
+                    isExpired: false,
+                },
+                {
+                    daysLeft: 1,
+                    hasStarted: true,
+                    millisecondsUntilStart: null,
+                    millisecondsUntilNextBoundary: 1,
+                    isExpired: false,
+                },
+                {
+                    daysLeft: 0,
+                    hasStarted: true,
+                    millisecondsUntilStart: null,
+                    millisecondsUntilNextBoundary: null,
+                    isExpired: true,
+                },
+                {
+                    daysLeft: 0,
+                    hasStarted: true,
+                    millisecondsUntilStart: null,
+                    millisecondsUntilNextBoundary: null,
+                    isExpired: true,
+                },
+            ]);
+        } finally {
+            if (originalTimezone === undefined) {
+                delete process.env.TZ;
+            } else {
+                process.env.TZ = originalTimezone;
+            }
+        }
+    });
+
+    it('欠落・不正・逆転scheduleは次境界を作らず終了状態へ分離する', () => {
+        const invalidSchedules = [
+            { start_date: undefined, end_date: '2026-07-20' },
+            { start_date: '2026-02-30', end_date: '2026-07-20' },
+            { start_date: '2026-07-10', end_date: 'not-a-date' },
+            { start_date: '2026-07-21', end_date: '2026-07-20' },
+        ];
+
+        for (const schedule of invalidSchedules) {
+            expect(getChallengeScheduleMetrics(schedule, NOW)).toEqual({
+                daysLeft: 0,
+                hasStarted: false,
+                millisecondsUntilStart: null,
+                millisecondsUntilNextBoundary: null,
+                isExpired: true,
+            });
+        }
     });
 });
 

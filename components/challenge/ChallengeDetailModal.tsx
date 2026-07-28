@@ -8,6 +8,10 @@ import { useTranslations } from 'next-intl';
 
 import UserAvatar from '@/components/UserAvatar';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
+import {
+    getChallengeBoundaryTimerDelay,
+    getChallengeScheduleMetrics,
+} from '@/lib/services/challenge-utils';
 
 // ============================================
 // チャレンジ詳細モーダル
@@ -58,6 +62,7 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
     const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [, setTimeRevision] = useState(0);
     const dialogRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -94,18 +99,36 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
         sortedParticipants.reduce((sum, p) => sum + (p.progress_steps || 0), 0),
         [sortedParticipants]
     );
+    const scheduleMetrics = challenge
+        ? getChallengeScheduleMetrics(challenge, Date.now())
+        : null;
+    const daysLeft = scheduleMetrics?.daysLeft ?? 0;
+    const isExpired = scheduleMetrics?.isExpired ?? false;
 
-    // 残り日数
-    const daysLeft = useMemo(() => {
-        if (!challenge) return 0;
-        const endDate = new Date(challenge.end_date + 'T23:59:59');
-        return Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-    }, [challenge]);
+    useEffect(() => {
+        if (!isOpen || !challenge) return;
+        const timerDelay = getChallengeBoundaryTimerDelay(
+            scheduleMetrics?.millisecondsUntilNextBoundary ?? null,
+        );
+        if (timerDelay === null) return;
 
-    const isExpired = useMemo(() => {
-        if (!challenge) return false;
-        return daysLeft === 0 && new Date() > new Date(challenge.end_date + 'T23:59:59');
-    }, [challenge, daysLeft]);
+        const refreshTimeBoundary = () => {
+            setTimeRevision((revision) => revision + 1);
+        };
+        const timerId = window.setTimeout(refreshTimeBoundary, timerDelay);
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') refreshTimeBoundary();
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            window.clearTimeout(timerId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [
+        challenge,
+        isOpen,
+        scheduleMetrics?.millisecondsUntilNextBoundary,
+    ]);
 
     // ランクメダル
     const getRankEmoji = useCallback((rank: number): string => {

@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 import { useTranslations } from 'next-intl';
 
+import {
+    getChallengeBoundaryTimerDelay,
+    getChallengeScheduleMetrics,
+} from '@/lib/services/challenge-utils';
 import { Link } from '@/navigation';
 
 import type { ReactNode } from 'react';
@@ -23,7 +27,7 @@ interface DashboardChallenge {
     id: string;
     title: string;
     target_steps: number;
-    start_date?: string;
+    start_date: string;
     end_date: string;
     reward_uc: number;
     is_joined: boolean;
@@ -48,6 +52,7 @@ export default function DashboardChallenges(): ReactNode {
     const [progressMap, setProgressMap] = useState<Record<string, number | null>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [, setTimeRevision] = useState(0);
     const focusAfterRetryRef = useRef(false);
     const focusHeading = useCallback((node: HTMLHeadingElement | null) => { if (node && focusAfterRetryRef.current) { node.focus(); focusAfterRetryRef.current = false; } }, []);
 
@@ -96,6 +101,36 @@ export default function DashboardChallenges(): ReactNode {
     useEffect(() => {
         fetchChallenges();
     }, [fetchChallenges]);
+
+    const scheduleNow = Date.now();
+    const challengeScheduleMetrics = challenges.map((challenge) =>
+        getChallengeScheduleMetrics(challenge, scheduleNow)
+    );
+    const millisecondsUntilNextBoundary = !loading && !error
+        ? challengeScheduleMetrics.reduce<number | null>((earliest, metrics) => {
+            const boundary = metrics.millisecondsUntilNextBoundary;
+            if (boundary === null) return earliest;
+            return earliest === null ? boundary : Math.min(earliest, boundary);
+        }, null)
+        : null;
+
+    useEffect(() => {
+        const timerDelay = getChallengeBoundaryTimerDelay(millisecondsUntilNextBoundary);
+        if (timerDelay === null) return;
+
+        const refreshTimeBoundary = () => {
+            setTimeRevision((revision) => revision + 1);
+        };
+        const timerId = window.setTimeout(refreshTimeBoundary, timerDelay);
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') refreshTimeBoundary();
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            window.clearTimeout(timerId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [millisecondsUntilNextBoundary]);
 
     if (loading) {
         return (
@@ -169,9 +204,8 @@ export default function DashboardChallenges(): ReactNode {
             </div>
 
             <div className="space-y-2">
-                {challenges.map(challenge => {
-                    const endDate = new Date(challenge.end_date + 'T23:59:59');
-                    const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+                {challenges.map((challenge, index) => {
+                    const daysLeft = challengeScheduleMetrics[index]?.daysLeft ?? 0;
                     const avatars = challenge.participant_avatars || [];
                     const progressValue = progressMap[challenge.id];
                     const progressUnavailable = challenge.is_joined && progressValue === null;

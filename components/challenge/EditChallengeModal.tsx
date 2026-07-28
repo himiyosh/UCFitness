@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
 import {
     getChallengeBoundaryTimerDelay,
-    getChallengePriorityMetrics,
+    getChallengeScheduleMetrics,
 } from '@/lib/services/challenge-utils';
 
 // ============================================
@@ -51,11 +51,10 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
     const dialogRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const submittingRef = useRef(false);
-    const getCurrentScheduleMetrics = useCallback(() => getChallengePriorityMetrics(
-        { ...challenge, is_joined: false },
-        null,
-        Date.now(),
-    ), [challenge]);
+    const getCurrentScheduleMetrics = useCallback(
+        () => getChallengeScheduleMetrics(challenge, Date.now()),
+        [challenge],
+    );
     const handleClose = useCallback(() => {
         if (!submittingRef.current) onClose();
     }, [onClose]);
