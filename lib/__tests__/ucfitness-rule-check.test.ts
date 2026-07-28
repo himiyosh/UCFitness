@@ -32,7 +32,29 @@ const originalSources = new Map(
 );
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'ucfitness-rule-check-'));
 const dateBoundaryFixtureRoot = mkdtempSync(join(tmpdir(), 'ucfitness-date-boundary-rule-'));
+const workflowFixtureRoot = mkdtempSync(join(tmpdir(), 'ucfitness-workflow-rule-'));
 const DATE_RULE_CHECK_TIMEOUT_MS = 15_000;
+const validValidateWorkflow = [
+    'name: Validate',
+    '',
+    'on:',
+    '  pull_request:',
+    '  push:',
+    '    branches:',
+    '      - main',
+    '',
+    'concurrency:',
+    '  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
+    '  cancel-in-progress: true',
+    '',
+    'permissions:',
+    '  contents: read',
+    '',
+    'jobs:',
+    '  validate:',
+    '    runs-on: ubuntu-latest',
+    '',
+].join('\n');
 
 interface RuleCheckResult {
     status: number | null;
@@ -279,6 +301,27 @@ function runDateBoundaryRule(
     };
 }
 
+function writeWorkflowFixture(path: string, source: string): void {
+    const fixturePath = join(workflowFixtureRoot, '.github', 'workflows', path);
+    mkdirSync(dirname(fixturePath), { recursive: true });
+    writeFileSync(fixturePath, source, 'utf8');
+}
+
+function runValidateWorkflowRule(): RuleCheckResult {
+    const result = spawnSync(
+        'bash',
+        [ruleChecker, '--validate-workflow-concurrency-only', workflowFixtureRoot],
+        {
+            cwd: repositoryRoot,
+            encoding: 'utf8',
+        },
+    );
+    return {
+        status: result.status,
+        output: `${result.stdout}${result.stderr}`,
+    };
+}
+
 describe('check-ucfitness-rules challenge progress認証ログ境界', () => {
     beforeEach(() => {
         writeDoubleQuotedFixture();
@@ -396,4 +439,94 @@ describe('check-ucfitness-rules timezone依存date-only parse', () => {
             );
         });
     }, DATE_RULE_CHECK_TIMEOUT_MS);
+});
+
+describe('check-ucfitness-rules Validate workflow concurrency', () => {
+    beforeEach(() => {
+        rmSync(workflowFixtureRoot, { recursive: true, force: true });
+        writeWorkflowFixture('validate.yml', validValidateWorkflow);
+        writeWorkflowFixture(
+            'deploy.yml',
+            [
+                'name: Deploy',
+                'on:',
+                '  push:',
+                'jobs:',
+                '  deploy:',
+                '    runs-on: ubuntu-latest',
+                '',
+            ].join('\n'),
+        );
+    });
+
+    afterAll(() => {
+        rmSync(workflowFixtureRoot, { recursive: true, force: true });
+    });
+
+    it('PR番号またはrefでscopeしたexact concurrencyだけを受理する', () => {
+        const result = runValidateWorkflowRule();
+
+        expect(result.status, result.output).toBe(0);
+        expect(result.output).toContain('OK: UCFitness rule-check passed');
+    });
+
+    it.each([
+        {
+            label: '広域groupへ変更した場合',
+            source: validValidateWorkflow.replace(
+                '  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
+                '  group: ci',
+            ),
+        },
+        {
+            label: 'cancel-in-progressを無効化した場合',
+            source: validValidateWorkflow.replace(
+                '  cancel-in-progress: true',
+                '  cancel-in-progress: false',
+            ),
+        },
+        {
+            label: 'concurrencyをjobs後へ移動した場合',
+            source: validValidateWorkflow
+                .replace(
+                    'concurrency:\n  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}\n  cancel-in-progress: true\n\n',
+                    '',
+                )
+                .concat(
+                    'concurrency:\n  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}\n  cancel-in-progress: true\n',
+                ),
+        },
+    ])('$label、Validate workflow契約違反として拒否する', ({ source }) => {
+        writeWorkflowFixture('validate.yml', source);
+
+        const result = runValidateWorkflowRule();
+
+        expect(result.status, result.output).toBe(1);
+        expect(result.output).toContain('Validate workflow concurrency');
+    });
+
+    it('deploy系workflowへcancel-in-progress trueを追加した場合、拒否する', () => {
+        writeWorkflowFixture(
+            'deploy.yml',
+            [
+                'name: Deploy',
+                'on:',
+                '  push:',
+                'concurrency:',
+                '  group: deploy-${{ github.ref }}',
+                '  cancel-in-progress: true',
+                'jobs:',
+                '  deploy:',
+                '    runs-on: ubuntu-latest',
+                '',
+            ].join('\n'),
+        );
+
+        const result = runValidateWorkflowRule();
+
+        expect(result.status, result.output).toBe(1);
+        expect(result.output).toContain(
+            'deploy/release/publish workflowのcancel-in-progress禁止',
+        );
+    });
 });

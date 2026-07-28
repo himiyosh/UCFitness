@@ -1763,3 +1763,10 @@ export const runtime = "edge";
 - **根本原因**: date-onlyの危険性を1つの文字列markerとして扱い、constructor / parser、入力source、AST型、明示offset、epoch、完全timestampを分類していなかった。非同期stdoutのflush前にprocessを強制終了しても全違反を受け取れると仮定していた。
 - **対策**: `app` / `components` / `contexts` / `hooks` / `lib` / `types`のproduction TS/TSXをTypeScript Programで走査し、`new Date` / `Date.parse`の引数をDate型、number、timestamp名、完全timestamp、明示offset、date-only source、未知動的構築へ分類する。ISO date-only literal、`start_date` / `end_date`、offsetなしtemplate/binary、証明不能な動的文字列はfail closedとし、コメント・docs・test/spec・fixtureを除外する。違反出力は`process.exitCode`でflushを待ち、current treeのdate-only比較を検証済み文字列順、演算・表示を明示UTC/JST、timestamp cursorをdate-only拒否の共有parserへ置換した。
 - **教訓**: calendar dateをinstantへ暗黙変換しない。AST guardは危険文字列のgrepではなく入力の意味と型を分類し、許可するDate/epoch/完全timestamp/offsetと拒否するliteral/property/template/binary/未知動的入力をpositive/negative fixtureで固定する。複数違反を返すCLIは終了codeだけでなく全stdoutのflushも回帰検証する。リファレンス: `scripts/check-ucfitness-rules.sh`, `lib/__tests__/ucfitness-rule-check.test.ts`, `lib/date-utils.ts`
+
+### LL-108: 同一PRの古いCI runを残すと無料枠を重複消費する
+
+- **事象**: PRIVATE repositoryのGitHub Actions無料枠2,000分を使い切り、同一PRへ修正をpushした後も古いValidate runが完走して重複消費していた。課金枯渇後は全jobがsteps 0で開始不能となり、runtime cancellationの実測もできなくなった。
+- **根本原因**: Validate workflowにtop-level `concurrency`がなく、PR番号またはref単位で先行runを識別・中止する契約と、その式を守る機械guardがなかった。
+- **対策**: `.github/workflows/validate.yml`へ`ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}`と`cancel-in-progress: true`を追加した。`check:rules`でexact式・配置・広域キー回帰を固定し、deploy / release / publish系workflowへの誤適用も拒否する。
+- **教訓**: 反復pushが多いCI workflowは論理PR/ref単位で古いrunだけをcancelし、別PRを巻き込む広域groupを使わない。deploy系は途中中断の危険があるため同じ設定を機械的に展開せず、runtime効果はActions quota回復後に先行runの`CANCELLED`を実測する。リファレンス: `.github/workflows/validate.yml`, `scripts/check-ucfitness-rules.sh`, `lib/__tests__/ucfitness-rule-check.test.ts`

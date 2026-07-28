@@ -78,6 +78,51 @@ check_challenge_progress_auth_log_boundary() {
   fi
 }
 
+check_validate_workflow_concurrency() {
+  local scan_root="${1:-.}"
+  local workflow="${scan_root%/}/.github/workflows/validate.yml"
+  local workflows_dir="${scan_root%/}/.github/workflows"
+  local expected_group='  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}'
+  local concurrency_line on_line jobs_line
+
+  if [ ! -f "$workflow" ]; then
+    record "Validate workflow concurrency契約欠落" "$workflow"
+  elif [ "$(grep -c '^concurrency:$' "$workflow")" -ne 1 ] || \
+       [ "$(grep -Fxc "$expected_group" "$workflow")" -ne 1 ] || \
+       [ "$(grep -c '^  cancel-in-progress: true$' "$workflow")" -ne 1 ]; then
+    record "Validate workflow concurrency契約欠落" "$workflow"
+  else
+    concurrency_line="$(grep -n -m1 '^concurrency:$' "$workflow" | cut -d: -f1)"
+    on_line="$(grep -n -m1 '^on:$' "$workflow" | cut -d: -f1)"
+    jobs_line="$(grep -n -m1 '^jobs:$' "$workflow" | cut -d: -f1)"
+    if [ -z "$on_line" ] || [ -z "$jobs_line" ] || \
+       [ "$concurrency_line" -le "$on_line" ] || \
+       [ "$concurrency_line" -ge "$jobs_line" ] || \
+       [ "$(sed -n "$((concurrency_line + 1))p" "$workflow")" != "$expected_group" ] || \
+       [ "$(sed -n "$((concurrency_line + 2))p" "$workflow")" != '  cancel-in-progress: true' ]; then
+      record "Validate workflow concurrency配置契約違反" "$workflow"
+    fi
+  fi
+
+  if [ ! -d "$workflows_dir" ]; then
+    return
+  fi
+
+  local candidate filename workflow_name
+  while IFS= read -r candidate; do
+    [ "$candidate" = "$workflow" ] && continue
+    filename="$(basename "$candidate" | tr '[:upper:]' '[:lower:]')"
+    workflow_name="$(sed -n 's/^name:[[:space:]]*//p' "$candidate" | head -1 | tr '[:upper:]' '[:lower:]')"
+    case "${filename} ${workflow_name}" in
+      *deploy*|*release*|*publish*)
+        if grep -Eq '^[[:space:]]*cancel-in-progress:[[:space:]]*true[[:space:]]*$' "$candidate"; then
+          record "deploy/release/publish workflowのcancel-in-progress禁止" "$candidate"
+        fi
+        ;;
+    esac
+  done < <(find "$workflows_dir" -maxdepth 1 -type f \( -name '*.yml' -o -name '*.yaml' \) -print)
+}
+
 check_date_only_jst_end_boundary() {
   local scan_root="${1:-.}"
   local hits
@@ -362,6 +407,11 @@ if (violations.length > 0) {
 
 if [ "${1:-}" = "--challenge-progress-auth-log-boundary-only" ]; then
   check_challenge_progress_auth_log_boundary
+  finish_rule_check
+fi
+
+if [ "${1:-}" = "--validate-workflow-concurrency-only" ]; then
+  check_validate_workflow_concurrency "${2:-.}"
   finish_rule_check
 fi
 
@@ -1516,6 +1566,9 @@ fi
 
 # ---------- 40. challenge progress認証の固定ログ境界 ----------
 check_challenge_progress_auth_log_boundary
+
+# ---------- 41. Validate workflowのPR/ref scoped concurrency ----------
+check_validate_workflow_concurrency "."
 
 # ---------- 結果出力 ----------
 finish_rule_check
