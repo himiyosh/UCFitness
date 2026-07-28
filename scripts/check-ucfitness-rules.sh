@@ -169,13 +169,14 @@ const isTimestampName = (name) => {
 const isDateOnlyName = (name) => {
   const lowerName = name.toLowerCase();
   return lowerName === "date"
+    || lowerName === "datestr"
     || lowerName === "today"
     || lowerName === "todaystr"
     || lowerName === "weekstart"
     || lowerName === "occurredon"
-    || lowerName.endsWith("_date")
-    || lowerName.endsWith("date")
-    || lowerName.endsWith("datestr")
+    || /_date$/i.test(name)
+    || name.endsWith("Date")
+    || name.endsWith("DateStr")
     || lowerName.endsWith("startstr")
     || lowerName === "fromstr"
     || lowerName === "tostr";
@@ -291,7 +292,7 @@ const isSafeDateOnlyReference = (node) => {
   const functionName = getContainingFunctionName(expression);
   return name === "value"
     && functionName !== null
-    && functionName.toLowerCase().includes("date");
+    && functionName.includes("Date");
 };
 
 const isSafeDateArgument = (node) => {
