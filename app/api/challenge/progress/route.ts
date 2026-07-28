@@ -6,42 +6,44 @@ import { auth } from '@/lib/auth';
 import { parseChallengeProgressBatchRequest } from '@/lib/challenge-progress';
 import { AppError, reportError } from '@/lib/errors';
 import {
-    CHALLENGE_PROGRESS_UNAVAILABLE_CODE,
+    getChallengeProgressFailureStage,
     getFreshChallengeProgressBatch,
 } from '@/lib/services/challenge-progress-service';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-    const session = await auth();
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    let body: unknown;
+    let authenticationComplete = false;
     try {
-        body = await req.json();
-    } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
-    const validation = parseChallengeProgressBatchRequest(body);
-    if (!validation.ok) {
-        return NextResponse.json({ error: validation.error }, { status: 400 });
-    }
+        const session = await auth();
+        authenticationComplete = true;
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
-    try {
+        let body: unknown;
+        try {
+            body = await req.json();
+        } catch {
+            return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+        }
+        const validation = parseChallengeProgressBatchRequest(body);
+        if (!validation.ok) {
+            return NextResponse.json({ error: validation.error }, { status: 400 });
+        }
+
         const results = await getFreshChallengeProgressBatch(
             session.user.id,
             validation.challengeIds,
         );
         return NextResponse.json({ results });
     } catch (error: unknown) {
-        const normalized = error instanceof AppError
-            && error.code === CHALLENGE_PROGRESS_UNAVAILABLE_CODE
-            ? error
-            : new AppError(
-                'Challenge progress batch request failed',
-                'CHALLENGE_PROGRESS_BATCH_UNAVAILABLE',
-                { stage: 'unexpected' },
-            );
+        const stage = authenticationComplete
+            ? getChallengeProgressFailureStage(error)
+            : 'unexpected';
+        const normalized = new AppError(
+            'Challenge progress batch request failed',
+            'CHALLENGE_PROGRESS_BATCH_UNAVAILABLE',
+            { stage },
+        );
         reportError('challenge:progress:batch', normalized);
         return NextResponse.json(
             { error: 'Failed to load challenge progress' },

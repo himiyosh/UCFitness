@@ -1735,3 +1735,10 @@ export const runtime = "edge";
 - **根本原因**: 「近くに見える」を座標差の小ささで代理し、レイアウト方向ごとの順序を対向する矩形辺で定義しなかった。44px・focus・遷移だけを確認し、primary CTAとtertiary linkの視覚階層をcomputed styleと面積の契約へ含めていなかった。
 - **対策**: モバイルはCTA下端→補足文上端→リンク上端、デスクトップはCTA右端→補足領域左端と補足文下端→リンク上端を比較する。CTAは塗り背景alpha、font weight、面積、shadowがリンクより強く、リンクは透明背景・shadowなしであることを固定RGBに依存せず検証する。実装には4pxの明示間隔を追加した。
 - **教訓**: 配置回帰は中心座標や絶対差の上限だけで判定せず、期待方向に沿う対向辺の不等式で非重なりと順序を証明する。視覚階層はスクリーンショットの印象だけでなく、テーマに依存しない相対的なcomputed style・操作面積を回帰契約にする。リファレンス: `tests/public-routes.spec.ts`, `components/LandingPage.tsx`
+
+### LL-104: Route Handlerの`auth()`を固定catch境界外へ置くと認証基盤例外が生のまま逃げる
+
+- **事象**: 単件・一括Challenge進捗Route Handlerが`auth()`を既存の固定`AppError` / `reportError`境界より前で実行し、認証基盤がrejectするとraw Errorのmessage、cause、識別子を除去する正規化を通らずhandler外へ例外が逃げた。さらに同一codeの`AppError`は既存正規化がそのまま返すため、境界内へ移すだけでも任意message・stack・contextが最終ログへ到達できた。
+- **根本原因**: セッション不在を返す401分岐と、外部依存である`auth()`自身がthrowする障害を同じ認証前処理として扱い、後者をservice・DB障害と同じ最終ログ境界へ含めていなかった。
+- **対策**: 両Route Handlerの最初の`try`内で`auth()`を実行し、セッション不在はログなし401、throwは既存の固定operation・`unexpected` stage・codeへ変換する。共有正規化も同一codeの`AppError`を固定message・allowlist済みstageだけの新しい`AppError`へ再構築する。実`reportError`から`console.error`へ出るJSONを単件・一括のraw Error・matching-code AppErrorで解析し、identity、message、stack、cause、context、user/group/challenge UUIDの非露出を固定した。`check:rules`は`auth()`がhandler先頭の`try`直下にあり、正規化・最終sink回帰が存在することを検査する。
+- **教訓**: `auth()`は認証判定だけでなく失敗し得る非同期依存である。Route Handlerでは「戻り値なし=401」と「throw=固定5xx」を分離し、throw経路を必ず固定ログ境界内へ置く。logger mockだけで完了せず、最終構造化ログをparseして生値と識別子がないことを確認する。リファレンス: `app/api/challenge/progress/route.ts`, `app/api/challenge/[challengeId]/progress/route.ts`, `app/api/challenge/error-sink.test.ts`, `scripts/check-ucfitness-rules.sh`

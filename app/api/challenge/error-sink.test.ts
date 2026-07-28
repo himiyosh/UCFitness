@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
     rpc: vi.fn(),
 }));
 
+vi.mock('server-only', () => ({}));
 vi.mock('@/lib/auth', () => ({ auth: mocks.auth }));
 vi.mock('@/lib/date-utils', () => ({ getJSTDateString: () => '2026-07-15' }));
 vi.mock('@/lib/errors', async (importOriginal) => {
@@ -27,6 +28,8 @@ vi.mock('@/lib/supabase', () => ({
 
 import { AppError } from '@/lib/errors';
 
+import { GET as GET_CHALLENGE_PROGRESS } from './[challengeId]/progress/route';
+import { POST as POST_CHALLENGE_PROGRESS_BATCH } from './progress/route';
 import { GET, POST } from './route';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
@@ -59,6 +62,23 @@ type ReadQueryChain = PromiseLike<QueryResult> & Record<QueryMethod, ReturnType<
 type ListFailureStage = 'access-scope-query' | 'access-scope-limit'
     | 'visibility-query' | 'visibility-limit' | 'details-query' | 'unexpected';
 
+const ERROR_SINK_EXPECTATIONS = {
+    list: ['challenge:list', 'Challenge list request failed', 'CHALLENGE_LIST_UNAVAILABLE'],
+    create: ['challenge:create', 'Challenge creation request failed', 'CHALLENGE_CREATE_FAILED'],
+    singleProgress: [
+        'challenge:progress',
+        'Challenge progress request failed',
+        'CHALLENGE_PROGRESS_UNAVAILABLE',
+    ],
+    batchProgress: [
+        'challenge:progress:batch',
+        'Challenge progress batch request failed',
+        'CHALLENGE_PROGRESS_BATCH_UNAVAILABLE',
+    ],
+} as const;
+
+type ErrorSinkKind = keyof typeof ERROR_SINK_EXPECTATIONS;
+
 function createRawDatabaseError(): Error {
     const error = new Error(SENTINELS.message, {
         cause: { secret: SENTINELS.cause, userId: USER_ID, groupId: GROUP_ID, challengeId: CHALLENGE_ID },
@@ -70,6 +90,33 @@ function createRawDatabaseError(): Error {
         details: SENTINELS.details,
         hint: SENTINELS.hint,
         context: { userId: USER_ID, groupId: GROUP_ID },
+        nested: { secret: SENTINELS.nested, challengeId: CHALLENGE_ID },
+    });
+}
+
+function createRawMatchingProgressAppError(): AppError {
+    const error = new AppError(
+        SENTINELS.message,
+        'CHALLENGE_PROGRESS_UNAVAILABLE',
+        {
+            stage: 'authorization',
+            userId: USER_ID,
+            groupId: GROUP_ID,
+            challengeId: CHALLENGE_ID,
+            nested: { secret: SENTINELS.nested },
+        },
+        {
+            secret: SENTINELS.cause,
+            userId: USER_ID,
+            groupId: GROUP_ID,
+            challengeId: CHALLENGE_ID,
+        },
+    );
+    error.name = SENTINELS.name;
+    error.stack = SENTINELS.stack;
+    return Object.assign(error, {
+        details: SENTINELS.details,
+        hint: SENTINELS.hint,
         nested: { secret: SENTINELS.nested, challengeId: CHALLENGE_ID },
     });
 }
@@ -122,14 +169,12 @@ function postRequest(type: 'INDIVIDUAL' | 'GROUP'): NextRequest {
 async function expectPrivacySafeLog(
     response: Response,
     rawError: Error,
-    kind: 'list' | 'create',
+    kind: ErrorSinkKind,
     stage: string,
     responseError: string,
     consoleCalls: readonly unknown[][],
 ): Promise<void> {
-    const expected = kind === 'list'
-        ? ['challenge:list', 'Challenge list request failed', 'CHALLENGE_LIST_UNAVAILABLE']
-        : ['challenge:create', 'Challenge creation request failed', 'CHALLENGE_CREATE_FAILED'];
+    const expected = ERROR_SINK_EXPECTATIONS[kind];
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: responseError });
 
@@ -269,4 +314,67 @@ describe('POST /api/challenge structured error sink', () => {
             consoleError.mock.calls,
         );
     });
+});
+
+describe('challenge progress authentication structured error sink', () => {
+    const routes = [
+        {
+            label: 'single progress',
+            kind: 'singleProgress',
+            responseError: 'Internal server error',
+            invoke: () => GET_CHALLENGE_PROGRESS(
+                new NextRequest(`http://localhost/api/challenge/${CHALLENGE_ID}/progress`),
+                { params: Promise.resolve({ challengeId: CHALLENGE_ID }) },
+            ),
+        },
+        {
+            label: 'batch progress',
+            kind: 'batchProgress',
+            responseError: 'Failed to load challenge progress',
+            invoke: () => POST_CHALLENGE_PROGRESS_BATCH(new NextRequest(
+                'http://localhost/api/challenge/progress',
+                {
+                    method: 'POST',
+                    body: JSON.stringify({ challengeIds: [CHALLENGE_ID] }),
+                },
+            )),
+        },
+    ] as const;
+    const failures = [
+        { failureLabel: 'raw Error', createFailure: createRawDatabaseError },
+        {
+            failureLabel: 'matching-code AppError',
+            createFailure: createRawMatchingProgressAppError,
+        },
+    ] as const;
+
+    it.each(routes.flatMap((route) => failures.map((failure) => ({
+        ...route,
+        ...failure,
+    }))))(
+        '$labelの$failureLabel auth障害を固定JSONへ変換し、生情報を除外する',
+        async ({
+            kind,
+            responseError,
+            invoke,
+            createFailure,
+        }) => {
+            const rawError = createFailure();
+            mocks.auth.mockRejectedValueOnce(rawError);
+            const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+            const response = await invoke();
+
+            await expectPrivacySafeLog(
+                response,
+                rawError,
+                kind,
+                'unexpected',
+                responseError,
+                consoleError.mock.calls,
+            );
+            expect(mocks.from).not.toHaveBeenCalled();
+            expect(mocks.rpc).not.toHaveBeenCalled();
+        },
+    );
 });

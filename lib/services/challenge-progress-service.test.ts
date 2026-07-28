@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { parseChallengeProgressBatchResponse } from '@/lib/challenge-progress';
+import { AppError } from '@/lib/errors';
 import type { ChallengeProgressResult } from '@/lib/challenge-progress';
 
 const mocks = vi.hoisted(() => ({
@@ -29,6 +30,7 @@ import {
     getFreshChallengeProgressBatch,
     getGroupProgressRecordStatuses,
     MAX_GROUP_PROGRESS_RECORD_ROWS,
+    normalizeChallengeProgressFailure,
 } from '@/lib/services/challenge-progress-service';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
@@ -48,6 +50,32 @@ const BATCH_IDS = [
     '50000000-0000-4000-8000-000000000005',
     '50000000-0000-4000-8000-000000000006',
 ] as const;
+
+describe('normalizeChallengeProgressFailure', () => {
+    it('同一codeのAppErrorも固定fieldだけの新しいErrorへ再構築する', () => {
+        const rawError = new AppError(
+            'sensitive progress failure',
+            'CHALLENGE_PROGRESS_UNAVAILABLE',
+            {
+                stage: 'steps-query',
+                userId: USER_ID,
+                challengeId: CHALLENGE_ID,
+            },
+            { secret: 'sensitive cause' },
+        );
+
+        const normalized = normalizeChallengeProgressFailure(rawError);
+
+        expect(normalized).not.toBe(rawError);
+        expect(normalized).toMatchObject({
+            message: 'Challenge progress request failed',
+            code: 'CHALLENGE_PROGRESS_UNAVAILABLE',
+            context: { stage: 'steps-query' },
+        });
+        expect(Object.keys(normalized.context ?? {})).toEqual(['stage']);
+        expect(normalized.cause).toBeUndefined();
+    });
+});
 
 interface QueryResult {
     data?: unknown;
