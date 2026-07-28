@@ -31,6 +31,7 @@ const originalSources = new Map(
     ]),
 );
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'ucfitness-rule-check-'));
+const dateBoundaryFixtureRoot = mkdtempSync(join(tmpdir(), 'ucfitness-date-boundary-rule-'));
 
 interface RuleCheckResult {
     status: number | null;
@@ -126,6 +127,50 @@ function runChallengeProgressRule(): RuleCheckResult {
     };
 }
 
+function writeDateBoundaryFixtureFile(path: string, source: string): void {
+    const fixturePath = join(dateBoundaryFixtureRoot, path);
+    mkdirSync(dirname(fixturePath), { recursive: true });
+    writeFileSync(fixturePath, source, 'utf8');
+}
+
+function writeSafeDateBoundaryFixtures(): void {
+    writeDateBoundaryFixtureFile(
+        'components/group/SafeBoundary.ts',
+        'export function parseEnd(endDate: string) { return new Date(`${endDate}T23:59:59+09:00`); }\n',
+    );
+    writeDateBoundaryFixtureFile(
+        'components/group/CommentOnly.ts',
+        '// new Date(`${event.end_date}T23:59:59`)\nexport const safe = true;\n',
+    );
+    writeDateBoundaryFixtureFile(
+        'components/group/UnsafeBoundary.test.ts',
+        'export function parseEnd(endDate: string) { return new Date(`${endDate}T23:59:59`); }\n',
+    );
+    writeDateBoundaryFixtureFile(
+        'components/group/__fixtures__/UnsafeBoundary.ts',
+        'export function parseEnd(endDate: string) { return new Date(endDate + "T23:59:59"); }\n',
+    );
+    writeDateBoundaryFixtureFile(
+        'docs/date-boundary.md',
+        '```ts\nnew Date(`${event.end_date}T23:59:59`)\n```\n',
+    );
+}
+
+function runDateBoundaryRule(): RuleCheckResult {
+    const result = spawnSync(
+        'bash',
+        [ruleChecker, '--date-only-jst-end-boundary-only', dateBoundaryFixtureRoot],
+        {
+            cwd: repositoryRoot,
+            encoding: 'utf8',
+        },
+    );
+    return {
+        status: result.status,
+        output: `${result.stdout}${result.stderr}`,
+    };
+}
+
 describe('check-ucfitness-rules challenge progress認証ログ境界', () => {
     beforeEach(() => {
         writeDoubleQuotedFixture();
@@ -171,5 +216,45 @@ describe('check-ucfitness-rules challenge progress認証ログ境界', () => {
 
         expect(result.status, result.output).toBe(1);
         expect(result.output).toContain('challenge progress');
+    });
+});
+
+describe('check-ucfitness-rules date-only JST終了境界', () => {
+    beforeEach(() => {
+        rmSync(dateBoundaryFixtureRoot, { recursive: true, force: true });
+        mkdirSync(dateBoundaryFixtureRoot, { recursive: true });
+        writeSafeDateBoundaryFixtures();
+    });
+
+    afterAll(() => {
+        rmSync(dateBoundaryFixtureRoot, { recursive: true, force: true });
+    });
+
+    it('明示JST offsetを受理し、コメント・docs・test・fixtureを検査対象外にする', () => {
+        const result = runDateBoundaryRule();
+
+        expect(result.status, result.output).toBe(0);
+        expect(result.output).toContain('OK: UCFitness rule-check passed');
+    });
+
+    it.each([
+        [
+            'template literal',
+            'export function parseEnd(endDate: string) { return new Date(`${endDate}T23:59:59`); }\n',
+        ],
+        [
+            '文字列連結',
+            'export function parseEnd(endDate: string) { return new Date(endDate + "T23:59:59"); }\n',
+        ],
+    ])('%sでoffsetを省略した場合、production違反として拒否する', (_label, source) => {
+        writeDateBoundaryFixtureFile('components/group/UnsafeBoundary.ts', source);
+
+        const result = runDateBoundaryRule();
+
+        expect(result.status, result.output).toBe(1);
+        expect(result.output).toContain(
+            'date-only終了日時をoffsetなしT23:59:59でDate化',
+        );
+        expect(result.output).toContain('components/group/UnsafeBoundary.ts:1');
     });
 });
