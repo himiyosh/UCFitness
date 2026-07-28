@@ -323,12 +323,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 /** POST: 新しいチャレンジを作成 */
 export async function POST(req: NextRequest): Promise<NextResponse> {
-    const session = await auth();
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         let body: unknown;
         try {
             body = await req.json();

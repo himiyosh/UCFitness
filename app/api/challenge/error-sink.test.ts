@@ -254,9 +254,7 @@ describe('POST /api/challenge structured error sink', () => {
             } else if (stage === 'participant-insert') {
                 participantResult = { data: null, error: rawError };
             } else {
-                mocks.from.mockImplementation(() => {
-                    throw rawError;
-                });
+                mocks.auth.mockRejectedValueOnce(rawError);
             }
         }
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);

@@ -120,6 +120,18 @@ describe('POST /api/challenge', () => {
         });
     });
 
+    it('未認証の場合、DBアクセス前に既存401レスポンスを返す', async () => {
+        mocks.auth.mockResolvedValue({ user: null });
+
+        const response = await POST(request(validChallenge()));
+
+        expect(response.status).toBe(401);
+        expect(await response.json()).toEqual({ error: 'Unauthorized' });
+        expect(mocks.rpc).not.toHaveBeenCalled();
+        expect(mocks.from).not.toHaveBeenCalled();
+        expect(mocks.reportError).not.toHaveBeenCalled();
+    });
+
     it.each([
         ['GROUPのgroup_idがない', validChallenge({ group_id: undefined })],
         ['GROUPのgroup_idがUUIDでない', validChallenge({ group_id: 'invalid' })],

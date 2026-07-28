@@ -1085,6 +1085,7 @@ for pattern in \
   "expect(reportCall[1]).not.toBe(rawError)" \
   "expect(loggedError.cause).toBeUndefined()" \
   "expect(Object.keys(loggedError.context ?? {})).toEqual(['stage'])" \
+  "mocks.auth.mockRejectedValueOnce(rawError)" \
   "Object.values(SENTINELS)" \
   "USER_ID" "GROUP_ID" "CHALLENGE_ID"; do
   if ! grep -Fq "$pattern" "$CHALLENGE_ERROR_SINK_TEST"; then
