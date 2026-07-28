@@ -29,7 +29,7 @@ describe('ChallengeList Hall of Fame', () => {
         expect(enMessages.Challenge.listEmptyCompleted).not.toContain('You have not completed');
     });
 
-    it('既存の取得・並び順を保ちつつキーボードと320/375/1280pxで履歴を表示する', async () => {
+    it('開始前表示と既存履歴をキーボードと320/375/1280pxで正しく表示する', async () => {
         const styles = await postcss([tailwindcss()]).process(
             [
                 '@import "tailwindcss" source(none);',
@@ -58,9 +58,10 @@ describe('ChallengeList Hall of Fame', () => {
                         participant_avatars: [],
                     };
                     const activeChallenges = [
-                        {...baseChallenge, id: 'active-unjoined', title: 'Active unjoined', end_date: '2099-01-03', is_joined: false},
-                        {...baseChallenge, id: 'active-more', title: 'Active more remaining', end_date: '2099-01-02', is_joined: true},
-                        {...baseChallenge, id: 'active-less', title: 'Active less remaining', end_date: '2099-01-01', is_joined: true},
+                        {...baseChallenge, id: 'active-unjoined', title: 'Active unjoined', end_date: '2099-01-05', is_joined: false},
+                        {...baseChallenge, id: 'active-more', title: 'Active more remaining', end_date: '2099-01-04', is_joined: true},
+                        {...baseChallenge, id: 'active-less', title: 'Active less remaining', end_date: '2099-01-03', is_joined: true},
+                        {...baseChallenge, id: 'active-upcoming', title: 'Upcoming preview', start_date: '2099-01-02', end_date: '2099-01-06', is_joined: false},
                     ];
                     const endedChallenges = [
                         {...baseChallenge, id: 'history-unjoined', title: 'History unjoined', end_date: '2020-01-02', is_joined: false},
@@ -134,7 +135,16 @@ describe('ChallengeList Hall of Fame', () => {
                         namespace: 'dynamic-stub',
                     }));
                     context.onLoad({ filter: /.*/, namespace: 'dynamic-stub' }, () => ({
-                        contents: 'export default function dynamic() { return function DynamicStub() { return null; }; }',
+                        contents: `
+                            export default function dynamic() {
+                                return function DynamicStub(props) {
+                                    if (props?.isOpen) {
+                                        document.body.dataset.challengeDetailOpened = 'true';
+                                    }
+                                    return null;
+                                };
+                            }
+                        `,
                     }));
                     context.onResolve({ filter: /^next-intl$/ }, () => ({
                         path: 'next-intl',
@@ -174,6 +184,8 @@ describe('ChallengeList Hall of Fame', () => {
         try {
             const page = await browser.newPage({ viewport: { width: 320, height: 800 } });
             page.setDefaultTimeout(5_000);
+            const beforeUpcomingStart = new Date('2099-01-01T14:59:59.800Z');
+            await page.clock.install({ time: new Date('2099-01-01T14:59:50Z') });
             const pageErrors: string[] = [];
             const consoleErrors: string[] = [];
             page.on('pageerror', (error) => pageErrors.push(error.message));
@@ -185,9 +197,11 @@ describe('ChallengeList Hall of Fame', () => {
             );
             await page.addStyleTag({ content: styles.css });
             await page.addScriptTag({ content: bundle.outputFiles[0].text });
+            await page.clock.pauseAt(beforeUpcomingStart);
 
             for (const locale of ['ja', 'en'] as const) {
                 const messages = challengeMessages[locale];
+                await page.clock.setSystemTime(beforeUpcomingStart);
                 await page.evaluate((nextLocale) => {
                     const render = Reflect.get(globalThis, 'renderChallengeList');
                     if (typeof render !== 'function') throw new Error('ChallengeList renderer missing');
@@ -205,7 +219,97 @@ describe('ChallengeList Hall of Fame', () => {
                     'Active less remaining',
                     'Active more remaining',
                     'Active unjoined',
+                    'Upcoming preview',
                 ]);
+                const startedCard = page.getByRole('button', {
+                    name: `Active unjoined - ${messages.detailViewDetail}`,
+                });
+                const upcomingCard = page.getByRole('button', {
+                    name: `Upcoming preview - ${messages.detailViewDetail}`,
+                });
+                const startedJoin = startedCard.getByRole('button', {
+                    name: messages.join,
+                    exact: true,
+                });
+                const upcomingStatus = messages.upcomingStartsOn.replace(
+                    '{date}',
+                    '2099-01-02',
+                );
+                expect(await startedJoin.count()).toBe(1);
+                expect(await upcomingCard.getByRole('button', {
+                    name: messages.join,
+                    exact: true,
+                }).count())
+                    .toBe(0);
+                expect(await upcomingCard.innerText()).toContain(upcomingStatus);
+
+                for (const width of [320, 375, 1280]) {
+                    await page.setViewportSize({ width, height: 800 });
+                    const geometry = await page.evaluate(({
+                        startedCardLabel,
+                        upcomingCardLabel,
+                        joinLabel,
+                        statusText,
+                    }) => {
+                        const cards = [...document.querySelectorAll<HTMLElement>('[role="button"]')];
+                        const startedCard = cards.find(
+                            (element) => element.getAttribute('aria-label') === startedCardLabel,
+                        );
+                        const upcomingCard = cards.find(
+                            (element) => element.getAttribute('aria-label') === upcomingCardLabel,
+                        );
+                        const join = [...(startedCard?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
+                            .find((element) => element.getAttribute('aria-label') === joinLabel);
+                        const status = [
+                            ...(upcomingCard?.querySelectorAll<HTMLElement>('span') ?? []),
+                        ]
+                            .find((element) => element.textContent?.includes(statusText));
+                        if (!upcomingCard || !join || !status) {
+                            throw new Error('Upcoming challenge geometry missing');
+                        }
+                        const cardRect = upcomingCard.getBoundingClientRect();
+                        const joinRect = join.getBoundingClientRect();
+                        const statusRect = status.getBoundingClientRect();
+                        return {
+                            horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
+                            cardLeft: cardRect.left,
+                            cardRight: cardRect.right,
+                            joinHeight: joinRect.height,
+                            statusLeft: statusRect.left,
+                            statusRight: statusRect.right,
+                            viewportWidth: window.innerWidth,
+                        };
+                    }, {
+                        startedCardLabel: `Active unjoined - ${messages.detailViewDetail}`,
+                        upcomingCardLabel: `Upcoming preview - ${messages.detailViewDetail}`,
+                        joinLabel: messages.join,
+                        statusText: upcomingStatus,
+                    });
+                    expect(geometry.horizontalOverflow).toBe(false);
+                    expect(geometry.cardLeft).toBeGreaterThanOrEqual(0);
+                    expect(geometry.cardRight).toBeLessThanOrEqual(geometry.viewportWidth);
+                    expect(geometry.joinHeight).toBeGreaterThanOrEqual(44);
+                    expect(geometry.statusLeft).toBeGreaterThanOrEqual(geometry.cardLeft);
+                    expect(geometry.statusRight).toBeLessThanOrEqual(geometry.cardRight);
+                }
+
+                await startedJoin.focus();
+                expect(await startedJoin.evaluate((element) => document.activeElement === element))
+                    .toBe(true);
+                await page.evaluate(() => {
+                    delete document.body.dataset.challengeDetailOpened;
+                });
+                await upcomingCard.focus();
+                await page.keyboard.press('Enter');
+                await page.waitForFunction(() => (
+                    document.body.dataset.challengeDetailOpened === 'true'
+                ));
+                await page.clock.fastForward(300);
+                expect(await upcomingCard.innerText()).not.toContain(upcomingStatus);
+                expect(await upcomingCard.getByRole('button', {
+                    name: messages.join,
+                    exact: true,
+                }).count()).toBe(1);
 
                 const activeTab = page.getByRole('tab', { name: messages.active });
                 const historyTab = page.getByRole('tab', { name: messages.completed });

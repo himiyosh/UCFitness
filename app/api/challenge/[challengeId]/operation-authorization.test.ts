@@ -3,9 +3,13 @@ import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-    auth: vi.fn(), from: vi.fn(), reportError: vi.fn(), rpc: vi.fn(),
+    auth: vi.fn(), from: vi.fn(), getJSTDateString: vi.fn(), reportError: vi.fn(), rpc: vi.fn(),
 }));
 vi.mock('@/lib/auth', () => ({ auth: mocks.auth }));
+vi.mock('@/lib/date-utils', async (importOriginal) => ({
+    ...await importOriginal<typeof import('@/lib/date-utils')>(),
+    getJSTDateString: mocks.getJSTDateString,
+}));
 vi.mock('@/lib/errors', () => ({ reportError: mocks.reportError }));
 vi.mock('@/lib/supabase', () => ({ supabaseAdmin: { from: mocks.from, rpc: mocks.rpc } }));
 import { PUT } from './route';
@@ -46,6 +50,7 @@ function authorize(isPublic: boolean, member: unknown): void {
 }
 beforeEach(() => {
     vi.clearAllMocks(); mocks.auth.mockResolvedValue({ user: { id: UID } });
+    mocks.getJSTDateString.mockReturnValue('2026-07-15');
     results = {}; inCalls = []; updates = [];
     mocks.rpc.mockResolvedValue({
         data: [{
@@ -93,6 +98,74 @@ describe('GROUP challenge操作認可', () => {
             expect((await route(request(_name === 'join' ? 'POST' : 'DELETE'), context)).status).toBe(200);
         },
     );
+    it('joinは開始前のprivate非memberを開始日判定より先に404で拒否する', async () => {
+        results.challenges = [{
+            data: challenge({ start_date: '2026-07-20', end_date: '2026-07-31' }),
+            error: null,
+        }];
+        authorize(false, null);
+
+        const response = await POST(request('POST'), context);
+
+        expect(response.status).toBe(404);
+        expect(mocks.from).not.toHaveBeenCalledWith('challenge_participants');
+    });
+    it('joinは認可後に開始前を拒否しparticipant照会・登録へ進まない', async () => {
+        results.challenges = [{
+            data: challenge({
+                created_by: 'other',
+                start_date: '2026-07-20',
+                end_date: '2026-07-31',
+            }),
+            error: null,
+        }];
+        authorize(false, { user_id: UID, role: 'MEMBER' });
+
+        const response = await POST(request('POST'), context);
+
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({ error: 'Challenge has not started' });
+        expect(mocks.from.mock.calls.map(([table]) => table)).toEqual([
+            'challenges',
+            'groups',
+            'group_members',
+        ]);
+    });
+    it('joinはJST開始日と当日が等しい場合に参加を許可する', async () => {
+        mocks.getJSTDateString.mockReturnValue('2026-07-20');
+        results.challenges = [{
+            data: challenge({
+                created_by: 'other',
+                start_date: '2026-07-20',
+                end_date: '2026-07-31',
+            }),
+            error: null,
+        }];
+        authorize(false, { user_id: UID, role: 'MEMBER' });
+        results.challenge_participants = [
+            { data: null, error: null },
+            { error: null },
+        ];
+
+        expect((await POST(request('POST'), context)).status).toBe(200);
+        expect(mocks.from).toHaveBeenCalledWith('challenge_participants');
+    });
+    it.each([
+        ['inactive', { is_active: false }, 'Challenge is no longer active'],
+        ['expired', { end_date: '2026-07-14' }, 'Challenge has ended'],
+    ])('joinは%sチャレンジの既存拒否を維持する', async (_name, overrides, error) => {
+        results.challenges = [{
+            data: challenge({ created_by: 'other', ...overrides }),
+            error: null,
+        }];
+        authorize(false, { user_id: UID, role: 'MEMBER' });
+
+        const response = await POST(request('POST'), context);
+
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({ error });
+        expect(mocks.from).not.toHaveBeenCalledWith('challenge_participants');
+    });
     it('leaveはcreator離脱禁止を維持する', async () => {
         results.challenges = [{ data: challenge(), error: null }]; authorize(false, { user_id: UID });
         expect((await DELETE(request('DELETE'), context)).status).toBe(400);

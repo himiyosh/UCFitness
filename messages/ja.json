@@ -1431,6 +1431,7 @@
     "join": "参加",
     "joined": "参加済み",
     "notJoined": "未参加",
+    "upcomingStartsOn": "開始前・{date}開始",
     "joinToTrack": "参加すると進捗と報酬対象を確認できます",
     "target": "目標",
     "reward": "報酬",

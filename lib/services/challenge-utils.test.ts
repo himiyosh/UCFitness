@@ -68,6 +68,25 @@ describe('sortChallengesForAction', () => {
 });
 
 describe('getChallengePriorityMetrics', () => {
+    it('JST開始日の直前は開始前、開始日と等しい時点は開始済みと判定する', () => {
+        const startAt = Date.parse('2026-07-20T00:00:00+09:00');
+        const futureChallenge = challenge('future', {
+            startDate: '2026-07-20',
+            endDate: '2026-07-25',
+        });
+
+        expect(getChallengePriorityMetrics(futureChallenge, null, startAt - 1))
+            .toMatchObject({
+                hasStarted: false,
+                millisecondsUntilStart: 1,
+            });
+        expect(getChallengePriorityMetrics(futureChallenge, null, startAt))
+            .toMatchObject({
+                hasStarted: true,
+                millisecondsUntilStart: null,
+            });
+    });
+
     it('JSTの終了日から残り日数と残り歩数を算出する', () => {
         expect(getChallengePriorityMetrics(
             challenge('joined', {
@@ -82,6 +101,7 @@ describe('getChallengePriorityMetrics', () => {
             remainingSteps: 2_500,
             progressUnavailable: false,
             hasStarted: true,
+            millisecondsUntilStart: null,
             isExpired: false,
             isCompleted: false,
             nextStepTarget: 500,
