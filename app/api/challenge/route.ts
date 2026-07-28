@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { getJSTDateString } from '@/lib/date-utils';
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isRecord, isValidISODate, isValidUUID } from '@/lib/validation';
 import type {
@@ -67,6 +67,50 @@ interface ChallengeAccessRow {
     type: 'INDIVIDUAL' | 'GROUP';
     group_id: string | null;
     group: { is_public: boolean } | null;
+}
+
+type ChallengeFailure =
+    | {
+        kind: 'list';
+        stage:
+            | 'access-scope-query'
+            | 'access-scope-limit'
+            | 'visibility-query'
+            | 'visibility-limit'
+            | 'details-query'
+            | 'unexpected';
+    }
+    | {
+        kind: 'create';
+        stage:
+            | 'group-rpc'
+            | 'group-rpc-result'
+            | 'individual-insert'
+            | 'participant-insert'
+            | 'unexpected';
+    };
+
+const CHALLENGE_FAILURES = {
+    list: {
+        operation: 'challenge:list',
+        message: 'Challenge list request failed',
+        code: 'CHALLENGE_LIST_UNAVAILABLE',
+    },
+    create: {
+        operation: 'challenge:create',
+        message: 'Challenge creation request failed',
+        code: 'CHALLENGE_CREATE_FAILED',
+    },
+} as const;
+
+function challengeFailure(failure: ChallengeFailure, responseError: string): NextResponse {
+    const fixedFailure = CHALLENGE_FAILURES[failure.kind];
+    reportError(fixedFailure.operation, new AppError(
+        fixedFailure.message,
+        fixedFailure.code,
+        { stage: failure.stage },
+    ));
+    return NextResponse.json({ error: responseError }, { status: 500 });
 }
 
 function isChallengeRow(value: unknown): value is ChallengeRow {
@@ -163,17 +207,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
                 .eq('user_id', userId),
         ]);
         if (participationsResult.error || membershipsResult.error) {
-            const error = participationsResult.error ?? membershipsResult.error;
-            reportError('challenge:list:access-scope', error, { userId });
-            return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 });
+            return challengeFailure({ kind: 'list', stage: 'access-scope-query' }, 'Failed to fetch challenges');
         }
         if ((participationsResult.count ?? 0) > 1000 || (membershipsResult.count ?? 0) > 1000) {
-            reportError(
-                'challenge:list:access-scope',
-                new Error('Challenge access scope exceeded 1000 rows'),
-                { userId },
-            );
-            return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 });
+            return challengeFailure({ kind: 'list', stage: 'access-scope-limit' }, 'Failed to fetch challenges');
         }
 
         const today = getJSTDateString();
@@ -213,12 +250,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
         const { data, error, count } = await query.limit(1000).returns<ChallengeAccessRow[]>();
         if (error) {
-            reportError('challenge:list', error);
-            return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 });
+            return challengeFailure({ kind: 'list', stage: 'visibility-query' }, 'Failed to fetch challenges');
         }
         if ((count ?? 0) > 1000) {
-            reportError('challenge:list', new Error('Challenge visibility scan exceeded 1000 rows'));
-            return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 });
+            return challengeFailure({ kind: 'list', stage: 'visibility-limit' }, 'Failed to fetch challenges');
         }
 
         const visibleIds = (data ?? [])
@@ -243,8 +278,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             .in('id', visibleIds)
             .returns<ChallengeListRow[]>();
         if (detailError) {
-            reportError('challenge:list:details', detailError);
-            return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 });
+            return challengeFailure({ kind: 'list', stage: 'details-query' }, 'Failed to fetch challenges');
         }
 
         const detailsById = new Map((detailRows ?? []).map((challenge) => [challenge.id, challenge]));
@@ -282,9 +316,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             });
 
         return NextResponse.json({ challenges });
-    } catch (err) {
-        reportError('challenge:list:unexpected', err);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    } catch {
+        return challengeFailure({ kind: 'list', stage: 'unexpected' }, 'Internal server error');
     }
 }
 
@@ -376,19 +409,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             const { data: rpcData, error: rpcError } = await supabaseAdmin
                 .rpc('create_group_challenge', rpcArgs);
             if (rpcError) {
-                reportError('challenge:create:group:rpc', rpcError, {
-                    userId: session.user.id,
-                    groupId: group_id,
-                });
-                return NextResponse.json({ error: 'Failed to create challenge' }, { status: 500 });
+                return challengeFailure({ kind: 'create', stage: 'group-rpc' }, 'Failed to create challenge');
             }
 
             const rpcResult = parseGroupChallengeCreationResult(rpcData, group_id, session.user.id);
             if (!rpcResult) {
-                reportError('challenge:create:group:rpc-result',
-                    new Error('create_group_challenge returned an invalid result'),
-                    { userId: session.user.id, groupId: group_id });
-                return NextResponse.json({ error: 'Failed to create challenge' }, { status: 500 });
+                return challengeFailure({ kind: 'create', stage: 'group-rpc-result' }, 'Failed to create challenge');
             }
             if (rpcResult.status === 'not_found') {
                 return NextResponse.json({ error: 'Group not found' }, { status: 404 });
@@ -397,10 +423,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
             if (rpcResult.status === 'invalid' || !rpcResult.challenge) {
-                reportError('challenge:create:group:rpc-result',
-                    new Error('create_group_challenge rejected validated input'),
-                    { userId: session.user.id, groupId: group_id });
-                return NextResponse.json({ error: 'Failed to create challenge' }, { status: 500 });
+                return challengeFailure({ kind: 'create', stage: 'group-rpc-result' }, 'Failed to create challenge');
             }
             return NextResponse.json({ challenge: rpcResult.challenge }, { status: 201 });
         }
@@ -422,8 +445,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             .single();
 
         if (error) {
-            reportError('challenge:create', error, { userId: session.user.id });
-            return NextResponse.json({ error: 'Failed to create challenge' }, { status: 500 });
+            return challengeFailure({ kind: 'create', stage: 'individual-insert' }, 'Failed to create challenge');
         }
 
         const { error: participantError } = await supabaseAdmin
@@ -433,16 +455,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                 user_id: session.user.id,
             });
         if (participantError) {
-            reportError('challenge:create:participant', participantError, {
-                userId: session.user.id,
-                challengeId: data.id,
-            });
-            return NextResponse.json({ error: 'Failed to join created challenge' }, { status: 500 });
+            return challengeFailure({ kind: 'create', stage: 'participant-insert' }, 'Failed to join created challenge');
         }
 
         return NextResponse.json({ challenge: data }, { status: 201 });
-    } catch (err) {
-        reportError('challenge:create:unexpected', err);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    } catch {
+        return challengeFailure({ kind: 'create', stage: 'unexpected' }, 'Internal server error');
     }
 }

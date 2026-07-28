@@ -1058,6 +1058,54 @@ if grep -Eq "dataKey=\\{user\\.(username|displayName|displayLabel)\\}|dataPoint\
   record "group comparison chartが表示名data keyへ回帰" "$GROUP_COMPARISON_CHART"
 fi
 
+# ---------- 39. challenge GET/POSTの固定ログ境界 ----------
+CHALLENGE_ROUTE='app/api/challenge/route.ts'
+for pattern in \
+  "function challengeFailure(failure: ChallengeFailure, responseError: string): NextResponse" \
+  "reportError(fixedFailure.operation, new AppError(" \
+  "operation: 'challenge:list'" \
+  "code: 'CHALLENGE_LIST_UNAVAILABLE'" \
+  "operation: 'challenge:create'" \
+  "code: 'CHALLENGE_CREATE_FAILED'" \
+  "{ stage: failure.stage }"; do
+  if ! grep -Fq "$pattern" "$CHALLENGE_ROUTE"; then
+    record "challenge GET/POSTの固定AppError境界欠落" "${CHALLENGE_ROUTE}: ${pattern}"
+  fi
+done
+if [ "$(grep -Fc 'reportError(' "$CHALLENGE_ROUTE")" -ne 1 ]; then
+  record "challenge GET/POSTが固定ログ境界を迂回" "$CHALLENGE_ROUTE"
+fi
+
+CHALLENGE_ERROR_SINK_TEST='app/api/challenge/error-sink.test.ts'
+for pattern in \
+  "vi.spyOn(console, 'error')" \
+  "JSON.parse(serialized)" \
+  "mocks.reportError.mock.calls" \
+  "expect(call).not.toContain(rawError)" \
+  "expect(reportCall[1]).not.toBe(rawError)" \
+  "expect(loggedError.cause).toBeUndefined()" \
+  "expect(Object.keys(loggedError.context ?? {})).toEqual(['stage'])" \
+  "Object.values(SENTINELS)" \
+  "USER_ID" "GROUP_ID" "CHALLENGE_ID"; do
+  if ! grep -Fq "$pattern" "$CHALLENGE_ERROR_SINK_TEST"; then
+    record "challenge GET/POSTの実reportError sink契約欠落" "${CHALLENGE_ERROR_SINK_TEST}: ${pattern}"
+  fi
+done
+if [ ! -f "$CHALLENGE_ERROR_SINK_TEST" ]; then
+  record "challenge GET/POSTの実reportError sink回帰欠落" "$CHALLENGE_ERROR_SINK_TEST"
+fi
+
+for stage in access-scope-query access-scope-limit visibility-query visibility-limit details-query group-rpc group-rpc-result individual-insert participant-insert unexpected; do
+  if ! grep -Fq "'$stage'" "$CHALLENGE_ROUTE" || ! grep -Fq "'$stage'" "$CHALLENGE_ERROR_SINK_TEST"; then
+    record "challenge GET/POSTのfailure stage回帰欠落" "$stage"
+  fi
+done
+CHALLENGE_ROUTE_TEST='app/api/challenge/route.test.ts'
+if ! grep -Fq "GROUP作成成功時、正規化済み入力でRPCを1回だけ呼ぶ" "$CHALLENGE_ROUTE_TEST" || \
+   ! grep -Fq "INDIVIDUAL作成は既存insertとcreator参加flowを維持する" "$CHALLENGE_ROUTE_TEST"; then
+  record "challenge GET/POSTの正常作成契約欠落" "$CHALLENGE_ROUTE_TEST"
+fi
+
 # ---------- 結果出力 ----------
 if [ "$VIOLATIONS" -eq 0 ]; then
   echo "OK: UCFitness rule-check passed (0 violations)"
