@@ -1,6 +1,11 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useMemo } from 'react';
+
+import { useLocale, useTranslations } from 'next-intl';
+
+import { getChallengeScheduleMetrics } from '@/lib/services/challenge-utils';
+import { isValidISODate } from '@/lib/validation';
 
 interface MemberProgress {
     user_id: string;
@@ -37,19 +42,24 @@ export default function GroupEventCard({
     topContributors = [],
 }: GroupEventCardProps) {
     const t = useTranslations('GroupEvent');
+    const locale = useLocale();
+    const dateFormatter = useMemo(
+        () => new Intl.DateTimeFormat(locale, {
+            month: 'short',
+            day: 'numeric',
+            timeZone: 'Asia/Tokyo',
+        }),
+        [locale],
+    );
 
-    const now = new Date();
-    const endDate = new Date(event.end_date + 'T23:59:59');
-    const startDate = new Date(event.start_date);
-    const isUpcoming = now < startDate;
-    const isEnded = now > endDate;
-    const daysLeft = isEnded
-        ? 0
-        : Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    const scheduleMetrics = getChallengeScheduleMetrics(event, Date.now());
+    const isUpcoming = !scheduleMetrics.hasStarted && !scheduleMetrics.isExpired;
+    const isEnded = scheduleMetrics.isExpired;
+    const daysLeft = scheduleMetrics.daysLeft;
 
-    const formatDate = (dateStr: string) => {
-        const d = new Date(dateStr);
-        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const formatDate = (dateStr: string): string => {
+        if (!isValidISODate(dateStr)) return dateStr;
+        return dateFormatter.format(new Date(`${dateStr}T00:00:00+09:00`));
     };
 
     const formatSteps = (steps: number) => {

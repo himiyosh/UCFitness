@@ -1,7 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+
+import {
+    getChallengeBoundaryTimerDelay,
+    getChallengeScheduleMetrics,
+} from '@/lib/services/challenge-utils';
+
 import GroupEventCard from './GroupEventCard';
 import CreateGroupEventModal from './CreateGroupEventModal';
 
@@ -36,6 +42,12 @@ interface GroupEventListProps {
     isOwnerOrAdmin: boolean;
 }
 
+interface GroupEventSchedulePartition {
+    activeEvents: GroupEvent[];
+    pastEvents: GroupEvent[];
+    millisecondsUntilNextBoundary: number | null;
+}
+
 export default function GroupEventList({ groupId, isOwnerOrAdmin }: GroupEventListProps) {
     const t = useTranslations('GroupEvent');
     const [tab, setTab] = useState<'active' | 'past'>('active');
@@ -44,6 +56,7 @@ export default function GroupEventList({ groupId, isOwnerOrAdmin }: GroupEventLi
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [, setTimeRevision] = useState(0);
 
     const fetchEvents = useCallback(async () => {
         setLoading(true);
@@ -88,19 +101,53 @@ export default function GroupEventList({ groupId, isOwnerOrAdmin }: GroupEventLi
         fetchEvents();
     }, [fetchEvents]);
 
-    const { activeEvents, pastEvents } = useMemo(() => {
-        const now = new Date();
-        return {
-            activeEvents: events.filter((e) => {
-                const endDate = new Date(e.end_date + 'T23:59:59');
-                return endDate >= now && e.is_active;
-            }),
-            pastEvents: events.filter((e) => {
-                const endDate = new Date(e.end_date + 'T23:59:59');
-                return endDate < now || !e.is_active;
-            }),
+    const scheduleNow = Date.now();
+    const {
+        activeEvents,
+        pastEvents,
+        millisecondsUntilNextBoundary,
+    } = events.reduce<GroupEventSchedulePartition>((partition, event) => {
+        const scheduleMetrics = getChallengeScheduleMetrics(event, scheduleNow);
+        if (event.is_active && !scheduleMetrics.isExpired) {
+            partition.activeEvents.push(event);
+        } else {
+            partition.pastEvents.push(event);
+        }
+
+        const nextBoundary = scheduleMetrics.millisecondsUntilNextBoundary;
+        if (
+            nextBoundary !== null
+            && (
+                partition.millisecondsUntilNextBoundary === null
+                || nextBoundary < partition.millisecondsUntilNextBoundary
+            )
+        ) {
+            partition.millisecondsUntilNextBoundary = nextBoundary;
+        }
+        return partition;
+    }, {
+        activeEvents: [],
+        pastEvents: [],
+        millisecondsUntilNextBoundary: null,
+    });
+
+    useEffect(() => {
+        const timerDelay = getChallengeBoundaryTimerDelay(millisecondsUntilNextBoundary);
+        if (timerDelay === null) return;
+
+        const refreshTimeBoundary = () => {
+            setTimeRevision((revision) => revision + 1);
         };
-    }, [events]);
+        const timerId = window.setTimeout(refreshTimeBoundary, timerDelay);
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') refreshTimeBoundary();
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            window.clearTimeout(timerId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [millisecondsUntilNextBoundary]);
 
     const displayEvents = tab === 'active' ? activeEvents : pastEvents;
 
