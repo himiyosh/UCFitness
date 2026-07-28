@@ -6,7 +6,10 @@ import { auth } from '@/lib/auth';
 import { getJSTDateString } from '@/lib/date-utils';
 import { reportError } from '@/lib/errors';
 import { authorizeChallengeGroup, authorizeGroupView } from '@/lib/services/challenge-access';
-import { CHALLENGE_NOT_EDITABLE_CODE } from '@/lib/services/challenge-utils';
+import {
+    CHALLENGE_END_DATE_IN_PAST_CODE,
+    CHALLENGE_NOT_EDITABLE_CODE,
+} from '@/lib/services/challenge-utils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isRecord, isValidISODate, isValidUUID } from '@/lib/validation';
 
@@ -21,6 +24,16 @@ function challengeNotEditableResponse(): NextResponse {
             code: CHALLENGE_NOT_EDITABLE_CODE,
         },
         { status: 409 },
+    );
+}
+
+function challengeEndDateInPastResponse(): NextResponse {
+    return NextResponse.json(
+        {
+            error: 'Challenge end date cannot be before today',
+            code: CHALLENGE_END_DATE_IN_PAST_CODE,
+        },
+        { status: 400 },
     );
 }
 
@@ -236,6 +249,9 @@ export async function PUT(
         const today = getJSTDateString();
         if (existing.end_date < today) {
             return challengeNotEditableResponse();
+        }
+        if (typeof end_date === 'string' && end_date < today) {
+            return challengeEndDateInPastResponse();
         }
 
         if (body.type !== undefined) {

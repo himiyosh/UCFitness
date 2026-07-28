@@ -2,7 +2,10 @@ import { NextRequest } from 'next/server';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CHALLENGE_NOT_EDITABLE_CODE } from '@/lib/services/challenge-utils';
+import {
+    CHALLENGE_END_DATE_IN_PAST_CODE,
+    CHALLENGE_NOT_EDITABLE_CODE,
+} from '@/lib/services/challenge-utils';
 
 const mocks = vi.hoisted(() => ({
     auth: vi.fn(), from: vi.fn(), getJSTDateString: vi.fn(), reportError: vi.fn(), rpc: vi.fn(),
@@ -215,6 +218,30 @@ describe('GROUP challenge操作認可', () => {
             expect(updates).toEqual([]);
         },
     );
+    it.each([
+        [false, null, UID, 404, 'Challenge not found'],
+        [true, null, UID, 403, 'Forbidden'],
+        [true, { role: 'ADMIN' }, 'other', 403, 'Only the creator can edit this challenge'],
+    ])(
+        'PUTは過去の要求期限でも公開=%s role=%o creator=%sの認可結果を先に返す',
+        async (isPublic, member, creator, status, expectedError) => {
+            results.challenges = [{
+                data: challenge({ created_by: creator }),
+                error: null,
+            }];
+            authorize(isPublic, member);
+
+            const response = await PUT(
+                request('PUT', { end_date: '2026-07-14' }),
+                context,
+            );
+
+            expect(response.status).toBe(status);
+            expect(await response.json()).toEqual({ error: expectedError });
+            expect(mocks.getJSTDateString).not.toHaveBeenCalled();
+            expect(updates).toEqual([]);
+        },
+    );
     it('PUTはcreatorかつOWNERの有効な更新を1回だけ実行する', async () => {
         const updatedChallenge = challenge({ title: 'Updated' });
         results.challenges = [
@@ -252,6 +279,44 @@ describe('GROUP challenge操作認可', () => {
             'challenges',
         ]);
         expect(updateEndDateFilters).toEqual([['end_date', '2026-07-31']]);
+    });
+    it('PUTは認可済みcreatorが要求したJST前日を安定した400 codeで拒否する', async () => {
+        results.challenges = [{
+            data: challenge(),
+            error: null,
+        }];
+        authorize(false, { role: 'OWNER' });
+
+        const response = await PUT(
+            request('PUT', { end_date: '2026-07-14' }),
+            context,
+        );
+
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({
+            error: 'Challenge end date cannot be before today',
+            code: CHALLENGE_END_DATE_IN_PAST_CODE,
+        });
+        expect(mocks.getJSTDateString).toHaveBeenCalledOnce();
+        expect(updates).toEqual([]);
+    });
+    it('PUTは認可済みcreatorが要求したJST当日を更新可能に保つ', async () => {
+        const updatedChallenge = challenge({ end_date: '2026-07-15' });
+        results.challenges = [
+            { data: challenge(), error: null },
+            { data: updatedChallenge, error: null },
+        ];
+        authorize(false, { role: 'OWNER' });
+
+        const response = await PUT(
+            request('PUT', { end_date: '2026-07-15' }),
+            context,
+        );
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ challenge: updatedChallenge });
+        expect(updates).toEqual([{ end_date: '2026-07-15' }]);
+        expect(updateEndDateFilters).toEqual([['end_date', '2026-07-15']]);
     });
     it('PUTは認可済みcreatorの終了済みチャレンジを409で拒否する', async () => {
         results.challenges = [{

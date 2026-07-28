@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 
 import { useDialogFocus } from '@/hooks/useDialogFocus';
 import {
+    CHALLENGE_END_DATE_IN_PAST_CODE,
     CHALLENGE_NOT_EDITABLE_CODE,
     getChallengeBoundaryTimerDelay,
     getChallengeScheduleMetrics,
@@ -52,6 +53,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
     const [, setTimeRevision] = useState(0);
     const dialogRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
+    const endDateInputRef = useRef<HTMLInputElement>(null);
     const cancelButtonRef = useRef<HTMLButtonElement>(null);
     const submittingRef = useRef(false);
     const getCurrentScheduleMetrics = useCallback(
@@ -63,7 +65,11 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
     }, [onClose]);
     const scheduleMetrics = getCurrentScheduleMetrics();
     const notEditableMessage = t('editNotEditable');
+    const endDateAfterStartMessage = t('endDateAfterStart');
+    const endDateInPastMessage = t('editEndDateInPast');
     const hasNotEditableConflict = expiryBlocked && error === notEditableMessage;
+    const hasEndDateError = error === endDateAfterStartMessage
+        || error === endDateInPastMessage;
 
     useDialogFocus({
         isOpen,
@@ -121,6 +127,11 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
             cancelButtonRef.current?.focus();
         }
     }, [hasNotEditableConflict, isOpen, submitting]);
+    useEffect(() => {
+        if (isOpen && !submitting && error === endDateInPastMessage) {
+            endDateInputRef.current?.focus();
+        }
+    }, [endDateInPastMessage, error, isOpen, submitting]);
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
@@ -141,8 +152,8 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
             return;
         }
         if (new Date(endDate) <= new Date(startDate)) {
-            setError(t('endDateAfterStart'));
-            document.getElementById('edit-challenge-end')?.focus();
+            setError(endDateAfterStartMessage);
+            endDateInputRef.current?.focus();
             return;
         }
 
@@ -175,6 +186,14 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                     return;
                 }
                 if (
+                    res.status === 400
+                    && isRecord(responseBody)
+                    && responseBody.code === CHALLENGE_END_DATE_IN_PAST_CODE
+                ) {
+                    setError(endDateInPastMessage);
+                    return;
+                }
+                if (
                     res.status === 409
                     && isRecord(responseBody)
                     && responseBody.code === CHALLENGE_NOT_EDITABLE_CODE
@@ -195,7 +214,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
             submittingRef.current = false;
             setSubmitting(false);
         }
-    }, [title, description, targetSteps, rewardUC, startDate, endDate, isActive, expiryBlocked, challenge.id, onUpdated, onClose, t, getCurrentScheduleMetrics, notEditableMessage]);
+    }, [title, description, targetSteps, rewardUC, startDate, endDate, isActive, expiryBlocked, challenge.id, onUpdated, onClose, t, getCurrentScheduleMetrics, endDateAfterStartMessage, endDateInPastMessage, notEditableMessage]);
 
     if (!isOpen || typeof document === 'undefined') return null;
 
@@ -288,11 +307,15 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                             <label htmlFor="edit-challenge-end" className="block text-sm font-semibold text-gray-700 mb-1">{t('endDate')}</label>
                             <input
                                 id="edit-challenge-end"
+                                ref={endDateInputRef}
                                 type="date"
                                 value={endDate}
-                                onChange={e => setEndDate(e.target.value)}
+                                onChange={(event) => {
+                                    setEndDate(event.target.value);
+                                    if (hasEndDateError) setError(null);
+                                }}
                                 disabled={expiryBlocked}
-                                className="min-h-[44px] w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]" aria-invalid={error === t('endDateAfterStart')} aria-describedby={error === t('endDateAfterStart') ? 'edit-challenge-error' : undefined}
+                                className="min-h-[44px] w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]" aria-invalid={hasEndDateError || undefined} aria-describedby={hasEndDateError ? 'edit-challenge-error' : undefined}
                                 required
                             />
                         </div>
