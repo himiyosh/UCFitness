@@ -8,7 +8,10 @@ const mocks = vi.hoisted(() => ({
     reportError: vi.fn(),
 }));
 vi.mock('@/lib/auth', () => ({ auth: mocks.auth }));
-vi.mock('@/lib/errors', () => ({ reportError: mocks.reportError }));
+vi.mock('@/lib/errors', async (importOriginal) => ({
+    ...await importOriginal<typeof import('@/lib/errors')>(),
+    reportError: mocks.reportError,
+}));
 vi.mock('@/lib/supabase', () => ({ supabaseAdmin: { from: mocks.from } }));
 import { GET as detail } from './[challengeId]/route';
 import { GET as list } from './route';
@@ -60,6 +63,20 @@ describe('GET /api/challenge', () => {
         expect(response.status).toBe(400);
         expect(mocks.from).not.toHaveBeenCalled();
     });
+    it('閲覧可能なchallengeが空の場合、正常な空配列を返す', async () => {
+        results = {
+            challenge_participants: [{ data: [], error: null, count: 0 }],
+            group_members: [{ data: [], error: null, count: 0 }],
+            challenges: [{ data: [], error: null, count: 0 }],
+        };
+
+        const response = await list(request());
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ challenges: [] });
+        expect(mocks.from).toHaveBeenCalledTimes(3);
+        expect(mocks.reportError).not.toHaveBeenCalled();
+    });
     it('private非メンバーを除外しpublic非メンバーとprivateメンバーだけを返す', async () => {
         const publicRow = row({ id: 'public', group: { is_public: true } });
         const memberRow = row({ id: 'member', group_id: PRIVATE_GROUP, group: { is_public: false } });
@@ -81,8 +98,13 @@ describe('GET /api/challenge', () => {
         };
         const response = await list(request());
         expect(response.status).toBe(200);
-        expect((await response.json()).challenges.map((challenge: { id: string }) => challenge.id))
+        const challenges = (await response.json()).challenges as {
+            id: string;
+            participant_count: number;
+        }[];
+        expect(challenges.map((challenge) => challenge.id))
             .toEqual(['public', 'member']);
+        expect(challenges.map((challenge) => challenge.participant_count)).toEqual([0, 0]);
         expect(mocks.from).toHaveBeenCalledTimes(4);
     });
     it.each([

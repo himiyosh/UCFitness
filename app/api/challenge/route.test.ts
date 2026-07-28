@@ -10,10 +10,15 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/auth', () => ({ auth: mocks.auth }));
-vi.mock('@/lib/errors', () => ({ reportError: mocks.reportError }));
+vi.mock('@/lib/errors', async (importOriginal) => ({
+    ...await importOriginal<typeof import('@/lib/errors')>(),
+    reportError: mocks.reportError,
+}));
 vi.mock('@/lib/supabase', () => ({
     supabaseAdmin: { from: mocks.from, rpc: mocks.rpc },
 }));
+
+import { AppError } from '@/lib/errors';
 
 import { POST } from './route';
 
@@ -70,6 +75,24 @@ function insertQuery(result: QueryResult): object {
     };
 }
 
+function expectFixedCreateReport(stage: string, rawError?: unknown): void {
+    expect(mocks.reportError).toHaveBeenCalledTimes(1);
+    const call = mocks.reportError.mock.calls[0];
+    expect(call).toHaveLength(2);
+    expect(call[0]).toBe('challenge:create');
+    expect(call[1]).toBeInstanceOf(AppError);
+    expect(call[1]).not.toBe(rawError);
+
+    const error = call[1];
+    if (!(error instanceof AppError)) {
+        throw new Error('Expected AppError');
+    }
+    expect(error.message).toBe('Challenge creation request failed');
+    expect(error.code).toBe('CHALLENGE_CREATE_FAILED');
+    expect(error.context).toEqual({ stage });
+    expect(error.cause).toBeUndefined();
+}
+
 describe('POST /api/challenge', () => {
     let challengeResult: QueryResult;
     let participantResult: QueryResult;
@@ -95,6 +118,18 @@ describe('POST /api/challenge', () => {
             }
             throw new Error(`Unexpected table: ${table}`);
         });
+    });
+
+    it('未認証の場合、DBアクセス前に既存401レスポンスを返す', async () => {
+        mocks.auth.mockResolvedValue({ user: null });
+
+        const response = await POST(request(validChallenge()));
+
+        expect(response.status).toBe(401);
+        expect(await response.json()).toEqual({ error: 'Unauthorized' });
+        expect(mocks.rpc).not.toHaveBeenCalled();
+        expect(mocks.from).not.toHaveBeenCalled();
+        expect(mocks.reportError).not.toHaveBeenCalled();
     });
 
     it.each([
@@ -155,11 +190,7 @@ describe('POST /api/challenge', () => {
         const response = await POST(request(validChallenge()));
 
         expect(response.status).toBe(500);
-        expect(mocks.reportError).toHaveBeenCalledWith(
-            'challenge:create:group:rpc',
-            rpcError,
-            { userId: USER_ID, groupId: GROUP_ID },
-        );
+        expectFixedCreateReport('group-rpc', rpcError);
     });
 
     it.each([
@@ -185,6 +216,7 @@ describe('POST /api/challenge', () => {
 
         expect(response.status).toBe(201);
         expect(mocks.rpc).not.toHaveBeenCalled();
+        expect(mocks.from).toHaveBeenCalledTimes(2);
         expect(mocks.from).toHaveBeenNthCalledWith(1, 'challenges');
         expect(mocks.from).toHaveBeenNthCalledWith(2, 'challenge_participants');
     });
@@ -198,10 +230,6 @@ describe('POST /api/challenge', () => {
         })));
 
         expect(response.status).toBe(500);
-        expect(mocks.reportError).toHaveBeenCalledWith(
-            'challenge:create:participant',
-            participantResult.error,
-            { userId: USER_ID, challengeId: CHALLENGE_ID },
-        );
+        expectFixedCreateReport('participant-insert', participantResult.error);
     });
 });
