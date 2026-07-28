@@ -214,6 +214,16 @@ const unsafeDateParseCases: UnsafeDateParseCase[] = [
         callKind: 'Date.parse',
     },
     {
+        label: 'Date風の名前だけを持つ未検証変数',
+        source: 'export function parseNamedValue(unvalidatedDate: string) { return new Date(`${unvalidatedDate}T00:00:00Z`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: 'Dateを含む非validation関数の未検証value',
+        source: 'export function updateDateProfile(value: string) { return Date.parse(`${value}T00:00:00Z`); }',
+        callKind: 'Date.parse',
+    },
+    {
         label: 'full timestamp構造を持たないZ付きbinary',
         source: 'export function parseOffsetOnlyBinary(value: string) { return Date.parse(value + "Z"); }',
         callKind: 'Date.parse',

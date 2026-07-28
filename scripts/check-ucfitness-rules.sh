@@ -166,21 +166,29 @@ const isTimestampName = (name) => {
     || name.endsWith("Timestamp");
 };
 
-const isDateOnlyName = (name) => {
-  const lowerName = name.toLowerCase();
-  return lowerName === "date"
-    || lowerName === "datestr"
-    || lowerName === "today"
-    || lowerName === "todaystr"
-    || lowerName === "weekstart"
-    || lowerName === "occurredon"
-    || /_date$/i.test(name)
-    || name.endsWith("Date")
-    || name.endsWith("DateStr")
-    || lowerName.endsWith("startstr")
-    || lowerName === "fromstr"
-    || lowerName === "tostr";
-};
+const dateOnlyNames = new Set([
+  "currentdate",
+  "date",
+  "datestr",
+  "enddate",
+  "fromstr",
+  "fulldate",
+  "jstdatestr",
+  "monthlystartstr",
+  "occurredon",
+  "startdate",
+  "startstr",
+  "today",
+  "todaystr",
+  "tostr",
+  "weekstart",
+  "weekstartstr",
+]);
+
+const isDateOnlyName = (name) => (
+  dateOnlyNames.has(name.toLowerCase())
+  || /(?:^|_)date$/i.test(name)
+);
 
 const getPropertyName = (node) => {
   if (ts.isPropertyAccessExpression(node)) return node.name.text;
@@ -282,6 +290,11 @@ const getContainingFunctionName = (node) => {
   return null;
 };
 
+const isDateValidationFunctionName = (name) => (
+  /^(?:assert|is|parse|validate)(?:[A-Z_]|$)/.test(name)
+  && (name.includes("Date") || /(?:^|_)date(?:_|$)/i.test(name))
+);
+
 const isSafeDateOnlyReference = (node) => {
   const expression = unwrapExpression(node);
   const name = ts.isIdentifier(expression)
@@ -292,7 +305,7 @@ const isSafeDateOnlyReference = (node) => {
   const functionName = getContainingFunctionName(expression);
   return name === "value"
     && functionName !== null
-    && functionName.includes("Date");
+    && isDateValidationFunctionName(functionName);
 };
 
 const isSafeDateArgument = (node) => {
