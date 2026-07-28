@@ -54,6 +54,10 @@ function formatSteps(steps: number): string {
     return steps.toLocaleString();
 }
 
+function isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
+}
+
 function getEventDescription(
     item: FeedItem,
     t: ReturnType<typeof useTranslations>
@@ -108,11 +112,26 @@ export default function NotificationBell() {
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const popoverRef = useRef<HTMLDivElement>(null);
     const unreadRequestGenerationRef = useRef(0);
+    const feedRef = useRef<FeedItem[]>([]);
+    const feedRequestGenerationRef = useRef(0);
+    const feedAbortControllerRef = useRef<AbortController | null>(null);
+    const mountedRef = useRef(true);
+    const retryButtonRef = useRef<HTMLButtonElement>(null);
+    const focusRetryAfterErrorRef = useRef(false);
     const popoverId = useId();
     const popoverTitleId = `${popoverId}-title`;
     const [popoverPos, setPopoverPos] = useState({ top: 0, right: 0 });
 
-    const fetchFeed = useCallback(async (cursor?: string) => {
+    const fetchFeed = useCallback(async (
+        cursor?: string,
+        focusOnError = false,
+    ): Promise<void> => {
+        if (!mountedRef.current) return;
+        const generation = feedRequestGenerationRef.current + 1;
+        feedRequestGenerationRef.current = generation;
+        feedAbortControllerRef.current?.abort();
+        const controller = new AbortController();
+        feedAbortControllerRef.current = controller;
         const isInitial = !cursor;
         if (isInitial) {
             setIsLoading(true);
@@ -125,17 +144,21 @@ export default function NotificationBell() {
             const params = new URLSearchParams({ limit: '15' });
             if (cursor) params.set('before', cursor);
 
-            const res = await fetch(`/api/user/feed?${params}`);
+            const res = await fetch(`/api/user/feed?${params}`, {
+                signal: controller.signal,
+            });
             if (!res.ok) throw new Error('fetch failed');
 
             const data = await res.json();
             const items: FeedItem[] = data.feed || [];
 
-            if (isInitial) {
-                setFeed(aggregateNotificationFeed(items));
-            } else {
-                setFeed((previous) => aggregateNotificationFeed([...previous, ...items]));
-            }
+            if (!mountedRef.current || generation !== feedRequestGenerationRef.current) return;
+            const nextFeed = aggregateNotificationFeed(
+                isInitial ? items : [...feedRef.current, ...items],
+            );
+            feedRef.current = nextFeed;
+            setFeed(nextFeed);
+            focusRetryAfterErrorRef.current = false;
             setHasMore(data.hasMore || false);
             setNotificationPreferencesAvailable(
                 data.notificationPreferencesAvailable !== false,
@@ -144,13 +167,38 @@ export default function NotificationBell() {
                 typeof data.nextCursor === 'string' ? data.nextCursor : undefined,
             );
             setHasFetched(true);
-        } catch {
-            setError(true);
+        } catch (fetchError: unknown) {
+            if (
+                !isAbortError(fetchError)
+                && mountedRef.current
+                && generation === feedRequestGenerationRef.current
+            ) {
+                focusRetryAfterErrorRef.current = focusOnError;
+                setError(true);
+            }
         } finally {
-            setIsLoading(false);
-            setIsLoadingMore(false);
+            if (mountedRef.current && generation === feedRequestGenerationRef.current) {
+                feedAbortControllerRef.current = null;
+                setIsLoading(false);
+                setIsLoadingMore(false);
+            }
         }
     }, []);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+            feedRequestGenerationRef.current += 1;
+            feedAbortControllerRef.current?.abort();
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!error || !focusRetryAfterErrorRef.current) return;
+        retryButtonRef.current?.focus();
+        focusRetryAfterErrorRef.current = false;
+    }, [error]);
 
     const refreshUnreadCount = useCallback(async (): Promise<void> => {
         const generation = unreadRequestGenerationRef.current + 1;
@@ -409,10 +457,11 @@ export default function NotificationBell() {
 
                         {error && (
                             <div className="text-center py-8 px-4">
-                                <p className="mb-3 text-sm text-[var(--color-danger)]">{t('errorMessage')}</p>
+                                <p role="alert" className="mb-3 text-sm text-[var(--color-danger)]">{t('errorMessage')}</p>
                                 <button
                                     type="button"
-                                    onClick={() => fetchFeed()}
+                                    ref={retryButtonRef}
+                                    onClick={() => fetchFeed(undefined, true)}
                                     className="min-h-[44px] rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
                                 >
                                     {t('retry')}
@@ -447,7 +496,7 @@ export default function NotificationBell() {
                             <div className="border-t border-[var(--color-border)] p-3 text-center">
                                 <button
                                     type="button"
-                                    onClick={() => nextCursor && fetchFeed(nextCursor)}
+                                    onClick={() => nextCursor && fetchFeed(nextCursor, true)}
                                     disabled={isLoadingMore}
                                     className="min-h-[44px] w-full rounded-lg bg-[var(--color-surface-muted)] px-4 py-2 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text)] disabled:opacity-50"
                                 >

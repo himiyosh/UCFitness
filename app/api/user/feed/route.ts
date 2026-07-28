@@ -288,6 +288,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             }
         }
 
+        // 集約をサーバー境界に残し、不正なtimestampをページング応答へ流出させない。
         const aggregatedFeed = aggregateNotificationFeed(feedItems);
         const unreadCount = countUnreadNotificationFeed(aggregatedFeed, feedLastReadAt);
         const limitedFeed = aggregatedFeed.slice(cursor.offset, cursor.offset + limit);
