@@ -1749,3 +1749,10 @@ export const runtime = "edge";
 - **根本原因**: operation・message・codeという意味的な契約ではなく、特定の引用符を含むソース表記だけを検査し、guard自身の正例・負例を独立したfixtureで実行していなかった。
 - **対策**: 対象4箇所を`['"]`の引用符非依存パターンへ統一し、単件・batch routeをdouble quoteへ変換した一時fixtureが通ること、境界欠落と異なるoperation/message/code、route stage帰属、service再固定化境界の欠落が失敗することをVitestで固定した。
 - **教訓**: ソース機械guardはフォーマッタや等価な表記差を許容しつつ、守る値と構造は厳密に照合する。guard追加時は現行treeの成功だけでなく、許容する同値変換と拒否すべき最小変異を一時fixtureで実行する。リファレンス: `scripts/check-ucfitness-rules.sh`, `lib/__tests__/ucfitness-rule-check.test.ts`
+
+### LL-106: 日時guardを限定ディレクトリの文字列grepへ置くと再導入と誤検出を同時に残す
+
+- **事象**: Group Eventの表示・分類は共有JST正本へ修正済みだったが、再発防止guardは選択したコンポーネントだけを文字列検索していた。別のproduction TS/TSXへ同型を再導入できる一方、コメントや安全なoffset付き式も違反にし得た。
+- **根本原因**: 実行される`new Date()`式とコメント・test fixture・docsを区別せず、既知ファイルの現在形だけを守っていた。guard自身の正例・負例も独立実行していなかった。
+- **対策**: TypeScript ASTでproduction TS/TSXの`new Date()`引数だけを走査し、offsetなし`T23:59:59`を拒否する。明示offsetを受理し、コメント・docs・test/spec・fixtureを除外する正例と、template literal・文字列連結の負例を専用rule-check testへ追加した。共有schedule helperにはJST終了日の23:59:59までactive、翌日0時からexpiredの決定的回帰を追加した。
+- **教訓**: 機械guardは既知callsiteのgrepではなく、守る構文とproduction範囲を意味的に検査する。guard追加時は許可する実装、除外対象、最小の違反変異を同じfixture suiteで固定する。リファレンス: `scripts/check-ucfitness-rules.sh`, `lib/__tests__/ucfitness-rule-check.test.ts`, `lib/services/challenge-utils.test.ts`

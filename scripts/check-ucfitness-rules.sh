@@ -78,8 +78,126 @@ check_challenge_progress_auth_log_boundary() {
   fi
 }
 
+check_date_only_jst_end_boundary() {
+  local scan_root="${1:-.}"
+  local hits
+
+  if ! hits="$(node -e '
+const fs = require("fs");
+const path = require("path");
+const ts = require("typescript");
+
+const root = path.resolve(process.argv[1]);
+const productionDirectories = ["app", "components", "contexts", "hooks", "lib", "types"];
+const productionRootFiles = ["i18n.ts", "middleware.ts", "navigation.ts"];
+const excludedDirectories = new Set([
+  "__fixtures__",
+  "__tests__",
+  "fixture",
+  "fixtures",
+  "test",
+  "tests",
+]);
+const testFilePattern = /\.(?:fixture|spec|test)\.tsx?$/;
+const endOfDayMarker = "T23:59:59";
+const explicitOffsetPattern = /^(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})/;
+const files = [];
+const violations = [];
+
+const isProductionFile = (file) => {
+  const relativePath = path.relative(root, file);
+  const segments = relativePath.split(path.sep);
+  return (file.endsWith(".ts") || file.endsWith(".tsx"))
+    && !testFilePattern.test(path.basename(file))
+    && !segments.some((segment) => excludedDirectories.has(segment));
+};
+
+const collectFiles = (entryPath) => {
+  if (!fs.existsSync(entryPath)) return;
+  const stats = fs.statSync(entryPath);
+  if (stats.isFile()) {
+    if (isProductionFile(entryPath)) files.push(entryPath);
+    return;
+  }
+  for (const entry of fs.readdirSync(entryPath, { withFileTypes: true })) {
+    if (entry.isSymbolicLink()) continue;
+    collectFiles(path.join(entryPath, entry.name));
+  }
+};
+
+for (const directory of productionDirectories) {
+  collectFiles(path.join(root, directory));
+}
+for (const file of productionRootFiles) {
+  collectFiles(path.join(root, file));
+}
+
+const flattenDateArgument = (node) => {
+  if (ts.isStringLiteralLike(node)) return node.text;
+  if (ts.isTemplateExpression(node)) {
+    return node.head.text
+      + node.templateSpans.map((span) => `{expression}${span.literal.text}`).join("");
+  }
+  if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+    return flattenDateArgument(node.left) + flattenDateArgument(node.right);
+  }
+  if (ts.isParenthesizedExpression(node)) return flattenDateArgument(node.expression);
+  return "{expression}";
+};
+
+const hasOffsetlessEndOfDay = (text) => {
+  let markerIndex = text.indexOf(endOfDayMarker);
+  while (markerIndex >= 0) {
+    const suffix = text.slice(markerIndex + endOfDayMarker.length);
+    if (!explicitOffsetPattern.test(suffix)) return true;
+    markerIndex = text.indexOf(endOfDayMarker, markerIndex + endOfDayMarker.length);
+  }
+  return false;
+};
+
+for (const file of files) {
+  const source = fs.readFileSync(file, "utf8");
+  const sourceFile = ts.createSourceFile(
+    file,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const visit = (node) => {
+    if (
+      ts.isNewExpression(node)
+      && ts.isIdentifier(node.expression)
+      && node.expression.text === "Date"
+      && node.arguments?.[0]
+      && hasOffsetlessEndOfDay(flattenDateArgument(node.arguments[0]))
+    ) {
+      const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+      violations.push(
+        `${path.relative(root, file).split(path.sep).join("/")}:${position.line + 1}`,
+      );
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+}
+
+if (violations.length > 0) {
+  process.stdout.write(violations.join("\n"));
+  process.exit(1);
+}
+' "$scan_root" 2>&1)"; then
+    record "date-only終了日時をoffsetなしT23:59:59でDate化" "$hits"
+  fi
+}
+
 if [ "${1:-}" = "--challenge-progress-auth-log-boundary-only" ]; then
   check_challenge_progress_auth_log_boundary
+  finish_rule_check
+fi
+
+if [ "${1:-}" = "--date-only-jst-end-boundary-only" ]; then
+  check_date_only_jst_end_boundary "${2:-.}"
   finish_rule_check
 fi
 
@@ -778,14 +896,8 @@ if ! grep -Eq "fetch\\([[:space:]]*['\"]/api/challenge/progress['\"]" components
    ! grep -Fq '複数の0歩GROUPを1回の共有query' lib/services/challenge-progress-service.test.ts; then
   record "Challenge進捗のUUID正規化・GROUP 0歩共有取得・50件上限・4並列・単一batch HTTP・Abort契約欠落" "Challenge progress API / service / ChallengeList"
 fi
-if grep -Eq 'T23:59:59|new Date\([^)]*(start_date|end_date)' \
-     components/challenge/ChallengeDetailModal.tsx \
-     components/dashboard/DashboardChallenges.tsx || \
-   grep -REq --include='*.ts' --include='*.tsx' \
-     'T23:59:59|new Date\([^)]*(start_date|end_date)|Date\.parse\([^)]*(start_date|end_date)' \
-     components/group || \
-   grep -Fq 'new Date(dateStr)' components/group/GroupEventCard.tsx || \
-   ! grep -q 'export function getChallengeScheduleMetrics' lib/services/challenge-utils.ts || \
+check_date_only_jst_end_boundary "."
+if ! grep -q 'export function getChallengeScheduleMetrics' lib/services/challenge-utils.ts || \
    ! grep -q 'getChallengeScheduleMetrics(challenge, now)' lib/services/challenge-utils.ts || \
    ! grep -q 'getChallengeScheduleMetrics(challenge, Date.now())' components/challenge/EditChallengeModal.tsx || \
    ! grep -q 'getChallengeScheduleMetrics(challenge, Date.now())' components/challenge/ChallengeDetailModal.tsx || \

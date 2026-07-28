@@ -196,13 +196,20 @@ describe('getChallengePriorityMetrics', () => {
             });
     });
 
-    it('JST終了日の直後までは開催中、翌日0時と等しい時点から終了済みと判定する', () => {
+    it('JST終了日の23時59分59秒までは開催中、翌日0時から終了済みと判定する', () => {
         const endBoundaryAt = Date.parse('2026-07-21T00:00:00+09:00');
+        const finalSecondAt = Date.parse('2026-07-20T23:59:59+09:00');
         const endingChallenge = challenge('ending', {
             startDate: '2026-07-10',
             endDate: '2026-07-20',
         });
 
+        expect(getChallengePriorityMetrics(endingChallenge, null, finalSecondAt))
+            .toMatchObject({
+                daysLeft: 1,
+                isExpired: false,
+                millisecondsUntilNextBoundary: 1_000,
+            });
         expect(getChallengePriorityMetrics(endingChallenge, null, endBoundaryAt - 1))
             .toMatchObject({
                 daysLeft: 1,
