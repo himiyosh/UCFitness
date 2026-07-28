@@ -16,6 +16,11 @@ const challengeMessages = {
 };
 const ACTIVE_CHALLENGE_COUNT = 9;
 
+interface SurfaceTimezoneSnapshot {
+    detailText: string;
+    dashboardText: string;
+}
+
 describe('ChallengeList Hall of Fame', () => {
     it('終了イベント全体と個人達成をja/enで区別する', () => {
         expect(jaMessages.Challenge.completed).toBe('開催履歴');
@@ -37,7 +42,9 @@ describe('ChallengeList Hall of Fame', () => {
                 '@import "tailwindcss" source(none);',
                 '@source "./components/challenge/ChallengeList.tsx";',
                 '@source "./components/challenge/ChallengeCard.tsx";',
+                '@source "./components/challenge/ChallengeDetailModal.tsx";',
                 '@source "./components/challenge/EditChallengeModal.tsx";',
+                '@source "./components/dashboard/DashboardChallenges.tsx";',
             ].join(' '),
             { from: `${process.cwd()}/challenge-list-test.css` },
         );
@@ -48,7 +55,9 @@ describe('ChallengeList Hall of Fame', () => {
                     import {createRoot} from 'react-dom/client';
                     import ChallengeList from './components/challenge/ChallengeList';
                     import ChallengeCard from './components/challenge/ChallengeCard';
+                    import ChallengeDetailModal from './components/challenge/ChallengeDetailModal';
                     import EditChallengeModal from './components/challenge/EditChallengeModal';
+                    import DashboardChallenges from './components/dashboard/DashboardChallenges';
                     import enMessages from './messages/en.json';
                     import jaMessages from './messages/ja.json';
 
@@ -87,6 +96,8 @@ describe('ChallengeList Hall of Fame', () => {
                         'history-achieved': 12000,
                         'history-incomplete': 5000,
                     };
+                    const detailChallenges = new Map();
+                    let dashboardChallenges = [];
                     let resolveDelayedEditPut = null;
                     globalThis.fetch = async (input, init = {}) => {
                         const url = new URL(String(input), 'https://ucfitness.test');
@@ -113,19 +124,31 @@ describe('ChallengeList Hall of Fame', () => {
                         }
                         if (url.pathname === '/api/challenge') {
                             const status = url.searchParams.get('status');
-                            const previous = document.body.dataset.challengeRequests;
-                            document.body.dataset.challengeRequests = previous
-                                ? previous + ',' + status
-                                : String(status);
+                            if (document.body.dataset.dashboardMode !== 'true') {
+                                const previous = document.body.dataset.challengeRequests;
+                                document.body.dataset.challengeRequests = previous
+                                    ? previous + ',' + status
+                                    : String(status);
+                            }
                             return {
                                 ok: true,
                                 json: async () => ({
-                                    challenges: status === 'active'
+                                    challenges: document.body.dataset.dashboardMode === 'true'
+                                        ? dashboardChallenges
+                                        : status === 'active'
                                         ? activeChallenges
                                         : status === 'completed'
                                             ? endedChallenges
                                             : [],
                                 }),
+                            };
+                        }
+                        const detailMatch = url.pathname.match(/^\\/api\\/challenge\\/(detail-[^/]+)$/);
+                        if (detailMatch) {
+                            const challenge = detailChallenges.get(detailMatch[1]);
+                            return {
+                                ok: challenge !== undefined,
+                                json: async () => ({challenge}),
                             };
                         }
                         const progressMatch = url.pathname.match(/^\\/api\\/challenge\\/([^/]+)\\/progress$/);
@@ -142,7 +165,11 @@ describe('ChallengeList Hall of Fame', () => {
                     const root = createRoot(document.querySelector('#root'));
                     const strictCardRoot = createRoot(document.querySelector('#strict-card-root'));
                     const editModalRoot = createRoot(document.querySelector('#edit-modal-root'));
+                    const detailModalRoot = createRoot(document.querySelector('#detail-modal-root'));
+                    const dashboardRoot = createRoot(document.querySelector('#dashboard-root'));
                     let editModalRevision = 0;
+                    let detailModalRevision = 0;
+                    let dashboardRevision = 0;
                     function EditModalHarness({endDate}) {
                         const [isOpen, setIsOpen] = useState(true);
                         return (
@@ -167,7 +194,24 @@ describe('ChallengeList Hall of Fame', () => {
                             />
                         );
                     }
+                    function DetailModalHarness({challengeId}) {
+                        const [isOpen, setIsOpen] = useState(true);
+                        return (
+                            <ChallengeDetailModal
+                                challengeId={challengeId}
+                                isOpen={isOpen}
+                                onClose={() => {
+                                    const count = Number(
+                                        document.body.dataset.challengeDetailCloseCount ?? '0',
+                                    );
+                                    document.body.dataset.challengeDetailCloseCount = String(count + 1);
+                                    setIsOpen(false);
+                                }}
+                            />
+                        );
+                    }
                     globalThis.renderChallengeList = (locale) => {
+                        delete document.body.dataset.dashboardMode;
                         document.documentElement.lang = locale;
                         root.render(<ChallengeList key={locale} currentUserId="viewer" />);
                     };
@@ -197,6 +241,58 @@ describe('ChallengeList Hall of Fame', () => {
                         );
                     };
                     globalThis.clearEditChallengeModal = () => editModalRoot.render(null);
+                    globalThis.renderChallengeDetailModal = (
+                        locale,
+                        challengeId,
+                        startDate,
+                        endDate,
+                        remount = false,
+                    ) => {
+                        document.documentElement.lang = locale;
+                        detailChallenges.set(challengeId, {
+                            ...baseChallenge,
+                            id: challengeId,
+                            title: 'Schedule detail',
+                            start_date: startDate,
+                            end_date: endDate,
+                            challenge_participants: [],
+                        });
+                        if (remount) detailModalRevision += 1;
+                        detailModalRoot.render(
+                            <StrictMode>
+                                <DetailModalHarness
+                                    key={detailModalRevision}
+                                    challengeId={challengeId}
+                                />
+                            </StrictMode>,
+                        );
+                    };
+                    globalThis.clearChallengeDetailModal = () => detailModalRoot.render(null);
+                    globalThis.renderDashboardChallenges = (
+                        locale,
+                        items,
+                        remount = true,
+                    ) => {
+                        document.documentElement.lang = locale;
+                        dashboardChallenges = items.map((item) => ({
+                            ...baseChallenge,
+                            is_joined: false,
+                            participant_count: 0,
+                            participant_avatars: [],
+                            ...item,
+                        }));
+                        document.body.dataset.dashboardMode = 'true';
+                        if (remount) dashboardRevision += 1;
+                        dashboardRoot.render(
+                            <StrictMode>
+                                <DashboardChallenges key={dashboardRevision} />
+                            </StrictMode>,
+                        );
+                    };
+                    globalThis.clearDashboardChallenges = () => {
+                        dashboardRoot.render(null);
+                        delete document.body.dataset.dashboardMode;
+                    };
                     globalThis.resolveDelayedEditChallengePut = () => {
                         if (typeof resolveDelayedEditPut !== 'function') {
                             throw new Error('Delayed edit PUT resolver missing');
@@ -263,6 +359,33 @@ describe('ChallengeList Hall of Fame', () => {
                             };
                         `,
                     }));
+                    context.onResolve({ filter: /^next\/navigation$/ }, () => ({
+                        path: 'next/navigation',
+                        namespace: 'next-navigation-stub',
+                    }));
+                    context.onLoad({ filter: /.*/, namespace: 'next-navigation-stub' }, () => ({
+                        contents: 'export const useRouter = () => ({push() {}});',
+                    }));
+                    context.onResolve({ filter: /^@\/navigation$/ }, () => ({
+                        path: '@/navigation',
+                        namespace: 'navigation-stub',
+                    }));
+                    context.onLoad({ filter: /.*/, namespace: 'navigation-stub' }, () => ({
+                        contents: `
+                            import {createElement} from 'react';
+                            export function Link({href, children, ...props}) {
+                                return createElement('a', {href, ...props}, children);
+                            }
+                        `,
+                        resolveDir: process.cwd(),
+                    }));
+                    context.onResolve({ filter: /^@\/components\/UserAvatar$/ }, () => ({
+                        path: '@/components/UserAvatar',
+                        namespace: 'user-avatar-stub',
+                    }));
+                    context.onLoad({ filter: /.*/, namespace: 'user-avatar-stub' }, () => ({
+                        contents: 'export default function UserAvatar() { return null; }',
+                    }));
                     context.onResolve({ filter: /^@\// }, ({ path: importPath }) => {
                         const basePath = `${process.cwd()}/${importPath.slice(2)}`;
                         const resolvedPath = ['.tsx', '.ts'].map(
@@ -277,6 +400,7 @@ describe('ChallengeList Hall of Fame', () => {
         const browser = await chromium.launch({ channel: 'chrome', headless: true });
         try {
             const page = await browser.newPage({ viewport: { width: 320, height: 800 } });
+            const cdpSession = await page.context().newCDPSession(page);
             page.setDefaultTimeout(5_000);
             const beforeUpcomingStart = new Date('2099-01-01T14:59:59.800Z');
             await page.clock.install({ time: new Date('2099-01-01T14:59:50Z') });
@@ -287,7 +411,7 @@ describe('ChallengeList Hall of Fame', () => {
                 if (message.type() === 'error') consoleErrors.push(message.text());
             });
             await page.setContent(
-                '<button id="edit-modal-trigger" type="button" style="min-height:44px">Edit trigger</button><main style="padding-inline: 16px"><div id="root"></div><div id="strict-card-root"></div><div id="edit-modal-root"></div></main>',
+                '<button id="edit-modal-trigger" type="button" style="min-height:44px">Edit trigger</button><button id="detail-modal-trigger" type="button" style="min-height:44px">Detail trigger</button><main style="padding-inline: 16px"><div id="root"></div><div id="strict-card-root"></div><div id="edit-modal-root"></div><div id="detail-modal-root"></div><div id="dashboard-root"></div></main>',
             );
             await page.addStyleTag({ content: styles.css });
             await page.addScriptTag({ content: bundle.outputFiles[0].text });
@@ -358,6 +482,9 @@ describe('ChallengeList Hall of Fame', () => {
             await page.clock.pauseAt(beforeUpcomingStart);
 
             for (const locale of ['ja', 'en'] as const) {
+                await cdpSession.send('Emulation.setTimezoneOverride', {
+                    timezoneId: 'Asia/Tokyo',
+                });
                 const messages = challengeMessages[locale];
                 await page.clock.setSystemTime(beforeUpcomingStart);
                 await page.evaluate((nextLocale) => {
@@ -964,6 +1091,496 @@ describe('ChallengeList Hall of Fame', () => {
                     return metrics.pendingTimerDelays.length === 0
                         && metrics.visibilityListenerCount === 0;
                 });
+
+                let timezoneSnapshot: SurfaceTimezoneSnapshot | null = null;
+                for (const timezoneId of [
+                    'Asia/Tokyo',
+                    'UTC',
+                    'America/New_York',
+                ]) {
+                    await cdpSession.send('Emulation.setTimezoneOverride', { timezoneId });
+                    await page.clock.setSystemTime(new Date('2099-04-01T14:59:59.800Z'));
+                    await page.evaluate(({ nextLocale, timezone }) => {
+                        const resetDelays = Reflect.get(globalThis, 'resetChallengeTimerDelays');
+                        const renderDetail = Reflect.get(
+                            globalThis,
+                            'renderChallengeDetailModal',
+                        );
+                        const renderDashboard = Reflect.get(
+                            globalThis,
+                            'renderDashboardChallenges',
+                        );
+                        if (
+                            typeof resetDelays !== 'function'
+                            || typeof renderDetail !== 'function'
+                            || typeof renderDashboard !== 'function'
+                        ) {
+                            throw new Error('Challenge schedule surface renderer missing');
+                        }
+                        resetDelays();
+                        document.getElementById('detail-modal-trigger')?.focus();
+                        renderDetail(
+                            nextLocale,
+                            `detail-${timezone}`,
+                            '2099-04-02',
+                            '2099-04-03',
+                            true,
+                        );
+                        renderDashboard(nextLocale, [
+                            {
+                                id: `dashboard-near-${timezone}`,
+                                title: 'Dashboard near',
+                                start_date: '2099-04-02',
+                                end_date: '2099-04-03',
+                            },
+                            {
+                                id: `dashboard-later-${timezone}`,
+                                title: 'Dashboard later',
+                                start_date: '2099-04-03',
+                                end_date: '2099-04-03',
+                            },
+                        ]);
+                    }, { nextLocale: locale, timezone: timezoneId.replaceAll('/', '-') });
+
+                    const detailDialog = page.getByRole('dialog', {
+                        name: 'Schedule detail',
+                    });
+                    const dashboardCards = page.locator(
+                        '#dashboard-root .home-challenge-card',
+                    );
+                    await detailDialog.getByText('Schedule detail').waitFor();
+                    await dashboardCards.first().waitFor();
+                    await page.waitForFunction(() => {
+                        const getMetrics = Reflect.get(
+                            globalThis,
+                            'getChallengeLifecycleMetrics',
+                        );
+                        if (typeof getMetrics !== 'function') return false;
+                        const metrics = getMetrics();
+                        return metrics.pendingTimerDelays.length === 2
+                            && metrics.visibilityListenerCount === 2;
+                    });
+
+                    const beforeStartText = messages.daysLeft.replace('{count}', '3');
+                    expect(await detailDialog.innerText()).toContain(beforeStartText);
+                    expect(await dashboardCards.first().innerText()).toContain(
+                        beforeStartText,
+                    );
+                    await page.clock.setSystemTime(new Date('2099-04-01T15:00:00.000Z'));
+                    await page.evaluate(() => {
+                        const setVisibility = Reflect.get(
+                            globalThis,
+                            'setChallengeVisibility',
+                        );
+                        if (typeof setVisibility !== 'function') {
+                            throw new Error('Challenge visibility control missing');
+                        }
+                        setVisibility('visible');
+                    });
+                    const afterStartText = messages.daysLeft.replace('{count}', '2');
+                    await page.waitForFunction((expectedText) => (
+                        document.querySelector('[role="dialog"]')?.textContent
+                            ?.includes(expectedText)
+                        && document.querySelector(
+                            '#dashboard-root .home-challenge-card',
+                        )?.textContent?.includes(expectedText)
+                    ), afterStartText);
+                    const nextSnapshot = {
+                        detailText: await detailDialog.innerText(),
+                        dashboardText: await page.locator('#dashboard-root').innerText(),
+                    };
+                    if (timezoneSnapshot === null) {
+                        timezoneSnapshot = nextSnapshot;
+                    } else {
+                        expect(nextSnapshot).toEqual(timezoneSnapshot);
+                    }
+
+                    if (timezoneId === 'Asia/Tokyo') {
+                        for (const width of [320, 375, 1280]) {
+                            await page.setViewportSize({ width, height: 800 });
+                            const geometry = await page.evaluate(() => {
+                                const dialog = document.querySelector<HTMLElement>(
+                                    '[role="dialog"]',
+                                );
+                                const closeButton = dialog?.querySelector<HTMLButtonElement>(
+                                    'button',
+                                );
+                                const dashboardLinks = [
+                                    ...document.querySelectorAll<HTMLElement>(
+                                        '#dashboard-root a',
+                                    ),
+                                ];
+                                if (!dialog || !closeButton || dashboardLinks.length === 0) {
+                                    throw new Error('Challenge schedule surface geometry missing');
+                                }
+                                const dialogRect = dialog.getBoundingClientRect();
+                                return {
+                                    dialogLeft: dialogRect.left,
+                                    dialogRight: dialogRect.right,
+                                    horizontalOverflow:
+                                        document.documentElement.scrollWidth
+                                        > window.innerWidth,
+                                    minimumActionHeight: Math.min(
+                                        closeButton.getBoundingClientRect().height,
+                                        ...dashboardLinks.map(
+                                            (link) => link.getBoundingClientRect().height,
+                                        ),
+                                    ),
+                                    viewportWidth: window.innerWidth,
+                                };
+                            });
+                            expect(geometry.dialogLeft).toBeGreaterThanOrEqual(0);
+                            expect(geometry.dialogRight).toBeLessThanOrEqual(
+                                geometry.viewportWidth,
+                            );
+                            expect(geometry.horizontalOverflow).toBe(false);
+                            expect(geometry.minimumActionHeight).toBeGreaterThanOrEqual(44);
+                        }
+                    }
+
+                    await page.evaluate(() => {
+                        const setVisibility = Reflect.get(
+                            globalThis,
+                            'setChallengeVisibility',
+                        );
+                        if (typeof setVisibility !== 'function') {
+                            throw new Error('Challenge visibility control missing');
+                        }
+                        setVisibility('hidden');
+                    });
+                    await page.clock.setSystemTime(new Date('2099-04-03T15:00:00.000Z'));
+                    expect(await detailDialog.innerText()).not.toContain(messages.ended);
+                    expect(await dashboardCards.first().innerText()).not.toContain(
+                        messages.daysLeft.replace('{count}', '0'),
+                    );
+                    await page.evaluate(() => {
+                        const setVisibility = Reflect.get(
+                            globalThis,
+                            'setChallengeVisibility',
+                        );
+                        if (typeof setVisibility !== 'function') {
+                            throw new Error('Challenge visibility control missing');
+                        }
+                        setVisibility('visible');
+                    });
+                    await page.waitForFunction(({ endedText, zeroDaysText }) => (
+                        document.querySelector('[role="dialog"]')?.textContent
+                            ?.includes(endedText)
+                        && document.querySelector(
+                            '#dashboard-root .home-challenge-card',
+                        )?.textContent?.includes(zeroDaysText)
+                    ), {
+                        endedText: messages.ended,
+                        zeroDaysText: messages.daysLeft.replace('{count}', '0'),
+                    });
+                    await page.waitForFunction(() => {
+                        const getMetrics = Reflect.get(
+                            globalThis,
+                            'getChallengeLifecycleMetrics',
+                        );
+                        if (typeof getMetrics !== 'function') return false;
+                        const metrics = getMetrics();
+                        return metrics.pendingTimerDelays.length === 0
+                            && metrics.visibilityListenerCount === 0;
+                    });
+
+                    await page.evaluate(() => {
+                        const clearDetail = Reflect.get(
+                            globalThis,
+                            'clearChallengeDetailModal',
+                        );
+                        if (typeof clearDetail !== 'function') {
+                            throw new Error('Challenge detail surface cleanup missing');
+                        }
+                        clearDetail();
+                    });
+                    await detailDialog.waitFor({ state: 'detached' });
+                    const dashboardViewAll = page.locator(
+                        '#dashboard-root a[href="/challenges"]',
+                    ).first();
+                    await dashboardViewAll.focus();
+                    expect(await dashboardViewAll.evaluate(
+                        (element) => document.activeElement === element,
+                    )).toBe(true);
+                    await page.evaluate(() => {
+                        const clearDashboard = Reflect.get(
+                            globalThis,
+                            'clearDashboardChallenges',
+                        );
+                        if (typeof clearDashboard !== 'function') {
+                            throw new Error('Challenge dashboard surface cleanup missing');
+                        }
+                        clearDashboard();
+                    });
+
+                    await page.evaluate(({ nextLocale, timezone }) => {
+                        const renderDetail = Reflect.get(
+                            globalThis,
+                            'renderChallengeDetailModal',
+                        );
+                        const renderDashboard = Reflect.get(
+                            globalThis,
+                            'renderDashboardChallenges',
+                        );
+                        if (
+                            typeof renderDetail !== 'function'
+                            || typeof renderDashboard !== 'function'
+                        ) {
+                            throw new Error('Challenge invalid schedule renderer missing');
+                        }
+                        renderDetail(
+                            nextLocale,
+                            `detail-invalid-${timezone}`,
+                            'not-a-date',
+                            '2099-04-03',
+                            true,
+                        );
+                        renderDashboard(nextLocale, [
+                            {
+                                id: `dashboard-invalid-${timezone}`,
+                                title: 'Dashboard invalid',
+                                start_date: 'not-a-date',
+                                end_date: '2099-04-03',
+                            },
+                            {
+                                id: `dashboard-reversed-${timezone}`,
+                                title: 'Dashboard reversed',
+                                start_date: '2099-04-05',
+                                end_date: '2099-04-03',
+                            },
+                        ]);
+                    }, { nextLocale: locale, timezone: timezoneId.replaceAll('/', '-') });
+                    const invalidDialog = page.getByRole('dialog', {
+                        name: 'Schedule detail',
+                    });
+                    const invalidDashboardCards = page.locator(
+                        '#dashboard-root .home-challenge-card',
+                    );
+                    await invalidDialog.getByText(messages.ended).waitFor();
+                    await invalidDashboardCards.first().waitFor();
+                    expect(await invalidDashboardCards.first().innerText()).toContain(
+                        messages.daysLeft.replace('{count}', '0'),
+                    );
+                    await page.waitForFunction(() => {
+                        const getMetrics = Reflect.get(
+                            globalThis,
+                            'getChallengeLifecycleMetrics',
+                        );
+                        if (typeof getMetrics !== 'function') return false;
+                        const metrics = getMetrics();
+                        return metrics.pendingTimerDelays.length === 0
+                            && metrics.visibilityListenerCount === 0;
+                    });
+                    await page.evaluate(() => {
+                        const clearDetail = Reflect.get(
+                            globalThis,
+                            'clearChallengeDetailModal',
+                        );
+                        const clearDashboard = Reflect.get(
+                            globalThis,
+                            'clearDashboardChallenges',
+                        );
+                        if (
+                            typeof clearDetail !== 'function'
+                            || typeof clearDashboard !== 'function'
+                        ) {
+                            throw new Error('Challenge invalid schedule cleanup missing');
+                        }
+                        clearDetail();
+                        clearDashboard();
+                    });
+                    await invalidDialog.waitFor({ state: 'detached' });
+
+                    if (timezoneId === 'Asia/Tokyo') {
+                        await page.clock.setSystemTime(new Date('2099-01-01T00:00:00.000Z'));
+                        await page.evaluate((nextLocale) => {
+                            const renderDetail = Reflect.get(
+                                globalThis,
+                                'renderChallengeDetailModal',
+                            );
+                            if (typeof renderDetail !== 'function') {
+                                throw new Error('Challenge detail long timer renderer missing');
+                            }
+                            renderDetail(
+                                nextLocale,
+                                'detail-long',
+                                '2099-02-10',
+                                '2099-02-15',
+                                true,
+                            );
+                        }, locale);
+                        await page.getByRole('dialog', {
+                            name: 'Schedule detail',
+                        }).getByText('Schedule detail').waitFor();
+                        await page.waitForFunction((maximumDelay) => {
+                            const getMetrics = Reflect.get(
+                                globalThis,
+                                'getChallengeLifecycleMetrics',
+                            );
+                            if (typeof getMetrics !== 'function') return false;
+                            const metrics = getMetrics();
+                            return metrics.pendingTimerDelays.length === 1
+                                && metrics.pendingTimerDelays[0] === maximumDelay
+                                && metrics.visibilityListenerCount === 1;
+                        }, MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS);
+                        await page.evaluate((nextLocale) => {
+                            const renderDetail = Reflect.get(
+                                globalThis,
+                                'renderChallengeDetailModal',
+                            );
+                            if (typeof renderDetail !== 'function') {
+                                throw new Error('Challenge detail replacement missing');
+                            }
+                            renderDetail(
+                                nextLocale,
+                                'detail-replacement',
+                                '2099-01-02',
+                                '2099-01-03',
+                                false,
+                            );
+                        }, locale);
+                        await page.waitForFunction((maximumDelay) => {
+                            const getMetrics = Reflect.get(
+                                globalThis,
+                                'getChallengeLifecycleMetrics',
+                            );
+                            if (typeof getMetrics !== 'function') return false;
+                            const metrics = getMetrics();
+                            return metrics.pendingTimerDelays.length === 1
+                                && metrics.pendingTimerDelays[0] > 0
+                                && metrics.pendingTimerDelays[0] < maximumDelay
+                                && metrics.visibilityListenerCount === 1;
+                        }, MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS);
+                        await page.evaluate(() => {
+                            const clearDetail = Reflect.get(
+                                globalThis,
+                                'clearChallengeDetailModal',
+                            );
+                            if (typeof clearDetail !== 'function') {
+                                throw new Error('Challenge detail cleanup missing');
+                            }
+                            clearDetail();
+                        });
+                        await page.waitForFunction(() => {
+                            const getMetrics = Reflect.get(
+                                globalThis,
+                                'getChallengeLifecycleMetrics',
+                            );
+                            if (typeof getMetrics !== 'function') return false;
+                            const metrics = getMetrics();
+                            return metrics.pendingTimerDelays.length === 0
+                                && metrics.visibilityListenerCount === 0;
+                        });
+
+                        await page.evaluate((nextLocale) => {
+                            const renderDashboard = Reflect.get(
+                                globalThis,
+                                'renderDashboardChallenges',
+                            );
+                            if (typeof renderDashboard !== 'function') {
+                                throw new Error('Challenge dashboard long timer missing');
+                            }
+                            renderDashboard(nextLocale, [
+                                {
+                                    id: 'dashboard-long-near',
+                                    title: 'Dashboard long near',
+                                    start_date: '2099-02-10',
+                                    end_date: '2099-02-15',
+                                },
+                                {
+                                    id: 'dashboard-long-later',
+                                    title: 'Dashboard long later',
+                                    start_date: '2099-02-20',
+                                    end_date: '2099-02-25',
+                                },
+                            ]);
+                        }, locale);
+                        await page.locator(
+                            '#dashboard-root .home-challenge-card',
+                        ).first().waitFor();
+                        await page.waitForFunction((maximumDelay) => {
+                            const getMetrics = Reflect.get(
+                                globalThis,
+                                'getChallengeLifecycleMetrics',
+                            );
+                            if (typeof getMetrics !== 'function') return false;
+                            const metrics = getMetrics();
+                            return metrics.pendingTimerDelays.length === 1
+                                && metrics.pendingTimerDelays[0] === maximumDelay
+                                && metrics.visibilityListenerCount === 1;
+                        }, MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS);
+                        await page.clock.fastForward(
+                            MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS - 1,
+                        );
+                        await page.clock.fastForward(101);
+                        await page.waitForFunction((maximumDelay) => {
+                            const getMetrics = Reflect.get(
+                                globalThis,
+                                'getChallengeLifecycleMetrics',
+                            );
+                            if (typeof getMetrics !== 'function') return false;
+                            const metrics = getMetrics();
+                            return metrics.pendingTimerDelays.length === 1
+                                && metrics.pendingTimerDelays[0] > 0
+                                && metrics.pendingTimerDelays[0] < maximumDelay
+                                && metrics.visibilityListenerCount === 1;
+                        }, MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS);
+                        await page.evaluate(() => {
+                            const clearDashboard = Reflect.get(
+                                globalThis,
+                                'clearDashboardChallenges',
+                            );
+                            if (typeof clearDashboard !== 'function') {
+                                throw new Error('Challenge dashboard cleanup missing');
+                            }
+                            clearDashboard();
+                        });
+                        await page.waitForFunction(() => {
+                            const getMetrics = Reflect.get(
+                                globalThis,
+                                'getChallengeLifecycleMetrics',
+                            );
+                            if (typeof getMetrics !== 'function') return false;
+                            const metrics = getMetrics();
+                            return metrics.pendingTimerDelays.length === 0
+                                && metrics.visibilityListenerCount === 0;
+                        });
+
+                        await page.clock.setSystemTime(
+                            new Date('2099-04-01T15:00:00.000Z'),
+                        );
+                        await page.locator('#detail-modal-trigger').focus();
+                        await page.evaluate((nextLocale) => {
+                            const renderDetail = Reflect.get(
+                                globalThis,
+                                'renderChallengeDetailModal',
+                            );
+                            if (typeof renderDetail !== 'function') {
+                                throw new Error('Challenge detail keyboard renderer missing');
+                            }
+                            renderDetail(
+                                nextLocale,
+                                'detail-keyboard',
+                                '2099-04-02',
+                                '2099-04-03',
+                                true,
+                            );
+                        }, locale);
+                        const keyboardDialog = page.getByRole('dialog', {
+                            name: 'Schedule detail',
+                        });
+                        const closeDetailButton = keyboardDialog.getByRole('button', {
+                            name: messages.closeDetailDialog,
+                        });
+                        await closeDetailButton.focus();
+                        await page.keyboard.press('Escape');
+                        await keyboardDialog.waitFor({ state: 'detached' });
+                        expect(await page.locator('#detail-modal-trigger').evaluate(
+                            (element) => document.activeElement === element,
+                        )).toBe(true);
+                    }
+                }
+                expect(timezoneSnapshot).not.toBeNull();
             }
 
             expect(await page.locator('body').getAttribute('data-challenge-requests'))
