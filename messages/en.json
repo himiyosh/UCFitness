@@ -1431,6 +1431,7 @@
     "join": "Join",
     "joined": "Joined",
     "notJoined": "Not joined",
+    "upcomingStartsOn": "Upcoming · Starts {date}",
     "joinToTrack": "Join to track progress and reward eligibility",
     "target": "Target",
     "reward": "Reward",

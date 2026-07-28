@@ -60,6 +60,9 @@ export async function POST(
         if (today > challenge.end_date) {
             return NextResponse.json({ error: 'Challenge has ended' }, { status: 400 });
         }
+        if (today < challenge.start_date) {
+            return NextResponse.json({ error: 'Challenge has not started' }, { status: 400 });
+        }
 
         // 既に参加済みかチェック
         const { data: existing, error: existingError } = await supabaseAdmin

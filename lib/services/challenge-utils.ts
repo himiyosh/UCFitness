@@ -1,3 +1,5 @@
+import { getJSTDateString } from '@/lib/date-utils';
+
 export interface ChallengePriorityItem {
     id: string;
     is_active: boolean;
@@ -13,6 +15,7 @@ export interface ChallengePriorityMetrics {
     remainingSteps: number | null;
     progressUnavailable: boolean;
     hasStarted: boolean;
+    millisecondsUntilStart: number | null;
     isExpired: boolean;
     isCompleted: boolean;
     nextStepTarget: number | null;
@@ -31,7 +34,11 @@ export function getChallengePriorityMetrics(
         ? Math.max(0, Math.ceil((endAt - now) / DAY_MS))
         : Number.MAX_SAFE_INTEGER;
     const isExpired = Number.isFinite(endAt) && now > endAt;
-    const hasStarted = !Number.isFinite(startAt) || now >= startAt;
+    const hasStarted = !Number.isFinite(startAt)
+        || getJSTDateString(new Date(now)) >= challenge.start_date;
+    const millisecondsUntilStart = !hasStarted && Number.isFinite(startAt)
+        ? Math.max(0, startAt - now)
+        : null;
     const progressUnavailable = challenge.is_joined
         && (progress === null || progress === undefined || !Number.isFinite(progress));
     const remainingSteps = challenge.is_joined && typeof progress === 'number'
@@ -47,6 +54,7 @@ export function getChallengePriorityMetrics(
         remainingSteps,
         progressUnavailable,
         hasStarted,
+        millisecondsUntilStart,
         isExpired,
         isCompleted,
         nextStepTarget,

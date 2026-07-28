@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 
@@ -9,6 +9,8 @@ import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { getChallengePriorityMetrics } from '@/lib/services/challenge-utils';
 
 const ChallengeDetailModal = dynamic(() => import('@/components/challenge/ChallengeDetailModal'));
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+const START_BOUNDARY_BUFFER_MS = 50;
 
 // ============================================
 // チャレンジカード コンポーネント
@@ -61,6 +63,7 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
     const [joinCelebrating, setJoinCelebrating] = useState(false);
     const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [, setTimeRevision] = useState(0);
     const leaveDialogRef = useRef<HTMLDivElement>(null);
     const leaveCancelRef = useRef<HTMLButtonElement>(null);
     const closeLeaveDialog = useCallback(() => setShowLeaveConfirm(false), []);
@@ -86,25 +89,47 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
             ),
         [progressValue, challenge.target_steps]
     );
-    const priorityMetrics = useMemo(
-        () => getChallengePriorityMetrics(
-            { ...challenge, is_joined: isJoined },
-            progress,
-        ),
-        [challenge, isJoined, progress],
+    const priorityMetrics = getChallengePriorityMetrics(
+        { ...challenge, is_joined: isJoined },
+        progress,
+        Date.now(),
     );
+    useEffect(() => {
+        const millisecondsUntilStart = priorityMetrics.millisecondsUntilStart;
+        if (millisecondsUntilStart === null) return;
+
+        const refreshTimeBoundary = () => {
+            setTimeRevision((revision) => revision + 1);
+        };
+        const timerId = window.setTimeout(
+            refreshTimeBoundary,
+            Math.min(
+                millisecondsUntilStart + START_BOUNDARY_BUFFER_MS,
+                MAX_TIMER_DELAY_MS,
+            ),
+        );
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') refreshTimeBoundary();
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            window.clearTimeout(timerId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [priorityMetrics.millisecondsUntilStart]);
     const remainingSteps = priorityMetrics.remainingSteps ?? challenge.target_steps;
     const daysLeft = priorityMetrics.daysLeft;
+    const hasStarted = priorityMetrics.hasStarted;
     const isExpired = priorityMetrics.isExpired;
 
     const isCreator = currentUserId && challenge.created_by === currentUserId;
     const isCompleted = progressPercent >= 100 && isJoined;
-    const isUrgent = !isExpired && daysLeft <= 3;
+    const isUrgent = hasStarted && !isExpired && daysLeft <= 3;
     const avatars = challenge.participant_avatars || [];
 
     const handleJoin = useCallback(async (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (joining || isJoined || !onJoin) return;
+        if (joining || isJoined || !hasStarted || !onJoin) return;
         setJoining(true);
         setActionError(null);
         try {
@@ -118,7 +143,7 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
         } finally {
             setJoining(false);
         }
-    }, [joining, isJoined, onJoin, challenge.id, t]);
+    }, [joining, isJoined, hasStarted, onJoin, challenge.id, t]);
 
     const handleLeave = useCallback(async () => {
         if (leaving || !onLeave) return;
@@ -177,7 +202,7 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                 )}
 
                 {/* タイプバッジ + 残り日数 */}
-                <div className="flex items-center justify-between mb-3">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
                         challenge.type === 'INDIVIDUAL'
                             ? 'bg-blue-50 text-blue-700 border border-blue-200'
@@ -187,7 +212,12 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                         {challenge.type === 'INDIVIDUAL' ? t('individual') : t('group')}
                     </span>
 
-                    {!isExpired ? (
+                    {!hasStarted ? (
+                        <span className="inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-full bg-[var(--color-competition-soft)] px-2.5 py-1 text-xs font-bold text-[var(--color-competition-strong)]">
+                            <span aria-hidden="true">📅</span>
+                            {t('upcomingStartsOn', { date: challenge.start_date })}
+                        </span>
+                    ) : !isExpired ? (
                         <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                             isUrgent
                                 ? 'bg-[var(--color-reward-soft)] text-[var(--color-reward-strong)]'
@@ -351,11 +381,12 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                                     </button>
                                 )}
                             </div>
-                        ) : !isExpired ? (
+                        ) : hasStarted && !isExpired ? (
                             <button
                                 onClick={handleJoin}
                                 disabled={joining}
-                                className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-[var(--color-primary-solid)] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[var(--color-primary-strong)] disabled:opacity-50"
+                                className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-[var(--color-primary-solid)] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:opacity-50"
+                                aria-label={t('join')}
                             >
                                 {joining ? (
                                     <>
