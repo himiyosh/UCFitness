@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import enMessages from '../../messages/en.json';
 import jaMessages from '../../messages/ja.json';
 import {
+    CHALLENGE_END_DATE_IN_PAST_CODE,
     CHALLENGE_NOT_EDITABLE_CODE,
     MAX_CHALLENGE_BOUNDARY_TIMER_DELAY_MS,
 } from '../../lib/services/challenge-utils';
@@ -127,6 +128,7 @@ describe('ChallengeList Hall of Fame', () => {
                             const outcome = document.body.dataset.challengeEditPutOutcome;
                             if (
                                 outcome === 'delayed-conflict'
+                                || outcome === 'delayed-past-end-date'
                                 || outcome === 'delayed-failure'
                                 || outcome === 'delayed-success'
                             ) {
@@ -137,12 +139,19 @@ describe('ChallengeList Hall of Fame', () => {
                                             ok: outcome === 'delayed-success',
                                             status: outcome === 'delayed-conflict'
                                                 ? 409
+                                                : outcome === 'delayed-past-end-date'
+                                                    ? 400
                                                 : outcome === 'delayed-success' ? 200 : 500,
                                             json: async () => outcome === 'delayed-conflict'
                                                 ? {
                                                     error: 'Sensitive server conflict details',
                                                     code: '${CHALLENGE_NOT_EDITABLE_CODE}',
                                                 }
+                                                : outcome === 'delayed-past-end-date'
+                                                    ? {
+                                                        error: 'Sensitive past date details',
+                                                        code: '${CHALLENGE_END_DATE_IN_PAST_CODE}',
+                                                    }
                                                 : {
                                                     error: 'Sensitive server failure details',
                                                 },
@@ -1233,6 +1242,105 @@ describe('ChallengeList Hall of Fame', () => {
                     return metrics.pendingTimerDelays.length === 0
                         && metrics.visibilityListenerCount === 0;
                 });
+
+                await page.clock.setSystemTime(new Date('2099-03-05T00:00:00.000Z'));
+                await page.locator('#edit-modal-trigger').focus();
+                await page.evaluate(() => {
+                    document.body.dataset.challengeEditPutOutcome = 'delayed-past-end-date';
+                    const render = Reflect.get(globalThis, 'renderEditChallengeModal');
+                    if (typeof render !== 'function') {
+                        throw new Error('Edit challenge modal renderer missing');
+                    }
+                    render('2099-03-10');
+                });
+                await editDialog.waitFor();
+                const pastDateTitle = editDialog.getByLabel(messages.titleLabel);
+                const pastDateInput = editDialog.getByLabel(messages.endDate);
+                const pastDateDraft = `Past date ${locale} draft`;
+                await pastDateTitle.fill(pastDateDraft);
+                await pastDateInput.fill('2099-03-04');
+                await editDialog.getByRole('button', {
+                    name: messages.save,
+                    exact: true,
+                }).click();
+                await page.waitForFunction(() => (
+                    document.body.dataset.challengeEditPutCount === '4'
+                ));
+                await pastDateInput.press('Enter');
+                expect(await page.locator('body').getAttribute('data-challenge-edit-put-count'))
+                    .toBe('4');
+                await page.evaluate(() => {
+                    const resolve = Reflect.get(globalThis, 'resolveDelayedEditChallengePut');
+                    if (typeof resolve !== 'function') {
+                        throw new Error('Delayed edit PUT resolver missing');
+                    }
+                    resolve();
+                });
+                const pastDateAlert = editDialog.getByRole('alert');
+                await page.waitForFunction((errorMessage) => (
+                    document.querySelector('[role="dialog"] [role="alert"]')?.textContent
+                        === errorMessage
+                ), messages.editEndDateInPast);
+                expect(await pastDateAlert.count()).toBe(1);
+                expect(await pastDateAlert.getAttribute('aria-atomic')).toBe('true');
+                expect(await pastDateAlert.innerText()).toBe(messages.editEndDateInPast);
+                expect(await pastDateAlert.innerText()).not.toContain('Sensitive past date');
+                expect(await pastDateTitle.inputValue()).toBe(pastDateDraft);
+                expect(await pastDateInput.inputValue()).toBe('2099-03-04');
+                expect(await pastDateInput.getAttribute('aria-invalid')).toBe('true');
+                expect(await pastDateInput.getAttribute('aria-describedby'))
+                    .toBe('edit-challenge-error');
+                expect(await pastDateInput.isEnabled()).toBe(true);
+                expect(await editDialog.getByRole('button', {
+                    name: messages.save,
+                    exact: true,
+                }).isEnabled()).toBe(true);
+                expect(await pastDateInput.evaluate(
+                    (element) => document.activeElement === element,
+                )).toBe(true);
+                expect(await page.locator('body').getAttribute('data-challenge-edit-updated-count'))
+                    .toBe('1');
+                for (const width of [320, 375, 1280]) {
+                    await page.setViewportSize({ width, height: 800 });
+                    const geometry = await editDialog.evaluate((dialog) => {
+                        const dialogRect = dialog.getBoundingClientRect();
+                        const controls = [
+                            ...dialog.querySelectorAll<HTMLElement>(
+                                'button, input:not([type="checkbox"]), textarea',
+                            ),
+                        ];
+                        return {
+                            dialogLeft: dialogRect.left,
+                            dialogRight: dialogRect.right,
+                            horizontalOverflow:
+                                document.documentElement.scrollWidth > window.innerWidth,
+                            minimumControlHeight: Math.min(
+                                ...controls.map(
+                                    (control) => control.getBoundingClientRect().height,
+                                ),
+                            ),
+                            viewportWidth: window.innerWidth,
+                        };
+                    });
+                    expect(geometry.dialogLeft).toBeGreaterThanOrEqual(0);
+                    expect(geometry.dialogRight).toBeLessThanOrEqual(
+                        geometry.viewportWidth,
+                    );
+                    expect(geometry.horizontalOverflow).toBe(false);
+                    expect(geometry.minimumControlHeight).toBeGreaterThanOrEqual(44);
+                }
+                await pastDateInput.fill('2099-03-05');
+                expect(await pastDateAlert.count()).toBe(0);
+                expect(await pastDateInput.getAttribute('aria-invalid')).toBeNull();
+                expect(await pastDateInput.getAttribute('aria-describedby')).toBeNull();
+                expect(await pastDateTitle.inputValue()).toBe(pastDateDraft);
+                await page.keyboard.press('Escape');
+                await editDialog.waitFor({ state: 'detached' });
+                expect(await page.locator('#edit-modal-trigger').evaluate(
+                    (element) => document.activeElement === element,
+                )).toBe(true);
+                expect(await page.locator('body').getAttribute('data-challenge-edit-close-count'))
+                    .toBe('6');
 
                 let timezoneSnapshot: SurfaceTimezoneSnapshot | null = null;
                 for (const timezoneId of [

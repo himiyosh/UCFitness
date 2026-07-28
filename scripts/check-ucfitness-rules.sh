@@ -707,19 +707,25 @@ if grep -Eq 'T23:59:59|new Date\([^)]*(start_date|end_date)' \
    ! grep -Fq "timeZone: 'Asia/Tokyo'" components/group/GroupEventCard.tsx || \
    ! grep -q 'useLocale' components/group/GroupEventCard.tsx || \
    ! grep -q 'getChallengeBoundaryTimerDelay' components/group/GroupEventList.tsx || \
+   ! grep -Fq 'CHALLENGE_END_DATE_IN_PAST_CODE' lib/services/challenge-utils.ts || \
    ! grep -Fq 'CHALLENGE_NOT_EDITABLE_CODE' lib/services/challenge-utils.ts || \
    ! grep -Fq 'getJSTDateString' 'app/api/challenge/[challengeId]/route.ts' || \
+   ! grep -Fq "end_date < today" 'app/api/challenge/[challengeId]/route.ts' || \
    ! grep -Fq ".gte('end_date', today)" 'app/api/challenge/[challengeId]/route.ts' || \
+   ! grep -Fq 'CHALLENGE_END_DATE_IN_PAST_CODE' components/challenge/EditChallengeModal.tsx || \
    ! grep -Fq 'CHALLENGE_NOT_EDITABLE_CODE' components/challenge/EditChallengeModal.tsx || \
+   ! grep -Fq "t('editEndDateInPast')" components/challenge/EditChallengeModal.tsx || \
    ! grep -Fq "t('editNotEditable')" components/challenge/EditChallengeModal.tsx || \
    ! grep -Fq "t('closeAfterConflict')" components/challenge/EditChallengeModal.tsx || \
    ! grep -Fq 'text-red-700' components/challenge/EditChallengeModal.tsx || \
+   ! grep -Fq 'CHALLENGE_END_DATE_IN_PAST_CODE' 'app/api/challenge/[challengeId]/operation-authorization.test.ts' || \
+   ! grep -Fq "outcome === 'delayed-past-end-date'" components/challenge/ChallengeList.test.ts || \
    ! grep -Fq "outcome === 'delayed-conflict'" components/challenge/ChallengeList.test.ts || \
    ! grep -q 'reduce<number | null>' components/dashboard/DashboardChallenges.tsx || \
    [ "$(grep -c 'window.setTimeout' components/challenge/ChallengeDetailModal.tsx)" -ne 1 ] || \
    [ "$(grep -c 'window.setTimeout' components/dashboard/DashboardChallenges.tsx)" -ne 1 ] || \
    [ "$(grep -c 'window.setTimeout' components/group/GroupEventList.tsx)" -ne 1 ]; then
-  record "Challenge/GroupEvent期限の共有JST正本・更新文内終了遮断・surface単位timer契約欠落" "challenge-utils / Challenge API / Challenge UI / GroupEventList / GroupEventCard"
+  record "Challenge/GroupEvent期限の共有JST正本・要求/保存済み終了遮断・surface単位timer契約欠落" "challenge-utils / Challenge API / Challenge UI / GroupEventList / GroupEventCard"
 fi
 if grep -Eq '>[^<{]*(Retry|Save|Cancel|Edit)[^<{]*<' components/StepGoalForm.tsx components/StepCalendar.tsx components/profile/AchievementProgress.tsx; then
   record "変更対象の条件付きUIに英語固定文言" "StepGoalForm / StepCalendar / AchievementProgress"
