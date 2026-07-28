@@ -17,6 +17,7 @@ vi.mock('@/lib/errors', async (importOriginal) => ({
     reportError: mocks.reportError,
 }));
 vi.mock('@/lib/services/challenge-progress-service', () => ({
+    CHALLENGE_PROGRESS_UNAVAILABLE_CODE: 'CHALLENGE_PROGRESS_UNAVAILABLE',
     getFreshChallengeProgressBatch: mocks.getFreshChallengeProgressBatch,
 }));
 

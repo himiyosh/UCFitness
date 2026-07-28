@@ -690,7 +690,7 @@ if [ -z "$challenge_list_line" ] || [ -z "$challenge_create_line" ] || \
    ! grep -q 'Math.floor((progressValue / challenge.target_steps)' components/challenge/ChallengeCard.tsx; then
   record "Challenge参加中優先/期限報酬/未達99%/作成補助導線契約欠落" "ChallengesPageClient / ChallengeList / ChallengeCard"
 fi
-if ! grep -Fq "fetch('/api/challenge/progress'" components/challenge/ChallengeList.tsx || \
+if ! grep -Eq "fetch\\([[:space:]]*['\"]/api/challenge/progress['\"]" components/challenge/ChallengeList.tsx || \
    grep -Eq '/api/challenge/\$\{[^}]+\}/progress' components/challenge/ChallengeList.tsx || \
    ! grep -Fq 'MAX_CHALLENGE_PROGRESS_BATCH_SIZE = 50' lib/challenge-progress.ts || \
    ! grep -Fq 'CHALLENGE_PROGRESS_BATCH_CONCURRENCY = 4' lib/challenge-progress.ts || \

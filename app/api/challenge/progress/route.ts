@@ -5,7 +5,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { parseChallengeProgressBatchRequest } from '@/lib/challenge-progress';
 import { AppError, reportError } from '@/lib/errors';
-import { getFreshChallengeProgressBatch } from '@/lib/services/challenge-progress-service';
+import {
+    CHALLENGE_PROGRESS_UNAVAILABLE_CODE,
+    getFreshChallengeProgressBatch,
+} from '@/lib/services/challenge-progress-service';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
     const session = await auth();
@@ -32,7 +35,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ results });
     } catch (error: unknown) {
         const normalized = error instanceof AppError
-            && error.code === 'CHALLENGE_PROGRESS_UNAVAILABLE'
+            && error.code === CHALLENGE_PROGRESS_UNAVAILABLE_CODE
             ? error
             : new AppError(
                 'Challenge progress batch request failed',
