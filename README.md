@@ -998,7 +998,7 @@ UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POS
 - E2Eのweb serverはデフォルトで専用のlocalhost:3000を起動し、別worktreeや古いcommitの既存サーバーを再利用しない。ポート競合時も既存プロセスをkillせず失敗する。同じbranch・commitのサーバーを意図的に管理している場合だけ、`PLAYWRIGHT_REUSE_SERVER=1`で明示的に再利用できる。ローカル専用プレースホルダー環境変数を使い、OAuth・DB write・本番操作は実行しない
 - CIではPlaywrightの再試行後に成功したflaky testも失敗扱いにし、回帰を成功として隠さない
 - CI はテストスイートをカバレッジ付きで1回だけ実行し、`lib/**/*.{ts,tsx}` の全本番モジュール（テスト、test-utils、型定義を除く）について Statements / Branches / Functions / Lines の global threshold 60% を検証
-- current main `e79a412b`（Validate run 30230342459）は103ファイル・1273テストをPASS。通常`npm test`は4.38秒、連続再実行3回は4.51 / 4.34 / 4.49秒で全て5秒以内。single-worker coverageはローカル31.14秒・CI 48.29秒で、Statements 68.13%、Branches 65.24%、Functions 78.93%、Lines 69.30%のglobal 60% gateをPASSし、F026のstatusは`passing`
+- historical baseline `e79a412b`は103 files・1273 testsを通常4.38秒、連続再実行4.51 / 4.34 / 4.49秒で完走した。current main `c353a40a`は114 files・1532 tests、cold 7.28秒、warm 6.26 / 6.25秒（mean 6.255秒）で5秒条件を満たさないため、coverage 60% gateはPASSのままF026のstatusを`in-progress`とする
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
 - Dashboard回帰テストはbonus-only報酬失敗→新規browser context復旧、keyboard/pointer別focus・live通知・二重送信防止、商品loaded/empty/re-failure、有限画像fallback、Amazon popup初回通信隔離、320/375/1280pxの44px操作領域と横overflowを検査
 - 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
