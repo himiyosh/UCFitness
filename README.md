@@ -1008,7 +1008,8 @@ UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POS
 - Push購読CAS runtime jobはmigration SHA-256とdigest固定PostgreSQL 16 serviceを正本に、random prefixのfresh databaseごとにcatalog・negative fixture・2接続競合を検証し、全DBと作成roleを削除する。接続先はquery/hashなしの`postgresql://postgres:postgres@{loopback}:5432/postgres`と明示test-only flagに固定し、既存roleがあるcluster、本番Supabase、実購読、Push Serviceを拒否する。rollbackは依存コード停止後に`REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz);`を同一transactionで実行し、テーブルは保持する
 - Push受信者世代runtime jobはtarget/CAS migration SHA-256と同じPostgreSQL 16 serviceを正本に、canonical key digest、raw 20件、read/release fencing、legacy隔離、user削除、逆順transfer、CAS-first/save-firstを実ロック待機で検証する。接続・DB名・role・ログ・cleanupはCAS runtimeと同じtest-only契約を使い、migration、アプリ配線、production DB、実Pushを変更しない
 - Push受信者protocol runtime jobはownership/protocol migration SHA-256と同じPostgreSQL 16 serviceを正本に、smallint protocol 0/1、旧save reset、exact read、release fence、逆順transfer、rollbackを実行検証する。query/hash/SSLなしのloopback `postgres`接続、allowlist済みfresh DB名、既存role拒否、固定非PIIラベル、全DB/role cleanupを必須とし、migration、PR #314/#315のLayer 3、lockfile、production DB、実Pushを変更しない
-- テストファイル: リポジトリ内の `*.test.ts`（Vitest設定の `**/*.test.ts`）
+- テストファイル: リポジトリ内の `*.test.ts`（現行Vitest設定の `**/*.test.ts`）。`npm run test:collection`は通常・watch・coverageの前に必ず実行され、`vitest-include-coverage.test.ts`が`*.test.ts` / `*.test.tsx`を走査して`path.posix.matchesGlob`でinclude glob全体へ一致しないfileを名指しで拒否する。生成物・vendorとPlaywrightの`tests/*.spec.ts`は対象外
+- 新しいtest fileの検証証拠はbase SHAを併記し、`full suite <before files>/<before tests> -> <after files>/<after tests> (+files/+tests), skipped 0`を必須とする。focused実行件数は補助証拠であり、full-suite収集の代替にしない
 - 型チェック: `npx tsc --noEmit` (ビルド検証の代替としても使用)
 
 ## 注意事項 / 制約
