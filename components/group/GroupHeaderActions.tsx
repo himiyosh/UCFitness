@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { useDialogFocus } from '@/hooks/useDialogFocus';
+import { parseTimestampMillis } from '@/lib/date-utils';
 import { createGroupInviteUrl } from '@/lib/group-invite';
 
 import Spinner from '@/components/ui/Spinner';
@@ -63,7 +64,7 @@ export default function GroupHeaderActions({
     const [isMembersOpen, setIsMembersOpen] = useState(false);
     const [isCreatingInvite, setIsCreatingInvite] = useState(false);
     const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-    const [inviteExpiresAt, setInviteExpiresAt] = useState<string | null>(null);
+    const [inviteExpiresAt, setInviteExpiresAt] = useState<number | null>(null);
     const [inviteFeedback, setInviteFeedback] = useState<{ kind: 'error' | 'success'; message: string } | null>(null);
     const [canShare, setCanShare] = useState(false);
     const t = useTranslations('GroupDetail');
@@ -103,7 +104,8 @@ export default function GroupHeaderActions({
                 setInviteFeedback({ kind: 'error', message: inviteT(key) });
                 return;
             }
-            if (Number.isNaN(new Date(expiresAt).getTime())) {
+            const expiresAtMillis = parseTimestampMillis(expiresAt);
+            if (expiresAtMillis === null) {
                 setInviteFeedback({ kind: 'error', message: inviteT('createUnavailable') });
                 return;
             }
@@ -114,7 +116,7 @@ export default function GroupHeaderActions({
                 return;
             }
             setInviteUrl(url);
-            setInviteExpiresAt(expiresAt);
+            setInviteExpiresAt(expiresAtMillis);
             setInviteFeedback({ kind: 'success', message: inviteT('createSuccess') });
         } catch {
             setInviteFeedback({ kind: 'error', message: inviteT('createNetworkError') });
@@ -206,7 +208,7 @@ export default function GroupHeaderActions({
                 </button>
             )}
 
-            {canCreateInviteLinks && inviteUrl && (
+            {canCreateInviteLinks && inviteUrl && inviteExpiresAt !== null && (
                 <div className="w-full min-w-0 max-w-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-[var(--color-text)] shadow-lg">
                     <label htmlFor="group-invite-link" className="block text-xs font-bold">{inviteT('linkLabel')}</label>
                     <input
@@ -221,7 +223,7 @@ export default function GroupHeaderActions({
                     <p className="mt-2 text-xs leading-5 text-[var(--color-text-muted)]">
                         {inviteT('expiresAt', {
                             date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' })
-                                .format(new Date(inviteExpiresAt ?? '')),
+                                .format(inviteExpiresAt),
                         })}
                     </p>
                     <div className="mt-2 flex flex-col gap-2 sm:flex-row">

@@ -24,10 +24,10 @@ const EXCLUDED_DIRECTORIES = new Set([
   'tests',
 ]);
 const TEST_FILE_PATTERN = /\.(?:fixture|spec|test)\.tsx?$/;
-const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const COMPLETE_TIMESTAMP_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?$/i;
 const EXPLICIT_OFFSET_PATTERN = /(?:Z|[+-]\d{2}:?\d{2})$/i;
+const DATE_ONLY_SENTINEL = '2000-01-01';
 
 function createRecord(id, groupId, label, body) {
   return { id, groupId, label, body };
@@ -420,11 +420,15 @@ export async function checkDateOnlyParse({
 
   const isSafeStaticString = (text) => {
     const normalized = text.trim();
-    if (DATE_ONLY_PATTERN.test(normalized)) {
-      return false;
-    }
-    return COMPLETE_TIMESTAMP_PATTERN.test(normalized) || !DATE_ONLY_PATTERN.test(normalized);
+    return COMPLETE_TIMESTAMP_PATTERN.test(normalized);
   };
+
+  const isSafeExplicitOffsetConstruction = (flattened) =>
+    flattened.dynamicExpressions.length === 1 &&
+    EXPLICIT_OFFSET_PATTERN.test(flattened.text) &&
+    COMPLETE_TIMESTAMP_PATTERN.test(
+      flattened.text.replace('{expression}', DATE_ONLY_SENTINEL),
+    );
 
   const isSafeTimestampReference = (node) => {
     const expression = unwrapExpression(node);
@@ -484,17 +488,14 @@ export async function checkDateOnlyParse({
         expression.operatorToken.kind === ts.SyntaxKind.PlusToken)
     ) {
       const flattened = flattenStringConstruction(expression);
-      if (EXPLICIT_OFFSET_PATTERN.test(flattened.text)) {
-        return true;
-      }
       if (flattened.dynamicExpressions.length === 0) {
         return isSafeStaticString(flattened.text);
       }
       const dynamicOnlyText = flattened.text.replaceAll('{expression}', '').length === 0;
-      return (
-        dynamicOnlyText &&
-        flattened.dynamicExpressions.every(isSafeTimestampReference)
-      );
+      if (dynamicOnlyText) {
+        return flattened.dynamicExpressions.every(isSafeTimestampReference);
+      }
+      return isSafeExplicitOffsetConstruction(flattened);
     }
     return false;
   };
