@@ -19,9 +19,10 @@
     "test:postgres:push-cas": "tsx scripts/test-push-cas-postgres.ts",
     "test:postgres:push-generation": "tsx scripts/test-push-generation-postgres.ts",
     "test:postgres:push-protocol": "tsx scripts/test-push-protocol-postgres.ts",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:collection": "vitest run lib/__tests__/vitest-include-coverage.test.ts",
+    "test": "npm run test:collection && vitest run",
+    "test:watch": "npm run test:collection && vitest",
+    "test:coverage": "npm run test:collection && vitest run --coverage"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
