@@ -648,8 +648,8 @@
         "test_quality": "テストが振る舞い駆動で脆弱でない"
       },
       "status": "in-progress",
-      "lastAttempt": "2026-07-30T03:41:21Z",
-      "lastError": "UCF-NEXT-005Aでrule-check focused wall meanを52.1%改善したが、現行npm test 3回は1回がWalkingRoutes timeoutで失敗し、成功2回もwall 7.65秒・6.71秒で5秒条件を超過。single-worker coverage 70.95% / 68.14% / 81.14% / 72.27%はPASS。"
+      "lastAttempt": "2026-07-30T04:15:48Z",
+      "lastError": "exact cohort head f8e5c071: canonical 25/30 PASS（成功run mean 7.298秒、5秒以内0/25）、contention 27/30 PASS、focused各30/30、infrastructure failure 0、aborted=null。8 failureは既存WalkingRoutes waitForFunction 5000ms timeoutで、F026の5秒条件は未達。"
     },
     {
       "id": "F027",
