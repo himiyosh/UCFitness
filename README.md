@@ -165,6 +165,8 @@ UCFitness/
 +-- types/                   # NextAuth拡張・Supabase Database型
 +-- public/                  # 静的ファイル (PWA マニフェスト、アイコン)
 +-- scripts/                 # ユーティリティスクリプト
+|   +-- check-ucfitness-rules.sh    # 全rule-checkのBash CLI・集約
+|   +-- ucfitness-rule-targets.mjs  # Challenge/date-only共有semantic engine
 +-- docs/                    # ドキュメント
 |   +-- CLOUDFLARE_SETUP.md  # Cloudflare Pages セットアップ手順
 |   +-- PRODUCT.md           # プロダクト・ブランド文脈
@@ -998,7 +1000,11 @@ UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POS
 - E2Eのweb serverはデフォルトで専用のlocalhost:3000を起動し、別worktreeや古いcommitの既存サーバーを再利用しない。ポート競合時も既存プロセスをkillせず失敗する。同じbranch・commitのサーバーを意図的に管理している場合だけ、`PLAYWRIGHT_REUSE_SERVER=1`で明示的に再利用できる。ローカル専用プレースホルダー環境変数を使い、OAuth・DB write・本番操作は実行しない
 - CIではPlaywrightの再試行後に成功したflaky testも失敗扱いにし、回帰を成功として隠さない
 - CI はテストスイートをカバレッジ付きで1回だけ実行し、`lib/**/*.{ts,tsx}` の全本番モジュール（テスト、test-utils、型定義を除く）について Statements / Branches / Functions / Lines の global threshold 60% を検証
-- current main `e79a412b`（Validate run 30230342459）は103ファイル・1273テストをPASS。通常`npm test`は4.38秒、連続再実行3回は4.51 / 4.34 / 4.49秒で全て5秒以内。single-worker coverageはローカル31.14秒・CI 48.29秒で、Statements 68.13%、Branches 65.24%、Functions 78.93%、Lines 69.30%のglobal 60% gateをPASSし、F026のstatusは`passing`
+- historical baseline `e79a412b`は103 files・1273 testsを通常4.38秒、連続再実行4.51 / 4.34 / 4.49秒で完走した。current main `c353a40a`は114 files・1532 tests、cold 7.28秒、warm 6.26 / 6.25秒（mean 6.255秒）で5秒条件を満たさないため、coverage 60% gateはPASSのままF026のstatusを`in-progress`とする
+- UCF-NEXT-005AはChallenge進捗auth/log境界とdate-only parseを`scripts/ucfitness-rule-targets.mjs`へ集約し、focused fileをstable predicate ID付き16件（direct 13件、semantic subprocess smoke 3件）へ変更した。quiet-host後の3組交互試行は変更前snapshotのwall mean 4.68秒 / Vitest mean 4.09秒に対し、変更後2.24秒 / 1.71秒で、wall 52.1%・Vitest 58.2%改善した。date semantic scanは4回のまま、明白なliteralだけのsmokeではtype checker生成を省き、型依存式とfull repositoryでは従来のTypeScript Program分類を維持する
+- current base `c353a40a`の変更後`npm test` 3回は、1回目がWalkingRoutesの5秒waitForFunction timeoutで114ファイル・1534/1535件PASS、Vitest 12.77秒 / wall 13.44秒、2・3回目が114ファイル・1535件PASSでもVitest 7.06 / 6.36秒、wall 7.65 / 6.71秒だった。single-worker coverageは114ファイル・1535件を37.87秒でPASSし、Statements 70.95%、Branches 68.14%、Functions 81.14%、Lines 72.27%のglobal 60% gateを維持した。5秒条件と既存WalkingRoutes flakeが残るためF026は`in-progress`とし、UCF-NEXT-005Bは005A exact-head cohort再測定後にのみ開始する
+- UCF-NEXT-005AはUCF-NEXT-013 `himiyosh-ucf-next-013-vitest-collection`（`08f13807`）を通常mergeで前提化したstackであり、前提がmainへ到達するまでは将来PRのbaseを同branchに固定する
+- exact cohort head `f8e5c071`は115 files・1539 tests・skipped 0を維持し、canonical 25/30 PASS（成功run mean 7.298秒、5秒以内0/25）、contention 27/30 PASS、5 focused cohortsは各30/30 PASS、infrastructure failure 0、`aborted=null`だった。8 failureはすべて既存WalkingRoutesの`page.waitForFunction` 5000ms timeoutで、baseline→headのfailure rateはcanonical 1/10→5/30（Fisher p=1.0）、contention 2/10→3/30（p=0.5835）、pooled 3/20→8/60（p=1.0）のため005A起因を支持しない。final docs treeのsingle-worker coverageも115 files・1539 tests・skipped 0を27.54秒でPASSし、Statements 70.95%、Branches 68.14%、Functions 81.14%、Lines 72.27%を維持した。cohort artifactは`/Users/himiyosh/.copilot/session-state/58b22781-f5b0-42ab-b8e4-0a66f35a9905/files/f026-cohorts-f8e5c071-20260730T0349Z.json`、SHA-256 `28bf143cfcdd0857b77007e842c3769155e9daf9a941fe86046ca9e8c11b486d`。この追記はappend-only・test-neutralであり、`f8e5c071`のcohort結果を変更しない
 - Feedとgroup rankingのquery-wave回帰はtest-onlyのcontrolled Supabase thenableを使い、query builder生成ではなく`.then()`開始時の固定semantic labelだけを記録する。Feedのfull-source・各partial pageは4 waves、group rankingのpartial pageは2 queries / 2 wavesで、900行full pageは後続pageごとに1 waveを追加し、900行が2回続く場合はterminal empty pageも1 query / 1 waveとして固定する。wave内順序はunordered setで扱い、別々のPostgREST pageを同一snapshotとはみなさない
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
 - Dashboard回帰テストはbonus-only報酬失敗→新規browser context復旧、keyboard/pointer別focus・live通知・二重送信防止、商品loaded/empty/re-failure、有限画像fallback、Amazon popup初回通信隔離、320/375/1280pxの44px操作領域と横overflowを検査
@@ -1009,7 +1015,8 @@ UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POS
 - Push購読CAS runtime jobはmigration SHA-256とdigest固定PostgreSQL 16 serviceを正本に、random prefixのfresh databaseごとにcatalog・negative fixture・2接続競合を検証し、全DBと作成roleを削除する。接続先はquery/hashなしの`postgresql://postgres:postgres@{loopback}:5432/postgres`と明示test-only flagに固定し、既存roleがあるcluster、本番Supabase、実購読、Push Serviceを拒否する。rollbackは依存コード停止後に`REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz);`を同一transactionで実行し、テーブルは保持する
 - Push受信者世代runtime jobはtarget/CAS migration SHA-256と同じPostgreSQL 16 serviceを正本に、canonical key digest、raw 20件、read/release fencing、legacy隔離、user削除、逆順transfer、CAS-first/save-firstを実ロック待機で検証する。接続・DB名・role・ログ・cleanupはCAS runtimeと同じtest-only契約を使い、migration、アプリ配線、production DB、実Pushを変更しない
 - Push受信者protocol runtime jobはownership/protocol migration SHA-256と同じPostgreSQL 16 serviceを正本に、smallint protocol 0/1、旧save reset、exact read、release fence、逆順transfer、rollbackを実行検証する。query/hash/SSLなしのloopback `postgres`接続、allowlist済みfresh DB名、既存role拒否、固定非PIIラベル、全DB/role cleanupを必須とし、migration、PR #314/#315のLayer 3、lockfile、production DB、実Pushを変更しない
-- テストファイル: リポジトリ内の `*.test.ts`（Vitest設定の `**/*.test.ts`）
+- テストファイル: リポジトリ内の `*.test.ts`（現行Vitest設定の `**/*.test.ts`）。`npm run test:collection`は通常・watch・coverageの前に必ず実行され、`vitest-include-coverage.test.ts`が`*.test.ts` / `*.test.tsx`を走査して`path.posix.matchesGlob`でinclude glob全体へ一致しないfileを名指しで拒否する。生成物・vendorとPlaywrightの`tests/*.spec.ts`は対象外
+- 新しいtest fileの検証証拠はbase SHAを併記し、`full suite <before files>/<before tests> -> <after files>/<after tests> (+files/+tests), skipped 0`を必須とする。focused実行件数は補助証拠であり、full-suite収集の代替にしない
 - 型チェック: `npx tsc --noEmit` (ビルド検証の代替としても使用)
 
 ## 注意事項 / 制約
