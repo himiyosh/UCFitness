@@ -165,6 +165,8 @@ UCFitness/
 +-- types/                   # NextAuth拡張・Supabase Database型
 +-- public/                  # 静的ファイル (PWA マニフェスト、アイコン)
 +-- scripts/                 # ユーティリティスクリプト
+|   +-- check-ucfitness-rules.sh    # 全rule-checkのBash CLI・集約
+|   +-- ucfitness-rule-targets.mjs  # Challenge/date-only共有semantic engine
 +-- docs/                    # ドキュメント
 |   +-- CLOUDFLARE_SETUP.md  # Cloudflare Pages セットアップ手順
 |   +-- PRODUCT.md           # プロダクト・ブランド文脈
@@ -998,7 +1000,8 @@ UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POS
 - E2Eのweb serverはデフォルトで専用のlocalhost:3000を起動し、別worktreeや古いcommitの既存サーバーを再利用しない。ポート競合時も既存プロセスをkillせず失敗する。同じbranch・commitのサーバーを意図的に管理している場合だけ、`PLAYWRIGHT_REUSE_SERVER=1`で明示的に再利用できる。ローカル専用プレースホルダー環境変数を使い、OAuth・DB write・本番操作は実行しない
 - CIではPlaywrightの再試行後に成功したflaky testも失敗扱いにし、回帰を成功として隠さない
 - CI はテストスイートをカバレッジ付きで1回だけ実行し、`lib/**/*.{ts,tsx}` の全本番モジュール（テスト、test-utils、型定義を除く）について Statements / Branches / Functions / Lines の global threshold 60% を検証
-- current main `e79a412b`（Validate run 30230342459）は103ファイル・1273テストをPASS。通常`npm test`は4.38秒、連続再実行3回は4.51 / 4.34 / 4.49秒で全て5秒以内。single-worker coverageはローカル31.14秒・CI 48.29秒で、Statements 68.13%、Branches 65.24%、Functions 78.93%、Lines 69.30%のglobal 60% gateをPASSし、F026のstatusは`passing`
+- UCF-NEXT-005AはChallenge進捗auth/log境界とdate-only parseを`scripts/ucfitness-rule-targets.mjs`へ集約し、focused fileをstable predicate ID付き16件（direct 13件、semantic subprocess smoke 3件）へ変更した。quiet-host後の3組交互試行は変更前snapshotのwall mean 4.68秒 / Vitest mean 4.09秒に対し、変更後2.24秒 / 1.71秒で、wall 52.1%・Vitest 58.2%改善した。date semantic scanは4回のまま、明白なliteralだけのsmokeではtype checker生成を省き、型依存式とfull repositoryでは従来のTypeScript Program分類を維持する
+- current base `c353a40a`の変更後`npm test` 3回は、1回目がWalkingRoutesの5秒waitForFunction timeoutで114ファイル・1534/1535件PASS、Vitest 12.77秒 / wall 13.44秒、2・3回目が114ファイル・1535件PASSでもVitest 7.06 / 6.36秒、wall 7.65 / 6.71秒だった。single-worker coverageは114ファイル・1535件を37.87秒でPASSし、Statements 70.95%、Branches 68.14%、Functions 81.14%、Lines 72.27%のglobal 60% gateを維持した。5秒条件と既存WalkingRoutes flakeが残るためF026は`in-progress`とし、UCF-NEXT-005Bは005A exact-head cohort再測定後にのみ開始する
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
 - Dashboard回帰テストはbonus-only報酬失敗→新規browser context復旧、keyboard/pointer別focus・live通知・二重送信防止、商品loaded/empty/re-failure、有限画像fallback、Amazon popup初回通信隔離、320/375/1280pxの44px操作領域と横overflowを検査
 - 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
