@@ -1763,3 +1763,10 @@ export const runtime = "edge";
 - **根本原因**: date-onlyの危険性を1つの文字列markerとして扱い、constructor / parser、入力source、AST型、明示offset、epoch、完全timestampを分類していなかった。非同期stdoutのflush前にprocessを強制終了しても全違反を受け取れると仮定していた。
 - **対策**: `app` / `components` / `contexts` / `hooks` / `lib` / `types`のproduction TS/TSXをTypeScript Programで走査し、`new Date` / `Date.parse`の引数をDate型、number、timestamp名、完全timestamp、明示offset、date-only source、未知動的構築へ分類する。ISO date-only literal、`start_date` / `end_date`、offsetなしtemplate/binary、証明不能な動的文字列はfail closedとし、コメント・docs・test/spec・fixtureを除外する。違反出力は`process.exitCode`でflushを待ち、current treeのdate-only比較を検証済み文字列順、演算・表示を明示UTC/JST、timestamp cursorをdate-only拒否の共有parserへ置換した。
 - **教訓**: calendar dateをinstantへ暗黙変換しない。AST guardは危険文字列のgrepではなく入力の意味と型を分類し、許可するDate/epoch/完全timestamp/offsetと拒否するliteral/property/template/binary/未知動的入力をpositive/negative fixtureで固定する。複数違反を返すCLIは終了codeだけでなく全stdoutのflushも回帰検証する。リファレンス: `scripts/check-ucfitness-rules.sh`, `lib/__tests__/ucfitness-rule-check.test.ts`, `lib/date-utils.ts`
+
+### LL-108: focused file実行の成功はfull-suite収集を証明しない
+
+- **事象**: 別projectで`*.test.tsx`がVitestの`include`外にあり、direct file実行では5件PASSした一方、通常suiteとCIでは一度も収集されないまま緑の証拠として扱われた。UCFitness監査ではcurrent mainの追加testは全収集・skipped 0だったが、PR #331 / #341の完了記録はfocused/関連件数だけでfull-suite増分を欠いていた。
+- **根本原因**: direct file指定が設定の`include`を迂回し得ることと、focused PASS件数をcollection evidenceへ代用したこと。directory rootだけの判定ではglobの拡張子差も見逃す。
+- **対策**: repository内の`*.test.ts` / `*.test.tsx`を走査し、`path.posix.matchesGlob`でVitest include glob全体へ一致することを回帰固定する。通常・watch・coverageの前にdirect file指定のcollection preflightを実行して、include変更がguard自身を外しても失敗させる。生成物・vendorとPlaywrightの`*.spec.ts`は別対象として除外する。
+- **教訓**: 新規test fileの証拠はbase SHAと`full suite before -> after (+delta), skipped 0`を必須にし、focused結果は補助証拠に限定する。リファレンス: `lib/__tests__/vitest-include-coverage.test.ts`, `vitest.config.ts`, `README.md`

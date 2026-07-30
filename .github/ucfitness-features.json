@@ -647,9 +647,9 @@
         "coverage_target": "lib/ カバレッジ 60%+",
         "test_quality": "テストが振る舞い駆動で脆弱でない"
       },
-      "status": "passing",
-      "lastAttempt": "2026-07-27T04:50:44Z",
-      "lastError": null
+      "status": "in-progress",
+      "lastAttempt": "2026-07-29T14:17:41Z",
+      "lastError": "current main c353a40a6ca33a2801837456457e763da76fd623: npm test cold 7.28s、warm 6.26s / 6.25s（mean 6.255s）で5秒条件未達。coverage 60% gateはPASS。"
     },
     {
       "id": "F027",
