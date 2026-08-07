@@ -1777,3 +1777,10 @@ export const runtime = "edge";
 - **根本原因**: calendar dateの拒否だけを契約化し、specific instantを表すfull timestampにはoffsetが必須という境界をguard・runtime parser・callerで共有していなかった。不正通知時刻もepoch 0へ変換して並び順と未読数を成功形へ偽装していた。
 - **対策**: static full timestampと動的なdate+time構築の両方で`Z` / `±HH:mm` / `±HHmm`を必須にし、calendar validityも共有parserで検証する。notification feed、message cursor、GroupChat、group inviteの各callerは不正値を400/500・利用不能表示へ分離し、`toISOString()`とPostgreSQL `timestamptz`由来の明示offset値だけを継続受理する。
 - **教訓**: date-onlyはcalendar helperへ、instant文字列は明示offset付きparserへ分離し、offsetなしfull timestampをUTC/JSTへ推測補完しない。機械guardの正例・負例はstatic offset有無、date-only、dynamic timestamp field、constructor/parserを含め、runtime parserは複数TZで同じepochになることを固定する。動的式はoffset suffixや`Date`を含む変数・関数名だけでsafeにせず、既存の検証済みcalendar sourceとdate validation helperへdefault-denyで限定する。リファレンス: `lib/date-utils.ts`, `lib/services/notification-feed.ts`, `components/group/GroupChat.tsx`, `scripts/ucfitness-rule-targets.mjs`
+
+### LL-110: React state updater内のthrowは周囲のasync catchへ戻らない
+
+- **事象**: `aggregateNotificationFeed`が不正timestampをthrowする契約へ変わった後も、`ActivityFeed`と`NotificationBell`の追加ページだけが同関数を`setFeed(previous => ...)`内で呼び、既存の`try/catch`ではなくerror boundaryへ例外を送っていた。
+- **根本原因**: state updaterを囲むasync関数の`try/catch`が、Reactのeager updater評価後にrender中へ再throwされる例外も捕捉すると誤認した。updater外へ移す際のlatest state・後着応答・unmount競合も同じ境界で設計していなかった。
+- **対策**: 追加ページをlatest feed refと結合してupdater外で集約し、成功後だけrefとstateを同時更新する。request generation、AbortController、mount guardで古い取得を無効化し、不正timestampは既存ja/enエラー表示へ分離する。API側の事前集約も不正値をHTTP境界で拒否する防衛線として維持し、実Chrome回帰で両Clientのerror state、複数ページ、重複集約、未読表示、focus、unmount abortを固定した。
+- **教訓**: throwし得る計算をReact state updaterへ入れない。周囲のerror boundaryで処理したい場合はupdater外で計算・検証し、最新stateをrefまたは明示的な世代契約で読む。非同期一覧の修正は正常appendだけでなく、後着応答・abort・unmount・既存live error/focusを同じ実DOM回帰に含める。リファレンス: `components/ActivityFeed.tsx`, `components/layout/NotificationBell.tsx`, `components/NotificationFeedClients.test.ts`, `app/api/user/feed/route.ts`

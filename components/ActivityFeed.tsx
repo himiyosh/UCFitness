@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 
 import UserAvatar from '@/components/UserAvatar';
@@ -62,6 +62,10 @@ function formatSteps(steps: number): string {
     return steps.toLocaleString();
 }
 
+function isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
+}
+
 export default function ActivityFeed() {
     const t = useTranslations('Feed');
     const badgeT = useTranslations('Museum');
@@ -73,9 +77,24 @@ export default function ActivityFeed() {
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [nextCursor, setNextCursor] = useState<string | undefined>();
     const [notificationPreferencesAvailable, setNotificationPreferencesAvailable] = useState(true);
+    const feedRef = useRef<FeedItem[]>([]);
+    const requestGenerationRef = useRef(0);
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const mountedRef = useRef(true);
+    const retryButtonRef = useRef<HTMLButtonElement>(null);
+    const focusRetryAfterErrorRef = useRef(false);
 
     // フィードデータを取得
-    const fetchFeed = useCallback(async (cursor?: string) => {
+    const fetchFeed = useCallback(async (
+        cursor?: string,
+        focusOnError = false,
+    ): Promise<void> => {
+        if (!mountedRef.current) return;
+        const generation = requestGenerationRef.current + 1;
+        requestGenerationRef.current = generation;
+        abortControllerRef.current?.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
         const isInitial = !cursor;
         if (isInitial) {
             setIsLoading(true);
@@ -88,17 +107,21 @@ export default function ActivityFeed() {
             const params = new URLSearchParams({ limit: '15' });
             if (cursor) params.set('before', cursor);
 
-            const res = await fetch(`/api/user/feed?${params}`);
+            const res = await fetch(`/api/user/feed?${params}`, {
+                signal: controller.signal,
+            });
             if (!res.ok) throw new Error('fetch failed');
 
             const data = await res.json();
             const items: FeedItem[] = data.feed || [];
 
-            if (isInitial) {
-                setFeed(aggregateNotificationFeed(items));
-            } else {
-                setFeed((previous) => aggregateNotificationFeed([...previous, ...items]));
-            }
+            if (!mountedRef.current || generation !== requestGenerationRef.current) return;
+            const nextFeed = aggregateNotificationFeed(
+                isInitial ? items : [...feedRef.current, ...items],
+            );
+            feedRef.current = nextFeed;
+            setFeed(nextFeed);
+            focusRetryAfterErrorRef.current = false;
             setHasMore(data.hasMore || false);
             setNotificationPreferencesAvailable(
                 data.notificationPreferencesAvailable !== false,
@@ -106,17 +129,42 @@ export default function ActivityFeed() {
             setNextCursor(
                 typeof data.nextCursor === 'string' ? data.nextCursor : undefined,
             );
-        } catch {
-            setError(true);
+        } catch (fetchError: unknown) {
+            if (
+                !isAbortError(fetchError)
+                && mountedRef.current
+                && generation === requestGenerationRef.current
+            ) {
+                focusRetryAfterErrorRef.current = focusOnError;
+                setError(true);
+            }
         } finally {
-            setIsLoading(false);
-            setIsLoadingMore(false);
+            if (mountedRef.current && generation === requestGenerationRef.current) {
+                abortControllerRef.current = null;
+                setIsLoading(false);
+                setIsLoadingMore(false);
+            }
         }
     }, []);
 
     useEffect(() => {
-        fetchFeed();
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+            requestGenerationRef.current += 1;
+            abortControllerRef.current?.abort();
+        };
+    }, []);
+
+    useEffect(() => {
+        void fetchFeed();
     }, [fetchFeed]);
+
+    useEffect(() => {
+        if (!error || !focusRetryAfterErrorRef.current) return;
+        retryButtonRef.current?.focus();
+        focusRetryAfterErrorRef.current = false;
+    }, [error]);
 
     const preferenceWarning = !notificationPreferencesAvailable ? (
         <p
@@ -151,11 +199,12 @@ export default function ActivityFeed() {
         return (
             <div className="premium-card p-4">
                 <div className="text-center py-4">
-                    <p className="text-sm text-gray-500 mb-3">{t('errorMessage')}</p>
+                    <p role="alert" className="text-sm text-gray-500 mb-3">{t('errorMessage')}</p>
                     <button
                         type="button"
-                        onClick={() => fetchFeed()}
-                        className="px-4 py-2 rounded-lg bg-[var(--theme-primary)] text-white text-sm font-medium hover:scale-105 transition-transform min-h-[44px]"
+                        ref={retryButtonRef}
+                        onClick={() => fetchFeed(undefined, true)}
+                        className="min-h-[44px] rounded-lg bg-[var(--theme-primary)] px-4 py-2 text-sm font-medium text-white transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
                     >
                         {t('retry')}
                     </button>
@@ -199,7 +248,7 @@ export default function ActivityFeed() {
                 <div className="mt-4 text-center">
                     <button
                         type="button"
-                        onClick={() => nextCursor && fetchFeed(nextCursor)}
+                        onClick={() => nextCursor && fetchFeed(nextCursor, true)}
                         disabled={isLoadingMore}
                         className="px-4 py-2 rounded-lg bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 min-h-[44px]"
                     >
