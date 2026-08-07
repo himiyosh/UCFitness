@@ -106,6 +106,15 @@ describe('aggregateNotificationFeed', () => {
         expect(aggregateNotificationFeed([...items].reverse()).map((item) => item.id))
             .toEqual(['b', 'a']);
     });
+
+    it('offsetなしtimestampをepoch 0へ偽装せず拒否する', () => {
+        const items = [
+            createItem('invalid', 'STEP_MILESTONE', 'user-a', '2026-07-14T15:00:00', {}),
+        ];
+
+        expect(() => aggregateNotificationFeed(items))
+            .toThrowError('Invalid notification feed timestamp');
+    });
 });
 
 describe('countUnreadNotificationFeed', () => {
@@ -127,6 +136,15 @@ describe('countUnreadNotificationFeed', () => {
         expect(countUnreadNotificationFeed(items, '2026-07-14T14:00:00Z')).toBe(2);
         expect(countUnreadNotificationFeed(items, '2026-07-14T15:01:30Z')).toBe(1);
     });
+
+    it('offsetなし既読時刻を未読0またはepoch 0へ偽装せず拒否する', () => {
+        const items = [
+            createItem('steps-1', 'STEP_MILESTONE', 'user-1', '2026-07-14T15:02:00Z', {}),
+        ];
+
+        expect(() => countUnreadNotificationFeed(items, '2026-07-14T15:01:30'))
+            .toThrowError('Invalid notification feed timestamp');
+    });
 });
 
 describe('notification feed cursor', () => {
@@ -147,10 +165,12 @@ describe('notification feed cursor', () => {
             offset: 0,
         });
         expect(parseNotificationFeedCursor('2026-07-14')).toBeNull();
+        expect(parseNotificationFeedCursor('2026-07-14T15:00:00')).toBeNull();
         expect(parseNotificationFeedCursor(encodeNotificationFeedCursor({
             snapshot: '2026-07-14',
             offset: 0,
         }))).toBeNull();
+        expect(parseNotificationFeedCursor(null, '2026-07-14T15:00:00')).toBeNull();
         expect(parseNotificationFeedCursor('not-a-cursor')).toBeNull();
     });
 });
@@ -161,5 +181,10 @@ describe('getNotificationFeedWindow', () => {
             sinceIso: '2026-07-07T15:00:00.000Z',
             sinceDate: '2026-07-07',
         });
+    });
+
+    it('offsetなしsnapshotをruntime local timezoneで解釈せず拒否する', () => {
+        expect(() => getNotificationFeedWindow('2026-07-14T15:00:00'))
+            .toThrowError('Invalid notification feed snapshot');
     });
 });

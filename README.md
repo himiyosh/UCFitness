@@ -5,6 +5,46 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)
 ![Cloudflare Pages](https://img.shields.io/badge/Deploy-Cloudflare%20Pages-F38020?logo=cloudflarepages)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
+**English** | [日本語](#概要)
+
+UCFitness is a step-tracking and fitness-competition PWA. It syncs daily activity
+from health-data providers and gamifies it through group rankings, time-limited
+challenges, badges, reactions, and an in-app coin economy.
+
+**Stack** — Next.js 15 (App Router) · React 18 · TypeScript 5 · Tailwind CSS v4 ·
+NextAuth v5 with Fitbit OAuth 2.0 · Supabase (PostgreSQL) · Cloudflare Pages
+(Edge Runtime) · next-intl (ja/en) · Vitest · PWA with Web Push.
+
+### Engineering highlights
+
+- **Graceful degradation by default.** The profile, wallet, group, leaderboard,
+  and notification surfaces each keep rendering when a backend dependency fails,
+  showing partial data with an explicit warning instead of blanking the screen.
+  Recorded-zero, never-recorded, and fetch-failed step states are modelled as
+  three distinct cases rather than collapsed into one empty state.
+- **Staged health-provider migration.** Fitbit Web API integration with an opt-in
+  path to Google Health ahead of the Fitbit API's scheduled shutdown. Existing
+  tokens cannot be carried over, so the flow is built around explicit user
+  re-consent, requests only the `activity_and_fitness.readonly` scope, and
+  persists nothing beyond daily step totals.
+- **Failure-aware onboarding.** OAuth failures surface a localized reason and a
+  safe retry path instead of raw Auth.js internals, and unconfigured users are
+  routed into a three-step setup that can be deferred at each stage.
+- **Hardened value transfers.** Database access is server-side only under Row
+  Level Security, with non-negative balance constraints, idempotency keys, and
+  atomic credit/debit implemented as PostgreSQL functions.
+- **Standards-based Web Push.** RFC 8291 `aes128gcm` payload encryption built on
+  Edge Web Crypto, with per-device deduplication and language-aware delivery.
+
+Further reading: [`docs/PRODUCT.md`](docs/PRODUCT.md) ·
+[`docs/security-hardening-notes.md`](docs/security-hardening-notes.md) ·
+[`docs/harness-engineering-design.md`](docs/harness-engineering-design.md)
+
+Licensed under the [MIT License](LICENSE).
+
+---
 
 ## 概要
 
@@ -92,7 +132,8 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **狭幅レスポンシブ契約**: 320pxから法務Footerと44px操作領域を維持し、1024pxはSidebar差引後の本文幅で設計する。複雑な多列化・詳細展開は1280pxへ送り、Shop/Settingsを含む通常ページは自然スクロールへ統一する
 - **Home Quest契約**: 認証ホームは進捗・競争・歩いた価値・次の一歩を1つのQuest面で連結する。Mission→Weekly→Reward→Challengeの後はQuickActionsを独立補助Dockとし、Friend Pulseと週間Rankingをxlで直接同一行にする。Friend Pulseは個別目標と正歩数の活動人数/合計/達成人数、Rankingは次ライバル名/必要歩数を表示する。詳細Rankingは固定5行を維持し、Competition Missionへ現在順位・参加者数・次ライバル・トップ差を集約、外側多列化は2xlへ遅らせる
 - **Challenge継続契約**: Challengesは参加中・active・開始済み・未終了・未達成・進捗取得済みを優先し、残り歩数→期限→報酬で並べる。主表示は最大500歩、期限/報酬は補足、作成は一覧後へ置く。開始前イベントはactive一覧で予告表示を維持し、開始日を明記して参加ボタンを出さない。参加APIもGROUP認可後・participant照会前に同じJST開始日境界を強制する。期限のUI解釈は一覧・カード・詳細Dialog・Home widgetとGroup Eventのactive/past分類・カードの日付/状態表示でschedule-onlyの共有JST正本へ統一し、進捗不明を0へ変換しない。ChallengeListは表示中の参加済みIDだけを`POST /api/challenge/progress`へ送り、bodyを`{ challengeIds: string[] }`の1〜50件・重複なしUUIDに限定する。APIは認証を1回だけ共有し、server-only単件serviceを固定4 workerで実行して各challengeの現GROUP認可、fresh再計算、`challenge_participants`永続化を維持する。応答は入力順の`{ results }`で、各項目を`ok` / `not_found` / `forbidden` / `not_participating` / `unavailable`、成功時を`record_status`と`schedule_status`で分離し、未記録・記録済み0・開始前・終了・障害を0へ偽装しない。既存`GET /api/challenge/{challengeId}/progress`は同じserviceを再利用して互換維持する。Clientは一覧世代ごとに単一batchだけを発行し、AbortController、request ID、最新tab refを参加・離脱・tab変更後も維持する。開いたChallengeカードと詳細Dialogは各1件、Home widgetとGroup Event一覧は表示中項目全体の最早開始/終了境界だけを上限付きtimerで再計算し、hidden中に境界を跨いだ場合はvisible復帰時に同期する。終了後は参加・離脱・編集操作を表示せず、未送信の編集Dialogも閉じる。境界と競合した未送信submitは同じ純粋時間契約で可視エラーを表示し、保存と全入力を無効化する。開始済みPUTが境界を跨いだ場合はDialogを保持して追加送信を遮断し、successだけ既存更新・close、failureはdraftとalertを残して安全に退出可能にする。更新APIはGROUP認可とcreator確認後にJST当日より前の保存済み`end_date`を拒否し、更新文自体にも`end_date >= today`を含める。要求された`end_date`も同じ認可完了後にJST当日と比較し、前日以前は400 `CHALLENGE_END_DATE_IN_PAST`、当日は許可する。Edit Dialogはこのcodeだけをja/enの修正案付きfield alertへ写像し、draftを保持して再送信可能にする。0件更新は409 `CHALLENGE_NOT_EDITABLE`として、Edit Dialogはraw server文を表示せずja/enの単一alert、draft保持、追加送信遮断、閉じて一覧へ戻るCTA/Escapeのfocus復帰へ写像する。殿堂入り・開催履歴は閲覧可能な終了イベント全体をAPI順で表示し、参加済みカードで記録歩数が目標へ達した場合だけ個人達成として示す。`GET/POST /api/challenge`の依存障害と予期しない例外は、raw Error・DB詳細・user/group/challenge UUIDを渡さず、固定operation・stage・codeだけを最終構造化ログへ記録する
-- **Timezone-safe date-only parseガード**: `app` / `components` / `contexts` / `hooks` / `lib` / `types`のproduction TS/TSXをTypeScript ASTで走査し、`new Date`と`Date.parse`へ渡すISO date-only literal、`start_date` / `end_date`、offsetなしのtemplate/binary連結、date-only安全性を証明できない動的文字列を拒否する。既存`Date`、epoch number、完全timestamp、timestamp field、明示`Z` / `+09:00` / `+0900`、共有JST helperは許可し、コメント、docs、test/spec、fixtureは対象外とする。date-onlyの順序比較は検証済み`YYYY-MM-DD`文字列、日付演算・表示は明示UTC/JST、Challenge/Group Eventの操作可否は`getChallengeScheduleMetrics`を正本にする
+- **Timezone-safe date/timestamp parseガード**: `app` / `components` / `contexts` / `hooks` / `lib` / `types`のproduction TS/TSXをTypeScript ASTで走査し、`new Date`と`Date.parse`へ渡すISO date-only literal、`start_date` / `end_date`、offsetなしのstatic full timestampとtemplate/binary連結、date-only安全性を証明できない動的文字列を拒否する。既存`Date`、epoch number、timestamp field、`Z` / `+09:00` / `+0900`を持つfull timestamp、共有JST helperは許可し、コメント、docs、test/spec、fixtureは対象外とする。共有`parseTimestampMillis`もcalendar validityと明示offsetを必須にし、offsetなし日時をruntime local timezoneへ補完しない。notification feedのcursor・並び順・未読境界、group message cursor、GroupChat相対時刻、招待期限は不正値を0・先頭ページ・相対時刻・成功応答へ偽装せず明示失敗へ分離する。date-onlyの順序比較は検証済み`YYYY-MM-DD`文字列、日付演算・表示は明示UTC/JST、Challenge/Group Eventの操作可否は`getChallengeScheduleMetrics`を正本にする
+- **Dynamic timestamp source契約**: 明示offsetのsuffixだけで動的式を許可しない。productionで認めるdate-only構築元は既存の検証済みcalendar名とdate validation helperへ限定し、`unvalidatedDate`のようなDate風の名前や、`updateDateProfile(value)`のように関数名へDateを含むだけの値は拒否する
 - **Challenge進捗UUID・0歩契約**: UUIDはcase-insensitive検証の直後にlowercaseへcanonicalizeし、case-only重複、DB query、DB返却ID、batch response照合へ同じ値を使う。GROUP RPCの合計0は記録済みと推測せず、0歩GROUP全件を1回の`daily_steps` relation queryで取得し、exact count・最大1,000行・challenge参加・現group membership・各期間を照合して`not_recorded` / 記録済み0へ分ける。不完全shape、DB障害、1,000行超は0へ偽装せず対象項目を`unavailable`にし、複数OFFSETやGROUP件数分の追加queryを使わない
 - **Challenge進捗認証ログ契約**: 単件GETと一括POSTは`auth()`を既存の固定`AppError` / `reportError`境界内で実行する。セッション不在は従来どおりログなし401、認証基盤の例外は同一codeの`AppError`を含めてraw Error・message・cause・context・user/group/challenge UUIDを再利用せず、固定operation・`unexpected` stage・codeだけを最終構造化ログへ記録し、進捗・0歩・未記録の応答契約を変更しない
 - **GROUP Challenge認可契約**: public閲覧と参加を分離し、join/progress/leaveは現group member、PUTはcreatorかつ現OWNER/ADMINだけを許可する。GROUP作成はservice-role専用`create_group_challenge`、進捗は同専用`get_group_challenge_progress` RPCでDB再認可する。進捗RPCは参加者と現memberをDB内でintersectionし、inclusive期間の正歩数を`bigint`集計するためPostgRESTの1000行上限へ依存しない。両migrationは本番未適用で、未適用時は明示的な5xxとする
@@ -165,6 +206,8 @@ UCFitness/
 +-- types/                   # NextAuth拡張・Supabase Database型
 +-- public/                  # 静的ファイル (PWA マニフェスト、アイコン)
 +-- scripts/                 # ユーティリティスクリプト
+|   +-- check-ucfitness-rules.sh    # 全rule-checkのBash CLI・集約
+|   +-- ucfitness-rule-targets.mjs  # Challenge/date-only共有semantic engine
 +-- docs/                    # ドキュメント
 |   +-- CLOUDFLARE_SETUP.md  # Cloudflare Pages セットアップ手順
 |   +-- PRODUCT.md           # プロダクト・ブランド文脈
@@ -999,7 +1042,12 @@ UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POS
 - CIではPlaywrightの再試行後に成功したflaky testも失敗扱いにし、回帰を成功として隠さない
 - CI はテストスイートをカバレッジ付きで1回だけ実行し、`lib/**/*.{ts,tsx}` の全本番モジュール（テスト、test-utils、型定義を除く）について Statements / Branches / Functions / Lines の global threshold 60% を検証
 - Validate workflowは`ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}`でPR番号またはref単位に実行を直列化し、同一PRへの後続pushで古いrunだけをcancelする。deploy / release / publish系workflowには`cancel-in-progress: true`を適用しない
-- current main `e79a412b`（Validate run 30230342459）は103ファイル・1273テストをPASS。通常`npm test`は4.38秒、連続再実行3回は4.51 / 4.34 / 4.49秒で全て5秒以内。single-worker coverageはローカル31.14秒・CI 48.29秒で、Statements 68.13%、Branches 65.24%、Functions 78.93%、Lines 69.30%のglobal 60% gateをPASSし、F026のstatusは`passing`
+- historical baseline `e79a412b`は103 files・1273 testsを通常4.38秒、連続再実行4.51 / 4.34 / 4.49秒で完走した。current main `c353a40a`は114 files・1532 tests、cold 7.28秒、warm 6.26 / 6.25秒（mean 6.255秒）で5秒条件を満たさないため、coverage 60% gateはPASSのままF026のstatusを`in-progress`とする
+- UCF-NEXT-005AはChallenge進捗auth/log境界とdate-only parseを`scripts/ucfitness-rule-targets.mjs`へ集約し、focused fileをstable predicate ID付き16件（direct 13件、semantic subprocess smoke 3件）へ変更した。quiet-host後の3組交互試行は変更前snapshotのwall mean 4.68秒 / Vitest mean 4.09秒に対し、変更後2.24秒 / 1.71秒で、wall 52.1%・Vitest 58.2%改善した。date semantic scanは4回のまま、明白なliteralだけのsmokeではtype checker生成を省き、型依存式とfull repositoryでは従来のTypeScript Program分類を維持する
+- current base `c353a40a`の変更後`npm test` 3回は、1回目がWalkingRoutesの5秒waitForFunction timeoutで114ファイル・1534/1535件PASS、Vitest 12.77秒 / wall 13.44秒、2・3回目が114ファイル・1535件PASSでもVitest 7.06 / 6.36秒、wall 7.65 / 6.71秒だった。single-worker coverageは114ファイル・1535件を37.87秒でPASSし、Statements 70.95%、Branches 68.14%、Functions 81.14%、Lines 72.27%のglobal 60% gateを維持した。5秒条件と既存WalkingRoutes flakeが残るためF026は`in-progress`とし、UCF-NEXT-005Bは005A exact-head cohort再測定後にのみ開始する
+- UCF-NEXT-005AはUCF-NEXT-013 `himiyosh-ucf-next-013-vitest-collection`（`08f13807`）を通常mergeで前提化したstackであり、前提がmainへ到達するまでは将来PRのbaseを同branchに固定する
+- exact cohort head `f8e5c071`は115 files・1539 tests・skipped 0を維持し、canonical 25/30 PASS（成功run mean 7.298秒、5秒以内0/25）、contention 27/30 PASS、5 focused cohortsは各30/30 PASS、infrastructure failure 0、`aborted=null`だった。8 failureはすべて既存WalkingRoutesの`page.waitForFunction` 5000ms timeoutで、baseline→headのfailure rateはcanonical 1/10→5/30（Fisher p=1.0）、contention 2/10→3/30（p=0.5835）、pooled 3/20→8/60（p=1.0）のため005A起因を支持しない。final docs treeのsingle-worker coverageも115 files・1539 tests・skipped 0を27.54秒でPASSし、Statements 70.95%、Branches 68.14%、Functions 81.14%、Lines 72.27%を維持した。cohort artifactは`/Users/himiyosh/.copilot/session-state/58b22781-f5b0-42ab-b8e4-0a66f35a9905/files/f026-cohorts-f8e5c071-20260730T0349Z.json`、SHA-256 `28bf143cfcdd0857b77007e842c3769155e9daf9a941fe86046ca9e8c11b486d`。この追記はappend-only・test-neutralであり、`f8e5c071`のcohort結果を変更しない
+- Feedとgroup rankingのquery-wave回帰はtest-onlyのcontrolled Supabase thenableを使い、query builder生成ではなく`.then()`開始時の固定semantic labelだけを記録する。Feedのfull-source・各partial pageは4 waves、group rankingのpartial pageは2 queries / 2 wavesで、900行full pageは後続pageごとに1 waveを追加し、900行が2回続く場合はterminal empty pageも1 query / 1 waveとして固定する。wave内順序はunordered setで扱い、別々のPostgREST pageを同一snapshotとはみなさない
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
 - Dashboard回帰テストはbonus-only報酬失敗→新規browser context復旧、keyboard/pointer別focus・live通知・二重送信防止、商品loaded/empty/re-failure、有限画像fallback、Amazon popup初回通信隔離、320/375/1280pxの44px操作領域と横overflowを検査
 - 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
@@ -1009,7 +1057,8 @@ UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POS
 - Push購読CAS runtime jobはmigration SHA-256とdigest固定PostgreSQL 16 serviceを正本に、random prefixのfresh databaseごとにcatalog・negative fixture・2接続競合を検証し、全DBと作成roleを削除する。接続先はquery/hashなしの`postgresql://postgres:postgres@{loopback}:5432/postgres`と明示test-only flagに固定し、既存roleがあるcluster、本番Supabase、実購読、Push Serviceを拒否する。rollbackは依存コード停止後に`REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz);`を同一transactionで実行し、テーブルは保持する
 - Push受信者世代runtime jobはtarget/CAS migration SHA-256と同じPostgreSQL 16 serviceを正本に、canonical key digest、raw 20件、read/release fencing、legacy隔離、user削除、逆順transfer、CAS-first/save-firstを実ロック待機で検証する。接続・DB名・role・ログ・cleanupはCAS runtimeと同じtest-only契約を使い、migration、アプリ配線、production DB、実Pushを変更しない
 - Push受信者protocol runtime jobはownership/protocol migration SHA-256と同じPostgreSQL 16 serviceを正本に、smallint protocol 0/1、旧save reset、exact read、release fence、逆順transfer、rollbackを実行検証する。query/hash/SSLなしのloopback `postgres`接続、allowlist済みfresh DB名、既存role拒否、固定非PIIラベル、全DB/role cleanupを必須とし、migration、PR #314/#315のLayer 3、lockfile、production DB、実Pushを変更しない
-- テストファイル: リポジトリ内の `*.test.ts`（Vitest設定の `**/*.test.ts`）
+- テストファイル: リポジトリ内の `*.test.ts`（現行Vitest設定の `**/*.test.ts`）。`npm run test:collection`は通常・watch・coverageの前に必ず実行され、`vitest-include-coverage.test.ts`が`*.test.ts` / `*.test.tsx`を走査して`path.posix.matchesGlob`でinclude glob全体へ一致しないfileを名指しで拒否する。生成物・vendorとPlaywrightの`tests/*.spec.ts`は対象外
+- 新しいtest fileの検証証拠はbase SHAを併記し、`full suite <before files>/<before tests> -> <after files>/<after tests> (+files/+tests), skipped 0`を必須とする。focused実行件数は補助証拠であり、full-suite収集の代替にしない
 - 型チェック: `npx tsc --noEmit` (ビルド検証の代替としても使用)
 
 ## 注意事項 / 制約

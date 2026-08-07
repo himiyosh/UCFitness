@@ -19,6 +19,12 @@ interface GrowthTimelineProps {
     malformedCount: number;
     truncatedChallengeCount: number | null;
 }
+
+function getMonthStartTimestamp(monthKey: string): number | null {
+    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(monthKey);
+    return match ? Date.UTC(Number(match[1]), Number(match[2]) - 1, 1) : null;
+}
+
 export default function GrowthTimeline(props: GrowthTimelineProps) {
     const t = useTranslations('Profile');
     const museumT = useTranslations('Museum');
@@ -74,12 +80,16 @@ export default function GrowthTimeline(props: GrowthTimelineProps) {
                 </p>
             ) : (
                 <div className="space-y-4">
-                    {groups.map((group) => (
-                        <div key={group.monthKey ?? 'unknown'}>
+                    {groups.map((group) => {
+                        const monthTimestamp = group.monthKey === null
+                            ? null
+                            : getMonthStartTimestamp(group.monthKey);
+                        return (
+                            <div key={group.monthKey ?? 'unknown'}>
                             <h3 className="mb-2 text-sm font-semibold text-[var(--color-text)]">
-                                {group.monthKey
-                                    ? month.format(new Date(`${group.monthKey}-01T00:00:00Z`))
-                                    : t('timelineDateUnknown')}
+                                {monthTimestamp === null
+                                    ? t('timelineDateUnknown')
+                                    : month.format(monthTimestamp)}
                             </h3>
                             <ol className="space-y-2">
                                 {group.entries.map((entry) => {
@@ -142,8 +152,9 @@ export default function GrowthTimeline(props: GrowthTimelineProps) {
                                     );
                                 })}
                             </ol>
-                        </div>
-                    ))}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
             {props.entries.length > PROFILE_TIMELINE_PAGE_SIZE && (

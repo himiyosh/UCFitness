@@ -9,7 +9,14 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+    checkChallengeProgressAuthLogBoundary,
+    checkDateOnlyParse,
+    renderRuleTargetResult,
+    runRuleTargetsCli,
+} from '../../scripts/ucfitness-rule-targets.mjs';
 
 const repositoryRoot = process.cwd();
 const ruleChecker = join(repositoryRoot, 'scripts/check-ucfitness-rules.sh');
@@ -31,7 +38,9 @@ const originalSources = new Map(
     ]),
 );
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'ucfitness-rule-check-'));
-const dateBoundaryFixtureRoot = mkdtempSync(join(tmpdir(), 'ucfitness-date-boundary-rule-'));
+const dateBoundaryFixtureRoot = mkdtempSync(
+    join(tmpdir(), 'ucfitness-date-boundary-rule-'),
+);
 const workflowFixtureRoot = mkdtempSync(join(tmpdir(), 'ucfitness-workflow-rule-'));
 const DATE_RULE_CHECK_TIMEOUT_MS = 15_000;
 const validValidateWorkflow = [
@@ -55,6 +64,20 @@ const validValidateWorkflow = [
     '    runs-on: ubuntu-latest',
     '',
 ].join('\n');
+const productionDirectories = [
+    'app',
+    'components',
+    'contexts',
+    'hooks',
+    'lib',
+    'types',
+] as const;
+
+afterAll(() => {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+    rmSync(dateBoundaryFixtureRoot, { recursive: true, force: true });
+    rmSync(workflowFixtureRoot, { recursive: true, force: true });
+});
 
 interface RuleCheckResult {
     status: number | null;
@@ -66,6 +89,9 @@ interface InvalidBoundary {
     path: (typeof fixturePaths)[number];
     expected: string;
     replacement: string;
+    expectedIds: readonly string[];
+    expectedRecordCount: number;
+    expectedRenderedViolationCount: number;
 }
 
 interface UnsafeDateParseCase {
@@ -80,42 +106,66 @@ const invalidBoundaries: InvalidBoundary[] = [
         path: singleRoute,
         expected: 'reportError("challenge:progress", normalized);',
         replacement: 'void normalized;',
+        expectedIds: [
+            'single-report-error-count',
+            'single-report-error-operation',
+        ],
+        expectedRecordCount: 2,
+        expectedRenderedViolationCount: 2,
     },
     {
         label: 'single operationが異なる場合',
         path: singleRoute,
         expected: 'reportError("challenge:progress", normalized);',
         replacement: 'reportError("challenge:progress:wrong", normalized);',
+        expectedIds: ['single-report-error-operation'],
+        expectedRecordCount: 1,
+        expectedRenderedViolationCount: 1,
     },
     {
         label: 'batch固定messageが異なる場合',
         path: batchRoute,
         expected: '"Challenge progress batch request failed"',
         replacement: '"Wrong batch request message"',
+        expectedIds: ['batch-error-message'],
+        expectedRecordCount: 1,
+        expectedRenderedViolationCount: 1,
     },
     {
         label: 'batch固定codeが異なる場合',
         path: batchRoute,
         expected: '"CHALLENGE_PROGRESS_BATCH_UNAVAILABLE"',
         replacement: '"CHALLENGE_PROGRESS_BATCH_WRONG"',
+        expectedIds: ['batch-error-code'],
+        expectedRecordCount: 1,
+        expectedRenderedViolationCount: 1,
     },
     {
         label: 'batch operationが異なる場合',
         path: batchRoute,
         expected: 'reportError("challenge:progress:batch", normalized);',
         replacement: 'reportError("challenge:progress:wrong", normalized);',
+        expectedIds: ['batch-report-error-operation'],
+        expectedRecordCount: 1,
+        expectedRenderedViolationCount: 1,
     },
     {
         label: 'batch routeのstage帰属が欠落した場合',
         path: batchRoute,
         expected: 'const stage = authenticationComplete',
         replacement: 'const stage = true',
+        expectedIds: ['batch-stage-attribution'],
+        expectedRecordCount: 1,
+        expectedRenderedViolationCount: 1,
     },
     {
         label: 'serviceの再固定化境界が欠落した場合',
         path: 'lib/services/challenge-progress-service.ts',
         expected: 'return progressFailure(stage);',
         replacement: 'return error as AppError;',
+        expectedIds: ['service-refixed-boundary'],
+        expectedRecordCount: 1,
+        expectedRenderedViolationCount: 1,
     },
 ];
 
@@ -126,13 +176,38 @@ const unsafeDateParseCases: UnsafeDateParseCase[] = [
         callKind: 'new Date',
     },
     {
+        label: 'new Dateのslash区切りdate literal',
+        source: 'export const slashDateConstructor = new Date("2026/07/28");',
+        callKind: 'new Date',
+    },
+    {
+        label: 'new Dateの英語月名date literal',
+        source: 'export const englishDateConstructor = new Date("July 28, 2026");',
+        callKind: 'new Date',
+    },
+    {
         label: 'Date.parseのISO date-only literal',
         source: 'export const dateOnlyParser = Date.parse("2026-07-28");',
         callKind: 'Date.parse',
     },
     {
+        label: 'new Dateのoffsetなし完全timestamp literal',
+        source: 'export const localTimestampConstructor = new Date("2026-07-28T12:34:56");',
+        callKind: 'new Date',
+    },
+    {
+        label: 'Date.parseのoffsetなし小数秒timestamp literal',
+        source: 'export const localTimestampParser = Date.parse("2026-07-28T12:34:56.123");',
+        callKind: 'Date.parse',
+    },
+    {
         label: '空白付きISO date-only literal',
         source: 'export const paddedDateOnly = new Date(" 2026-07-28 ");',
+        callKind: 'new Date',
+    },
+    {
+        label: '空白付きoffset timestamp literal',
+        source: 'export const paddedTimestamp = new Date(" 2026-07-28T12:34:56Z ");',
         callKind: 'new Date',
     },
     {
@@ -185,12 +260,63 @@ const unsafeDateParseCases: UnsafeDateParseCase[] = [
         source: 'export function parseUnknownTemplate(value: string) { return new Date(`${value}`); }',
         callKind: 'new Date',
     },
+    {
+        label: 'full timestamp構造を持たないoffset付きtemplate',
+        source: 'export function parseOffsetOnlyTemplate(value: string) { return new Date(`${value}+09:00`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: '未検証変数へZだけを付けるtemplate',
+        source: 'export function parseUnvalidatedZulu(unvalidatedVar: string) { return new Date(`${unvalidatedVar}Z`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: '未検証変数へfull timestamp suffixを付けるtemplate',
+        source: 'export function parseUnvalidatedDate(unvalidatedVar: string) { return new Date(`${unvalidatedVar}T00:00:00Z`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: 'dateで終わるだけの未検証candidate',
+        source: 'export function parseCandidate(candidate: string) { return new Date(`${candidate}T00:00:00Z`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: '関数名にdateを含むだけの未検証value',
+        source: 'export function updateProfile(value: string) { return Date.parse(`${value}T00:00:00Z`); }',
+        callKind: 'Date.parse',
+    },
+    {
+        label: 'Date風の名前だけを持つ未検証変数',
+        source: 'export function parseNamedValue(unvalidatedDate: string) { return new Date(`${unvalidatedDate}T00:00:00Z`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: 'Dateを含む非validation関数の未検証value',
+        source: 'export function updateDateProfile(value: string) { return Date.parse(`${value}T00:00:00Z`); }',
+        callKind: 'Date.parse',
+    },
+    {
+        label: 'full timestamp構造を持たないZ付きbinary',
+        source: 'export function parseOffsetOnlyBinary(value: string) { return Date.parse(value + "Z"); }',
+        callKind: 'Date.parse',
+    },
+    {
+        label: '明示offsetだけを後置した未検証template',
+        source: 'export function parseUnknownOffsetTemplate(unvalidatedVar: string) { return new Date(`${unvalidatedVar}Z`); }',
+        callKind: 'new Date',
+    },
 ];
 
 function writeFixtureFile(path: string, source: string): void {
     const fixturePath = join(fixtureRoot, path);
     mkdirSync(dirname(fixturePath), { recursive: true });
     writeFileSync(fixturePath, source, 'utf8');
+}
+
+function writeOriginalFixtures(): void {
+    for (const [path, source] of originalSources) {
+        writeFixtureFile(path, source);
+    }
 }
 
 function writeDoubleQuotedFixture(): Map<string, string> {
@@ -200,13 +326,23 @@ function writeDoubleQuotedFixture(): Map<string, string> {
         if (originalSource === undefined) {
             throw new Error(`Missing fixture source: ${path}`);
         }
-        const source = path === singleRoute || path === batchRoute
-            ? originalSource.replaceAll("'", '"')
-            : originalSource;
+        const source =
+            path === singleRoute || path === batchRoute
+                ? originalSource.replaceAll("'", '"')
+                : originalSource;
         sources.set(path, source);
         writeFixtureFile(path, source);
     }
     return sources;
+}
+
+function applyBoundaryMutation(boundary: InvalidBoundary): void {
+    const source = readFileSync(join(fixtureRoot, boundary.path), 'utf8');
+    expect(source).toContain(boundary.expected);
+    writeFixtureFile(
+        boundary.path,
+        source.replace(boundary.expected, boundary.replacement),
+    );
 }
 
 function runChallengeProgressRule(): RuleCheckResult {
@@ -243,8 +379,8 @@ function writeSafeDateBoundaryFixtures(): void {
             '    new Date(epoch),',
             '    new Date(Date.now()),',
             '    new Date(2026, 6, 28),',
-            '    new Date("2026-07-28T12:34:56"),',
             '    new Date("2026-07-28T12:34:56Z"),',
+            '    new Date("2026-07-28T12:34:56.123456789Z"),',
             '    Date.parse("2026-07-28T12:34:56+09:00"),',
             '    Date.parse("2026-07-28T12:34:56+0900"),',
             '    new Date(timestamp),',
@@ -285,7 +421,9 @@ function writeSafeDateBoundaryFixtures(): void {
 }
 
 function runDateBoundaryRule(
-    option = '--date-only-parse-only',
+    option:
+        | '--date-only-parse-only'
+        | '--date-only-jst-end-boundary-only',
 ): RuleCheckResult {
     const result = spawnSync(
         'bash',
@@ -322,123 +460,288 @@ function runValidateWorkflowRule(): RuleCheckResult {
     };
 }
 
-describe('check-ucfitness-rules challenge progress認証ログ境界', () => {
+describe('checkChallengeProgressAuthLogBoundary', () => {
     beforeEach(() => {
         writeDoubleQuotedFixture();
     });
 
-    afterAll(() => {
-        rmSync(fixtureRoot, { recursive: true, force: true });
-    });
+    it('既存のsingle quote表記の場合、固定境界を受理する', () => {
+        writeOriginalFixtures();
 
-    it('既存のsingle quote表記でも固定境界を受理する', () => {
-        for (const [path, source] of originalSources) {
-            writeFixtureFile(path, source);
-        }
+        const records = checkChallengeProgressAuthLogBoundary({
+            root: fixtureRoot,
+        });
 
-        const result = runChallengeProgressRule();
-
-        expect(result.status, result.output).toBe(0);
-        expect(result.output).toContain('OK: UCFitness rule-check passed');
+        expect(records).toEqual([]);
+        expect(renderRuleTargetResult(records)).toContain(
+            'OK: UCFitness rule-check passed',
+        );
     });
 
     it('同値なdouble quoteへ変更した場合、固定境界を受理する', () => {
-        const result = runChallengeProgressRule();
+        const records = checkChallengeProgressAuthLogBoundary({
+            root: fixtureRoot,
+        });
 
-        expect(result.status, result.output).toBe(0);
-        expect(result.output).toContain('OK: UCFitness rule-check passed');
+        expect(records).toEqual([]);
+        expect(renderRuleTargetResult(records)).toContain(
+            'OK: UCFitness rule-check passed',
+        );
     });
 
-    it.each(invalidBoundaries)('$label、固定境界違反として拒否する', (boundary) => {
-        const sources = writeDoubleQuotedFixture();
-        const source = sources.get(boundary.path);
-        expect(source).toBeDefined();
-        if (source === undefined) {
-            throw new Error(`Missing fixture source: ${boundary.path}`);
-        }
-        expect(source).toContain(boundary.expected);
-        const mutatedSource = source.replace(
-            boundary.expected,
-            boundary.replacement,
+    it.each(invalidBoundaries)(
+        '$label、exact predicate IDで固定境界違反を拒否する',
+        (boundary) => {
+            applyBoundaryMutation(boundary);
+
+            const records = checkChallengeProgressAuthLogBoundary({
+                root: fixtureRoot,
+            });
+
+            expect(records.map(({ id }) => id)).toEqual(boundary.expectedIds);
+            expect(records).toHaveLength(boundary.expectedRecordCount);
+            const output = renderRuleTargetResult(records);
+            expect(output).toContain(
+                'challenge progress',
+            );
+            expect(output).toContain(
+                `NG: ${boundary.expectedRenderedViolationCount} rule violation(s) detected`,
+            );
+        },
+    );
+});
+
+describe('renderRuleTargetResult', () => {
+    it('同じ既存違反単位の2 predicateを1件のNG表示へまとめる', () => {
+        const records = [
+            {
+                id: 'batch-error-message',
+                groupId: 'challenge-progress-normalization',
+                label: 'challenge progressの固定AppError正規化欠落',
+                body: 'single/batch progress routes',
+            },
+            {
+                id: 'batch-error-code',
+                groupId: 'challenge-progress-normalization',
+                label: 'challenge progressの固定AppError正規化欠落',
+                body: 'single/batch progress routes',
+            },
+        ];
+
+        const output = renderRuleTargetResult(records);
+
+        expect(records.map(({ id }) => id)).toEqual([
+            'batch-error-message',
+            'batch-error-code',
+        ]);
+        expect(output).toBe(
+            'NG: 1 rule violation(s) detected\n\n' +
+                '❌ [challenge progressの固定AppError正規化欠落]\n' +
+                'single/batch progress routes\n\n',
         );
-        writeFixtureFile(boundary.path, mutatedSource);
-
-        const result = runChallengeProgressRule();
-
-        expect(result.status, result.output).toBe(1);
-        expect(result.output).toContain('challenge progress');
     });
 });
 
-describe('check-ucfitness-rules timezone依存date-only parse', () => {
+describe('checkDateOnlyParse', () => {
     beforeEach(() => {
         rmSync(dateBoundaryFixtureRoot, { recursive: true, force: true });
         mkdirSync(dateBoundaryFixtureRoot, { recursive: true });
         writeSafeDateBoundaryFixtures();
     });
 
-    afterAll(() => {
+    it(
+        '明示offset・epoch・Date・完全timestamp・共有helperを受理し、除外対象を走査しない',
+        async () => {
+            const records = await checkDateOnlyParse({
+                scanRoot: dateBoundaryFixtureRoot,
+            });
+
+            expect(records).toEqual([]);
+            expect(renderRuleTargetResult(records)).toContain(
+                'OK: UCFitness rule-check passed',
+            );
+        },
+        DATE_RULE_CHECK_TIMEOUT_MS,
+    );
+
+    it(
+        '27 unsafe expressionと6 production directory findingを一度の走査ですべて報告する',
+        async () => {
+            const expressionPath = 'components/group/UnsafeExpressions.ts';
+            writeDateBoundaryFixtureFile(
+                expressionPath,
+                `${unsafeDateParseCases
+                    .map(({ source }) => source)
+                    .join('\n')}\n`,
+            );
+            productionDirectories.forEach((directory) => {
+                writeDateBoundaryFixtureFile(
+                    `${directory}/UnsafeDirectory.ts`,
+                    'export function parse(event: { end_date: string }) { return new Date(event.end_date); }\n',
+                );
+            });
+
+            const records = await checkDateOnlyParse({
+                scanRoot: dateBoundaryFixtureRoot,
+            });
+            const expressionRecords = records.filter(({ body }) =>
+                body.startsWith(`${expressionPath}:`),
+            );
+            const directoryRecords = records.filter(({ body }) =>
+                body.includes('/UnsafeDirectory.ts:'),
+            );
+            const output = renderRuleTargetResult(records);
+
+            expect(records).toHaveLength(33);
+            expect(expressionRecords).toHaveLength(27);
+            unsafeDateParseCases.forEach((testCase, index) => {
+                const line = index + 1;
+                const kindId =
+                    testCase.callKind === 'new Date'
+                        ? 'new-date'
+                        : 'date-parse';
+                expect(
+                    expressionRecords.map(({ id }) => id),
+                    testCase.label,
+                ).toContain(
+                    `date-only-parse:${expressionPath}:${line}:${kindId}`,
+                );
+                expect(output, testCase.label).toContain(
+                    `${expressionPath}:${line} ${testCase.callKind}`,
+                );
+            });
+            expect(directoryRecords.map(({ body }) => body)).toEqual(
+                productionDirectories.map(
+                    (directory) =>
+                        `${directory}/UnsafeDirectory.ts:1 new Date`,
+                ),
+            );
+            productionDirectories.forEach((directory) => {
+                expect(output).toContain(
+                    `${directory}/UnsafeDirectory.ts:1 new Date`,
+                );
+            });
+            expect(output).toContain(
+                'timezone依存のdate-only parse (new Date / Date.parse)',
+            );
+        },
+        DATE_RULE_CHECK_TIMEOUT_MS,
+    );
+});
+
+describe('runRuleTargetsCli', () => {
+    it('TypeScript loader失敗を固定非stack違反へ変換し、processを変更しない', async () => {
+        const originalExitCode = process.exitCode;
+        const stdoutWrite = vi
+            .spyOn(process.stdout, 'write')
+            .mockImplementation(() => true);
+        const stderrWrite = vi
+            .spyOn(process.stderr, 'write')
+            .mockImplementation(() => true);
+
+        try {
+            const result = await runRuleTargetsCli(
+                ['--date-only-parse-only', dateBoundaryFixtureRoot],
+                {
+                    cwd: repositoryRoot,
+                    loadTypeScript: async () => {
+                        throw new Error('loader-secret-stack');
+                    },
+                },
+            );
+
+            expect(result.records.map(({ id }) => id)).toEqual([
+                'date-engine-failure',
+            ]);
+            expect(result.exitCode).toBe(1);
+            expect(result.output).toBe(
+                'NG: 1 rule violation(s) detected\n\n' +
+                    '❌ [UCFitness semantic rule engine failure]\n' +
+                    'timezone date-only rule engine failed\n\n',
+            );
+            expect(result.output).not.toContain('loader-secret-stack');
+            expect(stdoutWrite).not.toHaveBeenCalled();
+            expect(stderrWrite).not.toHaveBeenCalled();
+            expect(process.exitCode).toBe(originalExitCode);
+        } finally {
+            stdoutWrite.mockRestore();
+            stderrWrite.mockRestore();
+        }
+    });
+});
+
+describe('check-ucfitness-rules semantic CLI smoke', () => {
+    beforeEach(() => {
+        writeDoubleQuotedFixture();
         rmSync(dateBoundaryFixtureRoot, { recursive: true, force: true });
+        mkdirSync(dateBoundaryFixtureRoot, { recursive: true });
     });
 
-    it('明示offset・epoch・Date・完全timestamp・共有helperを受理し、除外対象を走査しない', () => {
-        const result = runDateBoundaryRule();
+    it('明示offset付きtimestamp・epoch・Date・dynamic timestamp field・共有helperを受理し、除外対象を走査しない', () => {
+        writeSafeDateBoundaryFixtures();
+
+        const result = runDateBoundaryRule('--date-only-parse-only');
 
         expect(result.status, result.output).toBe(0);
         expect(result.output).toContain('OK: UCFitness rule-check passed');
     }, DATE_RULE_CHECK_TIMEOUT_MS);
 
-    it('旧date-only JST終了境界オプションを互換aliasとして維持する', () => {
-        const result = runDateBoundaryRule('--date-only-jst-end-boundary-only');
+    it('challenge mutationをBash targeted CLIで拒否する', () => {
+        applyBoundaryMutation(invalidBoundaries[1]);
 
-        expect(result.status, result.output).toBe(0);
-        expect(result.output).toContain('OK: UCFitness rule-check passed');
-    }, DATE_RULE_CHECK_TIMEOUT_MS);
-
-    it('literal・property・identifier・template・binaryの違反をすべて報告する', () => {
-        writeDateBoundaryFixtureFile(
-            'components/group/UnsafeBoundary.ts',
-            `${unsafeDateParseCases.map(({ source }) => source).join('\n')}\n`,
-        );
-
-        const result = runDateBoundaryRule();
+        const result = runChallengeProgressRule();
 
         expect(result.status, result.output).toBe(1);
+        expect(result.output).toContain('NG: 1 rule violation(s) detected');
         expect(result.output).toContain(
-            'timezone依存のdate-only parse (new Date / Date.parse)',
+            'challenge progressの固定AppError正規化欠落',
         );
-        unsafeDateParseCases.forEach((testCase, index) => {
-            expect(result.output, testCase.label).toContain(
-                `components/group/UnsafeBoundary.ts:${index + 1} ${testCase.callKind}`,
-            );
-        });
-    }, DATE_RULE_CHECK_TIMEOUT_MS);
+        expect(result.output).toContain('single/batch progress routes');
+    });
 
-    it('app・components・contexts・hooks・lib・typesのproduction違反を走査する', () => {
-        const directories = [
-            'app',
-            'components',
-            'contexts',
-            'hooks',
-            'lib',
-            'types',
-        ];
-        directories.forEach((directory) => {
+    it(
+        'date primary optionのunsafe expressionをBash targeted CLIで拒否する',
+        () => {
             writeDateBoundaryFixtureFile(
-                `${directory}/UnsafeBoundary.ts`,
-                'export function parse(event: { end_date: string }) { return new Date(event.end_date); }\n',
+                'components/group/UnsafeBoundary.ts',
+                'export const unsafeDate = new Date("2026-07-28");\n',
             );
-        });
 
-        const result = runDateBoundaryRule();
+            const result = runDateBoundaryRule('--date-only-parse-only');
 
-        expect(result.status, result.output).toBe(1);
-        directories.forEach((directory) => {
+            expect(result.status, result.output).toBe(1);
             expect(result.output).toContain(
-                `${directory}/UnsafeBoundary.ts:1 new Date`,
+                'timezone依存のdate-only parse (new Date / Date.parse)',
             );
-        });
-    }, DATE_RULE_CHECK_TIMEOUT_MS);
+            expect(result.output).toContain(
+                'components/group/UnsafeBoundary.ts:1 new Date',
+            );
+        },
+        DATE_RULE_CHECK_TIMEOUT_MS,
+    );
+
+    it(
+        'date compatibility aliasのunsafe expressionをBash targeted CLIで拒否する',
+        () => {
+            writeDateBoundaryFixtureFile(
+                'components/group/UnsafeBoundary.ts',
+                'export const unsafeDate = Date.parse("2026-07-28");\n',
+            );
+
+            const result = runDateBoundaryRule(
+                '--date-only-jst-end-boundary-only',
+            );
+
+            expect(result.status, result.output).toBe(1);
+            expect(result.output).toContain(
+                'timezone依存のdate-only parse (new Date / Date.parse)',
+            );
+            expect(result.output).toContain(
+                'components/group/UnsafeBoundary.ts:1 Date.parse',
+            );
+        },
+        DATE_RULE_CHECK_TIMEOUT_MS,
+    );
 });
 
 describe('check-ucfitness-rules Validate workflow concurrency', () => {
