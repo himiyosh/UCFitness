@@ -647,9 +647,9 @@
         "coverage_target": "lib/ カバレッジ 60%+",
         "test_quality": "テストが振る舞い駆動で脆弱でない"
       },
-      "status": "passing",
-      "lastAttempt": "2026-07-27T04:50:44Z",
-      "lastError": null
+      "status": "in-progress",
+      "lastAttempt": "2026-07-30T04:21:59Z",
+      "lastError": "exact cohort head f8e5c071: canonical 25/30 PASS（成功run mean 7.298秒、5秒以内0/25）、contention 27/30 PASS、focused各30/30、infrastructure failure 0、aborted=null。final coverageは115 files・1539 tests・skipped 0、70.95% / 68.14% / 81.14% / 72.27%をPASS。artifact /Users/himiyosh/.copilot/session-state/58b22781-f5b0-42ab-b8e4-0a66f35a9905/files/f026-cohorts-f8e5c071-20260730T0349Z.json SHA-256 28bf143cfcdd0857b77007e842c3769155e9daf9a941fe86046ca9e8c11b486d。8 failureは既存WalkingRoutes waitForFunction 5000ms timeoutで、F026の5秒条件は未達。"
     },
     {
       "id": "F027",

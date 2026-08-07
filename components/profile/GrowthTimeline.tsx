@@ -9,7 +9,6 @@ import {
     groupProfileTimelineEntries,
     PROFILE_TIMELINE_PAGE_SIZE,
 } from '@/lib/profile-timeline';
-import { parseTimestampMillis } from '@/lib/date-utils';
 
 import type { ProfileTimelineEntry } from '@/lib/profile-timeline';
 
@@ -21,13 +20,9 @@ interface GrowthTimelineProps {
     truncatedChallengeCount: number | null;
 }
 
-function formatTimelineMonth(
-    monthKey: string | null,
-    formatter: Intl.DateTimeFormat,
-): string | null {
-    if (monthKey === null) return null;
-    const timestamp = parseTimestampMillis(`${monthKey}-01T00:00:00Z`);
-    return timestamp === null ? null : formatter.format(timestamp);
+function getMonthStartTimestamp(monthKey: string): number | null {
+    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(monthKey);
+    return match ? Date.UTC(Number(match[1]), Number(match[2]) - 1, 1) : null;
 }
 
 export default function GrowthTimeline(props: GrowthTimelineProps) {
@@ -85,11 +80,16 @@ export default function GrowthTimeline(props: GrowthTimelineProps) {
                 </p>
             ) : (
                 <div className="space-y-4">
-                    {groups.map((group) => (
-                        <div key={group.monthKey ?? 'unknown'}>
+                    {groups.map((group) => {
+                        const monthTimestamp = group.monthKey === null
+                            ? null
+                            : getMonthStartTimestamp(group.monthKey);
+                        return (
+                            <div key={group.monthKey ?? 'unknown'}>
                             <h3 className="mb-2 text-sm font-semibold text-[var(--color-text)]">
-                                {formatTimelineMonth(group.monthKey, month)
-                                    ?? t('timelineDateUnknown')}
+                                {monthTimestamp === null
+                                    ? t('timelineDateUnknown')
+                                    : month.format(monthTimestamp)}
                             </h3>
                             <ol className="space-y-2">
                                 {group.entries.map((entry) => {
@@ -152,8 +152,9 @@ export default function GrowthTimeline(props: GrowthTimelineProps) {
                                     );
                                 })}
                             </ol>
-                        </div>
-                    ))}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
             {props.entries.length > PROFILE_TIMELINE_PAGE_SIZE && (

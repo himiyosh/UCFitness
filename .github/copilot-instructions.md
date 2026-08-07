@@ -1757,16 +1757,23 @@ export const runtime = "edge";
 - **対策**: TypeScript ASTでproduction TS/TSXの`new Date()`引数だけを走査し、offsetなし`T23:59:59`を拒否する。明示offsetを受理し、コメント・docs・test/spec・fixtureを除外する正例と、template literal・文字列連結の負例を専用rule-check testへ追加した。共有schedule helperにはJST終了日の23:59:59までactive、翌日0時からexpiredの決定的回帰を追加した。
 - **教訓**: 機械guardは既知callsiteのgrepではなく、守る構文とproduction範囲を意味的に検査する。guard追加時は許可する実装、除外対象、最小の違反変異を同じfixture suiteで固定する。リファレンス: `scripts/check-ucfitness-rules.sh`, `lib/__tests__/ucfitness-rule-check.test.ts`, `lib/services/challenge-utils.test.ts`
 
-### LL-107: date-only guardを特定時刻文字列だけへ限定すると別経路と出力欠落を残す
+### LL-107: date-only guardを特定時刻文字列やdenylistへ限定すると別経路を許可する
 
-- **事象**: production AST guardは`new Date`へoffsetなし`T23:59:59`を連結する式だけを拒否し、`new Date(event.end_date)`、`Date.parse(event.start_date)`、ISO date-only literal、offsetなし`T00:00:00`、未知の動的template/binaryを通していた。一般化後に複数違反を出すと、`process.stdout.write()`直後の`process.exit(1)`がpipe出力を途中で切り、後半のcallsiteも報告されなかった。
-- **根本原因**: date-onlyの危険性を1つの文字列markerとして扱い、constructor / parser、入力source、AST型、明示offset、epoch、完全timestampを分類していなかった。非同期stdoutのflush前にprocessを強制終了しても全違反を受け取れると仮定していた。
-- **対策**: `app` / `components` / `contexts` / `hooks` / `lib` / `types`のproduction TS/TSXをTypeScript Programで走査し、`new Date` / `Date.parse`の引数をDate型、number、timestamp名、完全timestamp、明示offset、date-only source、未知動的構築へ分類する。ISO date-only literal、`start_date` / `end_date`、offsetなしtemplate/binary、証明不能な動的文字列はfail closedとし、コメント・docs・test/spec・fixtureを除外する。違反出力は`process.exitCode`でflushを待ち、current treeのdate-only比較を検証済み文字列順、演算・表示を明示UTC/JST、timestamp cursorをdate-only拒否の共有parserへ置換した。
-- **教訓**: calendar dateをinstantへ暗黙変換しない。AST guardは危険文字列のgrepではなく入力の意味と型を分類し、許可するDate/epoch/完全timestamp/offsetと拒否するliteral/property/template/binary/未知動的入力をpositive/negative fixtureで固定する。複数違反を返すCLIは終了codeだけでなく全stdoutのflushも回帰検証する。リファレンス: `scripts/check-ucfitness-rules.sh`, `lib/__tests__/ucfitness-rule-check.test.ts`, `lib/date-utils.ts`
+- **事象**: production AST guardは当初offsetなし`T23:59:59`だけを拒否し、一般化後も`isSafeStaticString`が`completeTimestamp || !dateOnly`という恒真式になってslash区切り・英語月名の静的日付を許可した。さらに明示offsetの判定が動的構築の形状検証より先に短絡し、``new Date(`${unvalidatedVar}Z`)``も通した。複数違反時は`process.stdout.write()`直後の`process.exit(1)`が後半の出力を切る問題もあった。
+- **根本原因**: date-onlyの危険性を既知の禁止文字列だけで表し、安全条件を完全timestampのdefault-deny allowlistとして定義しなかった。動的slot、静的時刻、offsetを一体の構築として検証せず、offset末尾だけを安全の証拠にした。
+- **対策**: `app` / `components` / `contexts` / `hooks` / `lib` / `types`のproduction TS/TSXをTypeScript Programで走査し、静的文字列は明示offset付きの完全timestampだけを許可する。動的構築はtimestamp参照だけの式、または検証済みdate-only source（既知のcalendar名かdate validation helperの値）1つを静的時刻と明示offsetで完全timestampへ構成する場合だけ許可し、slash区切り、英語月名、offsetだけを後置した動的template、未検証変数のdate slotを回帰fixtureで拒否する。Date型、number、timestamp名、共有JST helperは維持し、コメント・docs・test/spec・fixtureを除外する。違反出力は`process.exitCode`でflushを待つ。
+- **教訓**: calendar dateをinstantへ暗黙変換しない。AST guardはdenylistの否定を安全条件へ使わず、許可するDate/epoch/完全timestamp/検証済み動的構築をdefault-denyで列挙する。offsetは動的部分の安全な配置を証明した後だけ受理し、positive/negative fixtureと全stdoutのflushを回帰検証する。リファレンス: `scripts/ucfitness-rule-targets.mjs`, `lib/__tests__/ucfitness-rule-check.test.ts`, `lib/date-utils.ts`
 
-### LL-108: full timestampのoffsetを任意にすると共有parserがruntime timezoneへ依存する
+### LL-108: focused file実行の成功はfull-suite収集を証明しない
+
+- **事象**: 別projectで`*.test.tsx`がVitestの`include`外にあり、direct file実行では5件PASSした一方、通常suiteとCIでは一度も収集されないまま緑の証拠として扱われた。UCFitness監査ではcurrent mainの追加testは全収集・skipped 0だったが、PR #331 / #341の完了記録はfocused/関連件数だけでfull-suite増分を欠いていた。
+- **根本原因**: direct file指定が設定の`include`を迂回し得ることと、focused PASS件数をcollection evidenceへ代用したこと。directory rootだけの判定ではglobの拡張子差も見逃す。
+- **対策**: repository内の`*.test.ts` / `*.test.tsx`を走査し、`path.posix.matchesGlob`でVitest include glob全体へ一致することを回帰固定する。通常・watch・coverageの前にdirect file指定のcollection preflightを実行して、include変更がguard自身を外しても失敗させる。生成物・vendorとPlaywrightの`*.spec.ts`は別対象として除外する。
+- **教訓**: 新規test fileの証拠はbase SHAと`full suite before -> after (+delta), skipped 0`を必須にし、focused結果は補助証拠に限定する。リファレンス: `lib/__tests__/vitest-include-coverage.test.ts`, `vitest.config.ts`, `README.md`
+
+### LL-109: full timestampのoffsetを任意にすると共有parserがruntime timezoneへ依存する
 
 - **事象**: AST guardのstatic判定が`completeTimestampPattern.test(...) || !dateOnlyPattern.test(...)`となり、date-only以外をすべて許可してcomplete patternが実質dead codeだった。共有`parseTimestampMillis`もoffsetを任意にしていたため、同じoffsetなし日時がTokyoとNew Yorkで異なるinstantになり得た。
 - **根本原因**: calendar dateの拒否だけを契約化し、specific instantを表すfull timestampにはoffsetが必須という境界をguard・runtime parser・callerで共有していなかった。不正通知時刻もepoch 0へ変換して並び順と未読数を成功形へ偽装していた。
 - **対策**: static full timestampと動的なdate+time構築の両方で`Z` / `±HH:mm` / `±HHmm`を必須にし、calendar validityも共有parserで検証する。notification feed、message cursor、GroupChat、group inviteの各callerは不正値を400/500・利用不能表示へ分離し、`toISOString()`とPostgreSQL `timestamptz`由来の明示offset値だけを継続受理する。
-- **教訓**: date-onlyはcalendar helperへ、instant文字列は明示offset付きparserへ分離し、offsetなしfull timestampをUTC/JSTへ推測補完しない。機械guardの正例・負例はstatic offset有無、date-only、dynamic timestamp field、constructor/parserを含め、runtime parserは複数TZで同じepochになることを固定する。動的式はoffset suffixや`Date`を含む変数・関数名だけでsafeにせず、既存の検証済みcalendar sourceとdate validation helperへdefault-denyで限定する。リファレンス: `lib/date-utils.ts`, `lib/services/notification-feed.ts`, `components/group/GroupChat.tsx`, `scripts/check-ucfitness-rules.sh`
+- **教訓**: date-onlyはcalendar helperへ、instant文字列は明示offset付きparserへ分離し、offsetなしfull timestampをUTC/JSTへ推測補完しない。機械guardの正例・負例はstatic offset有無、date-only、dynamic timestamp field、constructor/parserを含め、runtime parserは複数TZで同じepochになることを固定する。動的式はoffset suffixや`Date`を含む変数・関数名だけでsafeにせず、既存の検証済みcalendar sourceとdate validation helperへdefault-denyで限定する。リファレンス: `lib/date-utils.ts`, `lib/services/notification-feed.ts`, `components/group/GroupChat.tsx`, `scripts/ucfitness-rule-targets.mjs`
