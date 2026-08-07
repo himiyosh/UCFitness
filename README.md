@@ -5,6 +5,46 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)
 ![Cloudflare Pages](https://img.shields.io/badge/Deploy-Cloudflare%20Pages-F38020?logo=cloudflarepages)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
+**English** | [日本語](#概要)
+
+UCFitness is a step-tracking and fitness-competition PWA. It syncs daily activity
+from health-data providers and gamifies it through group rankings, time-limited
+challenges, badges, reactions, and an in-app coin economy.
+
+**Stack** — Next.js 15 (App Router) · React 18 · TypeScript 5 · Tailwind CSS v4 ·
+NextAuth v5 with Fitbit OAuth 2.0 · Supabase (PostgreSQL) · Cloudflare Pages
+(Edge Runtime) · next-intl (ja/en) · Vitest · PWA with Web Push.
+
+### Engineering highlights
+
+- **Graceful degradation by default.** The profile, wallet, group, leaderboard,
+  and notification surfaces each keep rendering when a backend dependency fails,
+  showing partial data with an explicit warning instead of blanking the screen.
+  Recorded-zero, never-recorded, and fetch-failed step states are modelled as
+  three distinct cases rather than collapsed into one empty state.
+- **Staged health-provider migration.** Fitbit Web API integration with an opt-in
+  path to Google Health ahead of the Fitbit API's scheduled shutdown. Existing
+  tokens cannot be carried over, so the flow is built around explicit user
+  re-consent, requests only the `activity_and_fitness.readonly` scope, and
+  persists nothing beyond daily step totals.
+- **Failure-aware onboarding.** OAuth failures surface a localized reason and a
+  safe retry path instead of raw Auth.js internals, and unconfigured users are
+  routed into a three-step setup that can be deferred at each stage.
+- **Hardened value transfers.** Database access is server-side only under Row
+  Level Security, with non-negative balance constraints, idempotency keys, and
+  atomic credit/debit implemented as PostgreSQL functions.
+- **Standards-based Web Push.** RFC 8291 `aes128gcm` payload encryption built on
+  Edge Web Crypto, with per-device deduplication and language-aware delivery.
+
+Further reading: [`docs/PRODUCT.md`](docs/PRODUCT.md) ·
+[`docs/security-hardening-notes.md`](docs/security-hardening-notes.md) ·
+[`docs/harness-engineering-design.md`](docs/harness-engineering-design.md)
+
+Licensed under the [MIT License](LICENSE).
+
+---
 
 ## 概要
 
