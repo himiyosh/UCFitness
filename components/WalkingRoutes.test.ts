@@ -409,6 +409,14 @@ describe('WalkingRoutes field validation', () => {
 
             const routeCountBeforeDelete = await deleteButtons.count();
             await deleteButtons.first().click();
+            // useDialogFocusはrequestAnimationFrameで初期フォーカスをCancelへ当てる。確定前にEnterを押すと、
+            // Playwrightのfocusと押下の間にそのフレームが割り込み、Enterの発火先がCancelへ移って削除されない。
+            await page.waitForFunction((cancelLabel) => {
+                const dialog = document.querySelector('[role="alertdialog"]');
+                const cancel = dialog && Array.from(dialog.querySelectorAll('button'))
+                    .find((button) => button.textContent === cancelLabel);
+                return Boolean(cancel) && document.activeElement === cancel;
+            }, enWalkingRoutes.cancel);
             await deleteDialog.getByRole('button', { name: enWalkingRoutes.delete }).press('Enter');
             await page.waitForFunction(
                 ({ count, title }) =>
