@@ -1791,3 +1791,10 @@ export const runtime = "edge";
 - **根本原因**: Validate workflowにtop-level `concurrency`がなく、PR番号またはref単位で先行runを識別・中止する契約と、その式を守る機械guardがなかった。
 - **対策**: `.github/workflows/validate.yml`へ`ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}`と`cancel-in-progress: true`を追加した。`check:rules`でexact式・配置・広域キー回帰を固定し、deploy / release / publish系workflowへの誤適用も拒否する。
 - **教訓**: 反復pushが多いCI workflowは論理PR/ref単位で古いrunだけをcancelし、別PRを巻き込む広域groupを使わない。deploy系は途中中断の危険があるため同じ設定を機械的に展開せず、runtime効果はActions quota回復後に先行runの`CANCELLED`を実測する。リファレンス: `.github/workflows/validate.yml`, `scripts/check-ucfitness-rules.sh`, `lib/__tests__/ucfitness-rule-check.test.ts`
+
+### LL-112: timeout超過を時間不足と読むとfocus競合を予算拡大で覆い隠す
+
+- **事象**: WalkingRoutesの既存flake(cohort `f8e5c071`で8/60 failure)は`page.waitForFunction` 5000ms timeoutとして現れ、contention下のstep上限不足に見えた。step上限を15秒へ拡大しても同じ箇所が15000ms timeoutで再現し、拡大は無効だった。
+- **根本原因**: 失敗は常に削除後のroute数待機(`components/WalkingRoutes.test.ts:413`)で、その直前がdialog表示直後の`press('Enter')`だった。`useDialogFocus`は初期フォーカスを`requestAnimationFrame`でCancelへ当てるため、Playwrightのfocusと押下の間にそのフレームが割り込むとEnterの発火先がCancelへ移る。dialogは削除せずに閉じ、route数が永久に減らないので待機は必ずtimeoutする。待ち時間ではなく発火先が誤るduration非依存の競合であり、予算拡大では解けない。
+- **対策**: 押下前にCancelへの初期フォーカス確定を待つ待機を追加し、step上限は5秒のまま維持した。待機成立時点でrAFは実行済みのため、競合窓を構造的に閉じる。同fileの他のdialog操作は`click()`かDOM直接clickでfocus順序に依存しないため変更していない。同一host・同一負荷(busy loop 10本、load average 16〜20)のfocused cohortは修正前3/12 FAIL、修正後0/24 FAILだった。静穏hostでは修正前も12/12 PASSで差が出ないため、この種の競合はcontention cohortで測る。
+- **教訓**: timeout超過を一律に時間不足と解釈しない。上限を上げて再現するかを先に確かめ、再現するなら待機条件が成立し得ない競合として扱う。rAFやeffectで初期フォーカスを移すdialogでは、表示直後の`press`はfocus確定を待ってから実行し、focus順序に依存しない`click()`と区別する。リファレンス: `components/WalkingRoutes.test.ts`, `hooks/useDialogFocus.ts`
