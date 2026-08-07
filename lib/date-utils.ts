@@ -20,7 +20,26 @@ const JST_HOUR_FORMATTER = new Intl.DateTimeFormat('en-GB', {
 
 /** YYYY-MM-DD 形式の検証パターン */
 const DATE_STR_REGEX = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
-const ISO_TIMESTAMP_REGEX = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,9})?)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)?$/i;
+const ISO_TIMESTAMP_WITH_OFFSET_REGEX = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,9})?)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)$/i;
+
+function isValidCalendarDate(year: number, month: number, day: number): boolean {
+    const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const daysInMonth = [
+        31,
+        leapYear ? 29 : 28,
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
+    return day <= daysInMonth[month - 1];
+}
 
 /** 日付文字列のフォーマットを検証（内部ヘルパー） */
 function assertDateString(dateStr: string): void {
@@ -42,7 +61,13 @@ export function resolveStepCalendarYear(yearParam: string | null, now: Date = ne
 }
 
 export function parseTimestampMillis(timestamp: string): number | null {
-    if (!ISO_TIMESTAMP_REGEX.test(timestamp)) return null;
+    const match = ISO_TIMESTAMP_WITH_OFFSET_REGEX.exec(timestamp);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (!isValidCalendarDate(year, month, day)) return null;
+
     const parsed = Date.parse(timestamp);
     return Number.isFinite(parsed) ? parsed : null;
 }

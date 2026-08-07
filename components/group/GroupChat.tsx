@@ -129,7 +129,8 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
     const formatTime = useCallback(
         (dateStr: string): string => {
             const now = Date.now();
-            const date = parseTimestampMillis(dateStr) ?? Number.NaN;
+            const date = parseTimestampMillis(dateStr);
+            if (date === null) return t('timeUnavailable');
             const diffMs = now - date;
             const diffMin = Math.floor(diffMs / 60000);
 

@@ -250,4 +250,29 @@ describe('notification preference fallback', () => {
         );
     });
 
+    it('offsetなし既読時刻を未読0へ偽装せず500にする', async () => {
+        mocks.from
+            .mockReturnValueOnce(singleQuery({
+                data: { feed_last_read_at: '2026-07-28T12:34:56' },
+                error: null,
+            }))
+            .mockReturnValueOnce(singleQuery({
+                data: {
+                    notification_reactions: true,
+                    notification_gear_reactions: true,
+                },
+                error: null,
+            }));
+
+        const response = await getUnreadCount();
+
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({ error: 'Internal error' });
+        expect(mocks.fetchAllWithPagination).not.toHaveBeenCalled();
+        expect(mocks.reportError).toHaveBeenCalledWith(
+            'user/feed/unread-count',
+            expect.any(RangeError),
+        );
+    });
+
 });

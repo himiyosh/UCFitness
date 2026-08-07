@@ -64,7 +64,7 @@ export default function GroupHeaderActions({
     const [isMembersOpen, setIsMembersOpen] = useState(false);
     const [isCreatingInvite, setIsCreatingInvite] = useState(false);
     const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-    const [inviteExpiresAt, setInviteExpiresAt] = useState<number | null>(null);
+    const [inviteExpiresAt, setInviteExpiresAt] = useState<string | null>(null);
     const [inviteFeedback, setInviteFeedback] = useState<{ kind: 'error' | 'success'; message: string } | null>(null);
     const [canShare, setCanShare] = useState(false);
     const t = useTranslations('GroupDetail');
@@ -104,8 +104,7 @@ export default function GroupHeaderActions({
                 setInviteFeedback({ kind: 'error', message: inviteT(key) });
                 return;
             }
-            const expiresAtMillis = parseTimestampMillis(expiresAt);
-            if (expiresAtMillis === null) {
+            if (parseTimestampMillis(expiresAt) === null) {
                 setInviteFeedback({ kind: 'error', message: inviteT('createUnavailable') });
                 return;
             }
@@ -116,7 +115,7 @@ export default function GroupHeaderActions({
                 return;
             }
             setInviteUrl(url);
-            setInviteExpiresAt(expiresAtMillis);
+            setInviteExpiresAt(expiresAt);
             setInviteFeedback({ kind: 'success', message: inviteT('createSuccess') });
         } catch {
             setInviteFeedback({ kind: 'error', message: inviteT('createNetworkError') });
@@ -172,6 +171,10 @@ export default function GroupHeaderActions({
         initialFocusRef: membersCloseButtonRef,
     });
 
+    const inviteExpirationMillis = inviteExpiresAt === null
+        ? null
+        : parseTimestampMillis(inviteExpiresAt);
+
     return (
         <>
             {/* メンバー管理ボタン — 全メンバーに表示 */}
@@ -208,7 +211,7 @@ export default function GroupHeaderActions({
                 </button>
             )}
 
-            {canCreateInviteLinks && inviteUrl && inviteExpiresAt !== null && (
+            {canCreateInviteLinks && inviteUrl && (
                 <div className="w-full min-w-0 max-w-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-[var(--color-text)] shadow-lg">
                     <label htmlFor="group-invite-link" className="block text-xs font-bold">{inviteT('linkLabel')}</label>
                     <input
@@ -221,10 +224,14 @@ export default function GroupHeaderActions({
                         className="mt-2 min-h-[44px] w-full min-w-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 text-sm text-[var(--color-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary-strong)]"
                     />
                     <p className="mt-2 text-xs leading-5 text-[var(--color-text-muted)]">
-                        {inviteT('expiresAt', {
-                            date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' })
-                                .format(inviteExpiresAt),
-                        })}
+                        {inviteExpirationMillis === null
+                            ? inviteT('expiresUnavailable')
+                            : inviteT('expiresAt', {
+                                date: new Intl.DateTimeFormat(locale, {
+                                    dateStyle: 'medium',
+                                    timeStyle: 'short',
+                                }).format(inviteExpirationMillis),
+                            })}
                     </p>
                     <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                         <button

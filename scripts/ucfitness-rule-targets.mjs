@@ -25,9 +25,38 @@ const EXCLUDED_DIRECTORIES = new Set([
 ]);
 const TEST_FILE_PATTERN = /\.(?:fixture|spec|test)\.tsx?$/;
 const COMPLETE_TIMESTAMP_PATTERN =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?$/i;
-const EXPLICIT_OFFSET_PATTERN = /(?:Z|[+-]\d{2}:?\d{2})$/i;
-const DATE_ONLY_SENTINEL = '2000-01-01';
+  /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)$/i;
+const EXPLICIT_OFFSET_TIMESTAMP_CONSTRUCTION_PATTERN =
+  /^\{expression\}T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)$/i;
+const DATE_ONLY_NAMES = new Set([
+  'currentdate',
+  'date',
+  'datestr',
+  'enddate',
+  'fromstr',
+  'fulldate',
+  'jstdatestr',
+  'monthlystartstr',
+  'occurredon',
+  'startdate',
+  'startstr',
+  'today',
+  'todaystr',
+  'tostr',
+  'weekstart',
+  'weekstartstr',
+]);
+
+function isDateOnlyName(name) {
+  return DATE_ONLY_NAMES.has(name.toLowerCase()) || /(?:^|_)date$/i.test(name);
+}
+
+function isDateValidationFunctionName(name) {
+  return (
+    /^(?:assert|is|parse|validate)(?:[A-Z_]|$)/.test(name) &&
+    (name.includes('Date') || /(?:^|_)date(?:_|$)/i.test(name))
+  );
+}
 
 function createRecord(id, groupId, label, body) {
   return { id, groupId, label, body };
@@ -420,15 +449,11 @@ export async function checkDateOnlyParse({
 
   const isSafeStaticString = (text) => {
     const normalized = text.trim();
+    if (normalized !== text) {
+      return false;
+    }
     return COMPLETE_TIMESTAMP_PATTERN.test(normalized);
   };
-
-  const isSafeExplicitOffsetConstruction = (flattened) =>
-    flattened.dynamicExpressions.length === 1 &&
-    EXPLICIT_OFFSET_PATTERN.test(flattened.text) &&
-    COMPLETE_TIMESTAMP_PATTERN.test(
-      flattened.text.replace('{expression}', DATE_ONLY_SENTINEL),
-    );
 
   const isSafeTimestampReference = (node) => {
     const expression = unwrapExpression(node);
@@ -437,6 +462,45 @@ export async function checkDateOnlyParse({
     }
     const propertyName = getPropertyName(expression);
     return propertyName !== null && isTimestampName(propertyName);
+  };
+
+  const getContainingFunctionName = (node) => {
+    let current = node.parent;
+    while (current) {
+      if (ts.isFunctionLike(current)) {
+        if (current.name && ts.isIdentifier(current.name)) {
+          return current.name.text;
+        }
+        if (
+          ts.isVariableDeclaration(current.parent) &&
+          ts.isIdentifier(current.parent.name)
+        ) {
+          return current.parent.name.text;
+        }
+        return null;
+      }
+      current = current.parent;
+    }
+    return null;
+  };
+
+  const isSafeDateOnlyReference = (node) => {
+    const expression = unwrapExpression(node);
+    const name = ts.isIdentifier(expression)
+      ? expression.text
+      : getPropertyName(expression);
+    if (name === null) {
+      return false;
+    }
+    if (isDateOnlyName(name)) {
+      return true;
+    }
+    const functionName = getContainingFunctionName(expression);
+    return (
+      name === 'value' &&
+      functionName !== null &&
+      isDateValidationFunctionName(functionName)
+    );
   };
 
   const isSafeDateArgument = (node) => {
@@ -488,14 +552,21 @@ export async function checkDateOnlyParse({
         expression.operatorToken.kind === ts.SyntaxKind.PlusToken)
     ) {
       const flattened = flattenStringConstruction(expression);
+      if (
+        flattened.dynamicExpressions.length === 1 &&
+        EXPLICIT_OFFSET_TIMESTAMP_CONSTRUCTION_PATTERN.test(flattened.text) &&
+        flattened.dynamicExpressions.every(isSafeDateOnlyReference)
+      ) {
+        return true;
+      }
       if (flattened.dynamicExpressions.length === 0) {
         return isSafeStaticString(flattened.text);
       }
       const dynamicOnlyText = flattened.text.replaceAll('{expression}', '').length === 0;
-      if (dynamicOnlyText) {
-        return flattened.dynamicExpressions.every(isSafeTimestampReference);
-      }
-      return isSafeExplicitOffsetConstruction(flattened);
+      return (
+        dynamicOnlyText &&
+        flattened.dynamicExpressions.every(isSafeTimestampReference)
+      );
     }
     return false;
   };

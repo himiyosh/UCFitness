@@ -61,7 +61,10 @@ export async function GET(
             .order('created_at', { ascending: false })
             .limit(MAX_MESSAGES);
 
-        if (before && parseTimestampMillis(before) !== null) {
+        if (before && parseTimestampMillis(before) === null) {
+            return NextResponse.json({ error: 'Invalid message cursor' }, { status: 400 });
+        }
+        if (before) {
             query = query.lt('created_at', before);
         }
 

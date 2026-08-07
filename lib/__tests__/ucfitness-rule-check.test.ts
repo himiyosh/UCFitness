@@ -168,8 +168,23 @@ const unsafeDateParseCases: UnsafeDateParseCase[] = [
         callKind: 'Date.parse',
     },
     {
+        label: 'new Dateのoffsetなし完全timestamp literal',
+        source: 'export const localTimestampConstructor = new Date("2026-07-28T12:34:56");',
+        callKind: 'new Date',
+    },
+    {
+        label: 'Date.parseのoffsetなし小数秒timestamp literal',
+        source: 'export const localTimestampParser = Date.parse("2026-07-28T12:34:56.123");',
+        callKind: 'Date.parse',
+    },
+    {
         label: '空白付きISO date-only literal',
         source: 'export const paddedDateOnly = new Date(" 2026-07-28 ");',
+        callKind: 'new Date',
+    },
+    {
+        label: '空白付きoffset timestamp literal',
+        source: 'export const paddedTimestamp = new Date(" 2026-07-28T12:34:56Z ");',
         callKind: 'new Date',
     },
     {
@@ -221,6 +236,46 @@ const unsafeDateParseCases: UnsafeDateParseCase[] = [
         label: 'date-only安全を証明できないtemplate',
         source: 'export function parseUnknownTemplate(value: string) { return new Date(`${value}`); }',
         callKind: 'new Date',
+    },
+    {
+        label: 'full timestamp構造を持たないoffset付きtemplate',
+        source: 'export function parseOffsetOnlyTemplate(value: string) { return new Date(`${value}+09:00`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: '未検証変数へZだけを付けるtemplate',
+        source: 'export function parseUnvalidatedZulu(unvalidatedVar: string) { return new Date(`${unvalidatedVar}Z`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: '未検証変数へfull timestamp suffixを付けるtemplate',
+        source: 'export function parseUnvalidatedDate(unvalidatedVar: string) { return new Date(`${unvalidatedVar}T00:00:00Z`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: 'dateで終わるだけの未検証candidate',
+        source: 'export function parseCandidate(candidate: string) { return new Date(`${candidate}T00:00:00Z`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: '関数名にdateを含むだけの未検証value',
+        source: 'export function updateProfile(value: string) { return Date.parse(`${value}T00:00:00Z`); }',
+        callKind: 'Date.parse',
+    },
+    {
+        label: 'Date風の名前だけを持つ未検証変数',
+        source: 'export function parseNamedValue(unvalidatedDate: string) { return new Date(`${unvalidatedDate}T00:00:00Z`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: 'Dateを含む非validation関数の未検証value',
+        source: 'export function updateDateProfile(value: string) { return Date.parse(`${value}T00:00:00Z`); }',
+        callKind: 'Date.parse',
+    },
+    {
+        label: 'full timestamp構造を持たないZ付きbinary',
+        source: 'export function parseOffsetOnlyBinary(value: string) { return Date.parse(value + "Z"); }',
+        callKind: 'Date.parse',
     },
     {
         label: '明示offsetだけを後置した未検証template',
@@ -301,8 +356,8 @@ function writeSafeDateBoundaryFixtures(): void {
             '    new Date(epoch),',
             '    new Date(Date.now()),',
             '    new Date(2026, 6, 28),',
-            '    new Date("2026-07-28T12:34:56"),',
             '    new Date("2026-07-28T12:34:56Z"),',
+            '    new Date("2026-07-28T12:34:56.123456789Z"),',
             '    Date.parse("2026-07-28T12:34:56+09:00"),',
             '    Date.parse("2026-07-28T12:34:56+0900"),',
             '    new Date(timestamp),',
@@ -466,7 +521,7 @@ describe('checkDateOnlyParse', () => {
     );
 
     it(
-        '16 unsafe expressionと6 production directory findingを一度の走査ですべて報告する',
+        '27 unsafe expressionと6 production directory findingを一度の走査ですべて報告する',
         async () => {
             const expressionPath = 'components/group/UnsafeExpressions.ts';
             writeDateBoundaryFixtureFile(
@@ -493,8 +548,8 @@ describe('checkDateOnlyParse', () => {
             );
             const output = renderRuleTargetResult(records);
 
-            expect(records).toHaveLength(22);
-            expect(expressionRecords).toHaveLength(16);
+            expect(records).toHaveLength(33);
+            expect(expressionRecords).toHaveLength(27);
             unsafeDateParseCases.forEach((testCase, index) => {
                 const line = index + 1;
                 const kindId =
@@ -577,6 +632,15 @@ describe('check-ucfitness-rules semantic CLI smoke', () => {
         rmSync(dateBoundaryFixtureRoot, { recursive: true, force: true });
         mkdirSync(dateBoundaryFixtureRoot, { recursive: true });
     });
+
+    it('明示offset付きtimestamp・epoch・Date・dynamic timestamp field・共有helperを受理し、除外対象を走査しない', () => {
+        writeSafeDateBoundaryFixtures();
+
+        const result = runDateBoundaryRule('--date-only-parse-only');
+
+        expect(result.status, result.output).toBe(0);
+        expect(result.output).toContain('OK: UCFitness rule-check passed');
+    }, DATE_RULE_CHECK_TIMEOUT_MS);
 
     it('challenge mutationをBash targeted CLIで拒否する', () => {
         applyBoundaryMutation(invalidBoundaries[1]);

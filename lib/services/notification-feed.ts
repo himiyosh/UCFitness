@@ -54,7 +54,11 @@ function uniqueStrings(values: string[]): string[] {
 }
 
 function timestampValue(timestamp: string): number {
-    return parseTimestampMillis(timestamp) ?? 0;
+    const parsed = parseTimestampMillis(timestamp);
+    if (parsed === null) {
+        throw new RangeError('Invalid notification feed timestamp');
+    }
+    return parsed;
 }
 
 function compareFeedItems(left: FeedItem, right: FeedItem): number {
@@ -151,6 +155,7 @@ function mergeReactionItems(latest: FeedItem, incoming: FeedItem): FeedItem {
 }
 
 export function aggregateNotificationFeed(items: FeedItem[]): FeedItem[] {
+    items.forEach((item) => timestampValue(item.timestamp));
     const sorted = [...items].sort(compareFeedItems);
     const aggregated: FeedItem[] = [];
     const badgeIndexes = new Map<string, number>();
@@ -226,6 +231,7 @@ export function parseNotificationFeedCursor(
     fallbackSnapshot = new Date().toISOString(),
 ): NotificationFeedCursor | null {
     if (!value) {
+        if (parseTimestampMillis(fallbackSnapshot) === null) return null;
         return { snapshot: fallbackSnapshot, offset: 0 };
     }
     if (value.length > MAX_CURSOR_LENGTH) return null;
@@ -255,7 +261,12 @@ export function parseNotificationFeedCursor(
 }
 
 export function getNotificationFeedWindow(snapshot: string): NotificationFeedWindow {
-    const snapshotDate = new Date(snapshot);
+    const snapshotMillis = parseTimestampMillis(snapshot);
+    if (snapshotMillis === null) {
+        throw new RangeError('Invalid notification feed snapshot');
+    }
+    const snapshotDate = new Date();
+    snapshotDate.setTime(snapshotMillis);
     const sinceDate = new Date(snapshotDate);
     sinceDate.setUTCDate(snapshotDate.getUTCDate() - 7);
     return {

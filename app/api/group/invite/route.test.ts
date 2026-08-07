@@ -80,6 +80,18 @@ describe('POST /api/group/invite', () => {
         expect(JSON.stringify(rpcArgs)).not.toContain(payload.token);
     });
 
+    it('rejects an offset-free invite expiration instead of returning a local-time timestamp', async () => {
+        mockRpc.mockResolvedValue({
+            data: { status: 'created', expiresAt: '2026-07-26T00:00:00' },
+            error: null,
+        });
+
+        const response = await POST(request({ action: 'create', groupId: GROUP_ID }));
+
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({ code: 'INVITE_CREATE_FAILED' });
+    });
+
     it('rejects malformed tokens without querying the database', async () => {
         const response = await POST(request({ action: 'join', token: 'not-a-token' }));
 
