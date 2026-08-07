@@ -1784,3 +1784,10 @@ export const runtime = "edge";
 - **根本原因**: state updaterを囲むasync関数の`try/catch`が、Reactのeager updater評価後にrender中へ再throwされる例外も捕捉すると誤認した。updater外へ移す際のlatest state・後着応答・unmount競合も同じ境界で設計していなかった。
 - **対策**: 追加ページをlatest feed refと結合してupdater外で集約し、成功後だけrefとstateを同時更新する。request generation、AbortController、mount guardで古い取得を無効化し、不正timestampは既存ja/enエラー表示へ分離する。API側の事前集約も不正値をHTTP境界で拒否する防衛線として維持し、実Chrome回帰で両Clientのerror state、複数ページ、重複集約、未読表示、focus、unmount abortを固定した。
 - **教訓**: throwし得る計算をReact state updaterへ入れない。周囲のerror boundaryで処理したい場合はupdater外で計算・検証し、最新stateをrefまたは明示的な世代契約で読む。非同期一覧の修正は正常appendだけでなく、後着応答・abort・unmount・既存live error/focusを同じ実DOM回帰に含める。リファレンス: `components/ActivityFeed.tsx`, `components/layout/NotificationBell.tsx`, `components/NotificationFeedClients.test.ts`, `app/api/user/feed/route.ts`
+
+### LL-111: 同一PRの古いCI runを残すと無料枠を重複消費する
+
+- **事象**: PRIVATE repositoryのGitHub Actions無料枠2,000分を使い切り、同一PRへ修正をpushした後も古いValidate runが完走して重複消費していた。課金枯渇後は全jobがsteps 0で開始不能となり、runtime cancellationの実測もできなくなった。
+- **根本原因**: Validate workflowにtop-level `concurrency`がなく、PR番号またはref単位で先行runを識別・中止する契約と、その式を守る機械guardがなかった。
+- **対策**: `.github/workflows/validate.yml`へ`ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}`と`cancel-in-progress: true`を追加した。`check:rules`でexact式・配置・広域キー回帰を固定し、deploy / release / publish系workflowへの誤適用も拒否する。
+- **教訓**: 反復pushが多いCI workflowは論理PR/ref単位で古いrunだけをcancelし、別PRを巻き込む広域groupを使わない。deploy系は途中中断の危険があるため同じ設定を機械的に展開せず、runtime効果はActions quota回復後に先行runの`CANCELLED`を実測する。リファレンス: `.github/workflows/validate.yml`, `scripts/check-ucfitness-rules.sh`, `lib/__tests__/ucfitness-rule-check.test.ts`
