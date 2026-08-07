@@ -153,6 +153,16 @@ const unsafeDateParseCases: UnsafeDateParseCase[] = [
         callKind: 'new Date',
     },
     {
+        label: 'new Dateのslash区切りdate literal',
+        source: 'export const slashDateConstructor = new Date("2026/07/28");',
+        callKind: 'new Date',
+    },
+    {
+        label: 'new Dateの英語月名date literal',
+        source: 'export const englishDateConstructor = new Date("July 28, 2026");',
+        callKind: 'new Date',
+    },
+    {
         label: 'Date.parseのISO date-only literal',
         source: 'export const dateOnlyParser = Date.parse("2026-07-28");',
         callKind: 'Date.parse',
@@ -210,6 +220,11 @@ const unsafeDateParseCases: UnsafeDateParseCase[] = [
     {
         label: 'date-only安全を証明できないtemplate',
         source: 'export function parseUnknownTemplate(value: string) { return new Date(`${value}`); }',
+        callKind: 'new Date',
+    },
+    {
+        label: '明示offsetだけを後置した未検証template',
+        source: 'export function parseUnknownOffsetTemplate(unvalidatedVar: string) { return new Date(`${unvalidatedVar}Z`); }',
         callKind: 'new Date',
     },
 ];
@@ -451,7 +466,7 @@ describe('checkDateOnlyParse', () => {
     );
 
     it(
-        '13 unsafe expressionと6 production directory findingを一度の走査ですべて報告する',
+        '16 unsafe expressionと6 production directory findingを一度の走査ですべて報告する',
         async () => {
             const expressionPath = 'components/group/UnsafeExpressions.ts';
             writeDateBoundaryFixtureFile(
@@ -478,8 +493,8 @@ describe('checkDateOnlyParse', () => {
             );
             const output = renderRuleTargetResult(records);
 
-            expect(records).toHaveLength(19);
-            expect(expressionRecords).toHaveLength(13);
+            expect(records).toHaveLength(22);
+            expect(expressionRecords).toHaveLength(16);
             unsafeDateParseCases.forEach((testCase, index) => {
                 const line = index + 1;
                 const kindId =
