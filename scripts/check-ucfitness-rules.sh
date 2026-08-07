@@ -4,6 +4,8 @@
 
 set -u
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RULE_TARGETS_SCRIPT="${SCRIPT_DIR}/ucfitness-rule-targets.mjs"
 VIOLATIONS=0
 REPORT=""
 
@@ -25,404 +27,49 @@ finish_rule_check() {
   exit 1
 }
 
+run_rule_target() {
+  local option="$1"
+  shift
+  local output status first_line count report
+
+  output="$(node "$RULE_TARGETS_SCRIPT" "$option" "$@" 2>&1)"
+  status=$?
+  if [ "$status" -eq 0 ] && \
+     [ "$output" = "OK: UCFitness rule-check passed (0 violations)" ]; then
+    return
+  fi
+
+  first_line="${output%%$'\n'*}"
+  case "$first_line" in
+    "NG: "*" rule violation(s) detected")
+      count="${first_line#NG: }"
+      count="${count%% *}"
+      case "$count" in
+        ''|*[!0-9]*)
+          ;;
+        *)
+          if [ "$status" -eq 1 ] && [ "$count" -gt 0 ]; then
+            report="${output#*$'\n'}"
+            VIOLATIONS=$((VIOLATIONS + count))
+            REPORT+="${report}"$'\n'
+            return
+          fi
+          ;;
+      esac
+      ;;
+  esac
+
+  record "UCFitness semantic rule engine failure" "semantic rule target invocation failed"
+}
+
 check_challenge_progress_auth_log_boundary() {
-  local single_route='app/api/challenge/[challengeId]/progress/route.ts'
-  local batch_route='app/api/challenge/progress/route.ts'
-  local route compact_route pattern
-
-  for route in "$single_route" "$batch_route"; do
-    compact_route="$(tr '\n' ' ' < "$route")"
-    if ! printf '%s' "$compact_route" | grep -Eq 'Promise<NextResponse>[[:space:]]*\{[[:space:]]*let authenticationComplete = false;[[:space:]]*try[[:space:]]*\{[[:space:]]*const session = await auth\(\);[[:space:]]*authenticationComplete = true;'; then
-      record "challenge progressのauthが固定catch境界外へ回帰" "$route"
-    fi
-    if [ "$(grep -Fc 'const session = await auth();' "$route")" -ne 1 ] || \
-       [ "$(grep -Fc 'reportError(' "$route")" -ne 1 ]; then
-      record "challenge progressの認証/固定ログ単一境界欠落" "$route"
-    fi
-  done
-  if ! grep -Fq "const normalized = authenticationComplete" "$single_route" || \
-     ! grep -Fq "CHALLENGE_PROGRESS_UNAVAILABLE_CODE" "$single_route" || \
-     ! grep -Eq "reportError\\(['\"]challenge:progress['\"][[:space:]]*,[[:space:]]*normalized[[:space:]]*\\);" "$single_route" || \
-     ! grep -Fq "const stage = authenticationComplete" "$batch_route" || \
-     ! grep -Eq "['\"]Challenge progress batch request failed['\"]" "$batch_route" || \
-     ! grep -Eq "['\"]CHALLENGE_PROGRESS_BATCH_UNAVAILABLE['\"]" "$batch_route" || \
-     ! grep -Eq "reportError\\(['\"]challenge:progress:batch['\"][[:space:]]*,[[:space:]]*normalized[[:space:]]*\\);" "$batch_route"; then
-    record "challenge progressの固定AppError正規化欠落" "single/batch progress routes"
-  fi
-
-  local error_sink_test='app/api/challenge/error-sink.test.ts'
-  for pattern in \
-    "GET as GET_CHALLENGE_PROGRESS" \
-    "POST as POST_CHALLENGE_PROGRESS_BATCH" \
-    "singleProgress:" \
-    "batchProgress:" \
-    "matching-code AppError" \
-    "\$labelの\$failureLabel auth障害を固定JSONへ変換し、生情報を除外する" \
-    "expect(mocks.from).not.toHaveBeenCalled()" \
-    "expect(mocks.rpc).not.toHaveBeenCalled()"; do
-    if ! grep -Fq "$pattern" "$error_sink_test"; then
-      record "challenge progress authの実reportError sink回帰欠落" "${error_sink_test}: ${pattern}"
-    fi
-  done
-  if ! grep -Fq "同一codeのAppErrorも固定fieldだけの新しいErrorへ再構築する" \
-       'lib/services/challenge-progress-service.test.ts' || \
-     ! grep -Fq "return progressFailure(stage);" \
-       'lib/services/challenge-progress-service.ts'; then
-    record "challenge progressのmatching-code AppError再固定化回帰欠落" "progress service/test"
-  fi
-  if ! grep -Fq "progressは未認証の場合、DB処理前に401を返す" \
-       'app/api/challenge/[challengeId]/operation-authorization.test.ts' || \
-     ! grep -Fq "未認証の場合、batch処理前に401を返す" \
-       'app/api/challenge/progress/route.test.ts'; then
-    record "challenge progressの未認証401回帰欠落" "single/batch progress route tests"
-  fi
+  run_rule_target "--challenge-progress-auth-log-boundary-only"
 }
 
 check_date_only_jst_end_boundary() {
   local scan_root="${1:-.}"
-  local hits
-
-  if ! hits="$(node -e '
-const fs = require("fs");
-const path = require("path");
-const ts = require("typescript");
-
-const root = path.resolve(process.argv[1]);
-const productionDirectories = ["app", "components", "contexts", "hooks", "lib", "types"];
-const productionRootFiles = ["i18n.ts", "middleware.ts", "navigation.ts"];
-const excludedDirectories = new Set([
-  "__fixtures__",
-  "__tests__",
-  "fixture",
-  "fixtures",
-  "test",
-  "tests",
-]);
-const testFilePattern = /\.(?:fixture|spec|test)\.tsx?$/;
-const completeTimestampPattern = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)$/i;
-const explicitOffsetTimestampConstructionPattern = /^\{expression\}T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)$/i;
-const files = [];
-const violations = [];
-
-const isProductionFile = (file) => {
-  const relativePath = path.relative(root, file);
-  const segments = relativePath.split(path.sep);
-  return (file.endsWith(".ts") || file.endsWith(".tsx"))
-    && !testFilePattern.test(path.basename(file))
-    && !segments.some((segment) => excludedDirectories.has(segment));
-};
-
-const collectFiles = (entryPath) => {
-  if (!fs.existsSync(entryPath)) return;
-  const stats = fs.statSync(entryPath);
-  if (stats.isFile()) {
-    if (isProductionFile(entryPath)) files.push(entryPath);
-    return;
-  }
-  for (const entry of fs.readdirSync(entryPath, { withFileTypes: true })) {
-    if (entry.isSymbolicLink()) continue;
-    collectFiles(path.join(entryPath, entry.name));
-  }
-};
-
-for (const directory of productionDirectories) {
-  collectFiles(path.join(root, directory));
-}
-for (const file of productionRootFiles) {
-  collectFiles(path.join(root, file));
-}
-
-const program = ts.createProgram(files, {
-  jsx: ts.JsxEmit.Preserve,
-  module: ts.ModuleKind.ESNext,
-  moduleResolution: ts.ModuleResolutionKind.Bundler,
-  noEmit: true,
-  skipLibCheck: true,
-  target: ts.ScriptTarget.Latest,
-});
-const checker = program.getTypeChecker();
-
-const unwrapExpression = (node) => {
-  if (
-    ts.isParenthesizedExpression(node)
-    || ts.isAsExpression(node)
-    || ts.isTypeAssertionExpression(node)
-    || ts.isNonNullExpression(node)
-    || ts.isSatisfiesExpression(node)
-  ) {
-    return unwrapExpression(node.expression);
-  }
-  return node;
-};
-
-const isTimestampName = (name) => {
-  const lowerName = name.toLowerCase();
-  return lowerName === "timestamp"
-    || lowerName === "snapshot"
-    || lowerName.endsWith("_at")
-    || lowerName.endsWith("_timestamp")
-    || name.endsWith("At")
-    || name.endsWith("Iso")
-    || name.endsWith("Timestamp");
-};
-
-const dateOnlyNames = new Set([
-  "currentdate",
-  "date",
-  "datestr",
-  "enddate",
-  "fromstr",
-  "fulldate",
-  "jstdatestr",
-  "monthlystartstr",
-  "occurredon",
-  "startdate",
-  "startstr",
-  "today",
-  "todaystr",
-  "tostr",
-  "weekstart",
-  "weekstartstr",
-]);
-
-const isDateOnlyName = (name) => (
-  dateOnlyNames.has(name.toLowerCase())
-  || /(?:^|_)date$/i.test(name)
-);
-
-const getPropertyName = (node) => {
-  if (ts.isPropertyAccessExpression(node)) return node.name.text;
-  if (
-    ts.isElementAccessExpression(node)
-    && node.argumentExpression
-    && ts.isStringLiteralLike(node.argumentExpression)
-  ) {
-    return node.argumentExpression.text;
-  }
-  return null;
-};
-
-const isNullishType = (type) => (
-  (type.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void)) !== 0
-);
-
-const everyNonNullishTypePart = (type, predicate) => {
-  const parts = type.isUnion() ? type.types : [type];
-  const nonNullishParts = parts.filter((part) => !isNullishType(part));
-  return nonNullishParts.length > 0 && nonNullishParts.every(predicate);
-};
-
-const isNumberType = (node) => {
-  const type = checker.getTypeAtLocation(node);
-  return everyNonNullishTypePart(
-    type,
-    (part) => (part.flags & ts.TypeFlags.NumberLike) !== 0,
-  );
-};
-
-const isDateType = (node) => {
-  const type = checker.getTypeAtLocation(node);
-  return everyNonNullishTypePart(type, (part) => {
-    const symbol = part.getSymbol() ?? part.aliasSymbol;
-    return symbol?.getName() === "Date";
-  });
-};
-
-const flattenStringConstruction = (node) => {
-  const expression = unwrapExpression(node);
-  if (ts.isStringLiteralLike(expression)) {
-    return { text: expression.text, dynamicExpressions: [] };
-  }
-  if (ts.isTemplateExpression(expression)) {
-    const dynamicExpressions = [];
-    let text = expression.head.text;
-    for (const span of expression.templateSpans) {
-      dynamicExpressions.push(span.expression);
-      text += `{expression}${span.literal.text}`;
-    }
-    return { text, dynamicExpressions };
-  }
-  if (
-    ts.isBinaryExpression(expression)
-    && expression.operatorToken.kind === ts.SyntaxKind.PlusToken
-  ) {
-    const left = flattenStringConstruction(expression.left);
-    const right = flattenStringConstruction(expression.right);
-    return {
-      text: left.text + right.text,
-      dynamicExpressions: [
-        ...left.dynamicExpressions,
-        ...right.dynamicExpressions,
-      ],
-    };
-  }
-  return { text: "{expression}", dynamicExpressions: [expression] };
-};
-
-const isSafeStaticString = (text) => {
-  const normalized = text.trim();
-  if (normalized !== text) return false;
-  return completeTimestampPattern.test(normalized);
-};
-
-const isSafeTimestampReference = (node) => {
-  const expression = unwrapExpression(node);
-  if (ts.isIdentifier(expression)) return isTimestampName(expression.text);
-  const propertyName = getPropertyName(expression);
-  return propertyName !== null && isTimestampName(propertyName);
-};
-
-const getContainingFunctionName = (node) => {
-  let current = node.parent;
-  while (current) {
-    if (ts.isFunctionLike(current)) {
-      if (current.name && ts.isIdentifier(current.name)) return current.name.text;
-      if (
-        ts.isVariableDeclaration(current.parent)
-        && ts.isIdentifier(current.parent.name)
-      ) {
-        return current.parent.name.text;
-      }
-      return null;
-    }
-    current = current.parent;
-  }
-  return null;
-};
-
-const isDateValidationFunctionName = (name) => (
-  /^(?:assert|is|parse|validate)(?:[A-Z_]|$)/.test(name)
-  && (name.includes("Date") || /(?:^|_)date(?:_|$)/i.test(name))
-);
-
-const isSafeDateOnlyReference = (node) => {
-  const expression = unwrapExpression(node);
-  const name = ts.isIdentifier(expression)
-    ? expression.text
-    : getPropertyName(expression);
-  if (name === null) return false;
-  if (isDateOnlyName(name)) return true;
-  const functionName = getContainingFunctionName(expression);
-  return name === "value"
-    && functionName !== null
-    && isDateValidationFunctionName(functionName);
-};
-
-const isSafeDateArgument = (node) => {
-  const expression = unwrapExpression(node);
-
-  if (ts.isStringLiteralLike(expression)) {
-    return isSafeStaticString(expression.text);
-  }
-  if (ts.isNumericLiteral(expression) || isNumberType(expression) || isDateType(expression)) {
-    return true;
-  }
-  if (
-    ts.isNewExpression(expression)
-    && ts.isIdentifier(expression.expression)
-    && expression.expression.text === "Date"
-  ) {
-    return true;
-  }
-  if (
-    ts.isCallExpression(expression)
-    && ts.isPropertyAccessExpression(expression.expression)
-    && ts.isIdentifier(expression.expression.expression)
-    && expression.expression.expression.text === "Date"
-    && (expression.expression.name.text === "now" || expression.expression.name.text === "UTC")
-  ) {
-    return true;
-  }
-  if (
-    ts.isConditionalExpression(expression)
-    && isSafeDateArgument(expression.whenTrue)
-    && isSafeDateArgument(expression.whenFalse)
-  ) {
-    return true;
-  }
-  if (
-    ts.isBinaryExpression(expression)
-    && expression.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
-    && isSafeDateArgument(expression.left)
-    && isSafeDateArgument(expression.right)
-  ) {
-    return true;
-  }
-  if (ts.isIdentifier(expression) || getPropertyName(expression) !== null) {
-    return isSafeTimestampReference(expression);
-  }
-  if (
-    ts.isTemplateExpression(expression)
-    || (
-      ts.isBinaryExpression(expression)
-      && expression.operatorToken.kind === ts.SyntaxKind.PlusToken
-    )
-  ) {
-    const flattened = flattenStringConstruction(expression);
-    if (
-      flattened.dynamicExpressions.length === 1
-      && explicitOffsetTimestampConstructionPattern.test(flattened.text)
-      && flattened.dynamicExpressions.every(isSafeDateOnlyReference)
-    ) {
-      return true;
-    }
-    if (flattened.dynamicExpressions.length === 0) {
-      return isSafeStaticString(flattened.text);
-    }
-    const dynamicOnlyText = flattened.text
-      .replaceAll("{expression}", "")
-      .length === 0;
-    return dynamicOnlyText
-      && flattened.dynamicExpressions.every(isSafeTimestampReference);
-  }
-  return false;
-};
-
-const getDateParseKind = (node) => {
-  if (
-    ts.isNewExpression(node)
-    && ts.isIdentifier(node.expression)
-    && node.expression.text === "Date"
-  ) {
-    return "new Date";
-  }
-  if (
-    ts.isCallExpression(node)
-    && ts.isPropertyAccessExpression(node.expression)
-    && ts.isIdentifier(node.expression.expression)
-    && node.expression.expression.text === "Date"
-    && node.expression.name.text === "parse"
-  ) {
-    return "Date.parse";
-  }
-  return null;
-};
-
-for (const file of files) {
-  const sourceFile = program.getSourceFile(file);
-  if (!sourceFile) continue;
-  const visit = (node) => {
-    const parseKind = getDateParseKind(node);
-    const firstArgument = node.arguments?.[0];
-    const hasSafeArity = parseKind === "new Date" && (node.arguments?.length ?? 0) !== 1;
-    if (parseKind !== null && firstArgument && !hasSafeArity && !isSafeDateArgument(firstArgument)) {
-      const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-      violations.push(
-        `${path.relative(root, file).split(path.sep).join("/")}:${position.line + 1} ${parseKind}`,
-      );
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
-}
-
-if (violations.length > 0) {
-  process.stdout.write(violations.join("\n"));
-  process.exitCode = 1;
-}
-' "$scan_root" 2>&1)"; then
-    record "timezone依存のdate-only parse (new Date / Date.parse)" "$hits"
-  fi
+  local option="${2:---date-only-parse-only}"
+  run_rule_target "$option" "$scan_root"
 }
 
 if [ "${1:-}" = "--challenge-progress-auth-log-boundary-only" ]; then
@@ -432,7 +79,7 @@ fi
 
 if [ "${1:-}" = "--date-only-parse-only" ] || \
    [ "${1:-}" = "--date-only-jst-end-boundary-only" ]; then
-  check_date_only_jst_end_boundary "${2:-.}"
+  check_date_only_jst_end_boundary "${2:-.}" "$1"
   finish_rule_check
 fi
 
