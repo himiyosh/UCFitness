@@ -2099,5 +2099,5 @@ describe('ChallengeList Hall of Fame', () => {
         } finally {
             await browser.close();
         }
-    }, 30_000);
+    }, 120_000); // hosted CI 2-coreで30_000超過を実測 (run 31153059180)。ローカル4.8秒、CIはTailwindコンパイル+Chrome起動が低速なため余裕を持たせる。
 });
