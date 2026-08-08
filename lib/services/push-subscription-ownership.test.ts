@@ -229,7 +229,7 @@ describe('push subscription ownership RPC wrappers', () => {
 });
 
 describe('push subscription ownership import boundary', () => {
-    it('wrapperをserver-onlyかつPR314までunit test以外から未使用に保つ', () => {
+    it('wrapperをserver-onlyかつPR314のsubscribe routeからだけ使用する', () => {
         const wrapperPath = 'lib/services/push-subscription-ownership.ts';
         const wrapper = readFileSync(join(process.cwd(), wrapperPath), 'utf8');
         expect(wrapper).toMatch(/^import 'server-only';/);
@@ -240,8 +240,13 @@ describe('push subscription ownership import boundary', () => {
         const files = output ? output.split('\n') : [];
         const importPattern = /['"][^'"]*push-subscription-ownership['"]/;
         const importers = files.filter((file) =>
-            file !== wrapperPath && importPattern.test(readFileSync(join(process.cwd(), file), 'utf8')));
-        expect(importers).toEqual(['lib/services/push-subscription-ownership.test.ts']);
+            file !== wrapperPath
+            && !file.includes('/__tests__/')
+            && importPattern.test(readFileSync(join(process.cwd(), file), 'utf8')));
+        expect(importers).toEqual([
+            'app/api/push/subscribe/route.ts',
+            'lib/services/push-subscription-ownership.test.ts',
+        ]);
         expect(importers.filter((file) =>
             readFileSync(join(process.cwd(), file), 'utf8').trimStart().startsWith("'use client'"))).toEqual([]);
     });

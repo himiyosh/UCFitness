@@ -13,6 +13,8 @@ const MAX_READ_OBSERVATIONS = 20;
 const ERRORS = {
     saveInput: ['Invalid push subscription save input', 'PUSH_SUBSCRIPTION_SAVE_INPUT_INVALID'],
     saveRpc: ['Push subscription save failed', 'PUSH_SUBSCRIPTION_SAVE_FAILED'],
+    saveLimit: ['Push subscription limit reached', 'PUSH_SUBSCRIPTION_LIMIT_REACHED'],
+    saveConflict: ['Push subscription ownership changed', 'PUSH_SUBSCRIPTION_OWNERSHIP_CONFLICT'],
     saveResult: ['Push subscription save returned an invalid result', 'PUSH_SUBSCRIPTION_SAVE_RESULT_INVALID'],
     readInput: ['Invalid push subscription generation input', 'PUSH_SUBSCRIPTION_GENERATION_INPUT_INVALID'],
     readRpc: ['Push subscription generation lookup failed', 'PUSH_SUBSCRIPTION_GENERATION_READ_FAILED'],
@@ -104,6 +106,12 @@ function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): 
     return Object.keys(value).sort().join('\0') === [...keys].sort().join('\0');
 }
 
+function saveRpcError(error: unknown): ErrorKey {
+    if (!isRecord(error) || typeof error.message !== 'string') return 'saveRpc';
+    if (error.message === 'Push subscription limit reached') return 'saveLimit';
+    return error.message === 'Push subscription ownership changed' ? 'saveConflict' : 'saveRpc';
+}
+
 async function callRpc(name: RpcName, args: object, errorKey: ErrorKey): Promise<unknown> {
     let result: unknown;
     try {
@@ -112,7 +120,9 @@ async function callRpc(name: RpcName, args: object, errorKey: ErrorKey): Promise
         throw fixedError(errorKey);
     }
     if (!isRecord(result) || !Object.hasOwn(result, 'data') || result.error !== null) {
-        throw fixedError(errorKey);
+        throw fixedError(name === SAVE_PUSH_SUBSCRIPTION_RPC
+            ? saveRpcError(isRecord(result) ? result.error : null)
+            : errorKey);
     }
     return result.data;
 }
